@@ -1,0 +1,5 @@
+.DS_Store
+.python-version
+*.apkg
+__pycache__/
+*.pyc

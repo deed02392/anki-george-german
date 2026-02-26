@@ -1,0 +1,971 @@
+[
+  {
+    "word": "Tschüss",
+    "article": null,
+    "pos": "interjection",
+    "translation": "bye, goodbye",
+    "domains": [
+      "greetings"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Tschüss! Bis morgen!",
+    "example_sentence_en": "Bye! See you tomorrow!",
+    "notes": ""
+  },
+  {
+    "word": "Guten Morgen",
+    "article": null,
+    "pos": "phrase",
+    "translation": "good morning",
+    "domains": [
+      "greetings",
+      "time"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Guten Morgen! Hast du gut geschlafen?",
+    "example_sentence_en": "Good morning! Did you sleep well?",
+    "notes": ""
+  },
+  {
+    "word": "Wie heißt du?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "What's your name?",
+    "domains": [
+      "greetings",
+      "questions"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Hallo! Wie heißt du? Ich heiße Lukas.",
+    "example_sentence_en": "Hello! What's your name? My name is Lukas.",
+    "notes": ""
+  },
+  {
+    "word": "Ich heiße ...",
+    "article": null,
+    "pos": "phrase",
+    "translation": "My name is ...",
+    "domains": [
+      "greetings"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Ich heiße Emma.",
+    "example_sentence_en": "My name is Emma.",
+    "notes": ""
+  },
+  {
+    "word": "Wo ist ...?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Where is ...?",
+    "domains": [
+      "questions",
+      "location"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Wo ist mein Ball?",
+    "example_sentence_en": "Where is my ball?",
+    "notes": ""
+  },
+  {
+    "word": "Was ist das?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "What is that?",
+    "domains": [
+      "questions"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Was ist das? Das ist ein Hund!",
+    "example_sentence_en": "What is that? That is a dog!",
+    "notes": ""
+  },
+  {
+    "word": "Kannst du ...?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Can you ...?",
+    "domains": [
+      "questions",
+      "actions"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Kannst du das sehen?",
+    "example_sentence_en": "Can you see that?",
+    "notes": ""
+  },
+  {
+    "word": "Magst du ...?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Do you like ...?",
+    "domains": [
+      "questions",
+      "feelings"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Magst du Schokolade?",
+    "example_sentence_en": "Do you like chocolate?",
+    "notes": ""
+  },
+  {
+    "word": "Willst du ...?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Do you want to ...?",
+    "domains": [
+      "questions",
+      "actions"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Willst du mit mir spielen?",
+    "example_sentence_en": "Do you want to play with me?",
+    "notes": ""
+  },
+  {
+    "word": "das Spielzeug",
+    "article": "das",
+    "pos": "noun",
+    "translation": "toy, toys",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Das Spielzeug liegt auf dem Boden.",
+    "example_sentence_en": "The toy is on the floor.",
+    "notes": ""
+  },
+  {
+    "word": "nein",
+    "article": null,
+    "pos": "interjection",
+    "translation": "no",
+    "domains": [
+      "greetings"
+    ],
+    "priority": 10,
+    "example_sentence_de": "Nein, das will ich nicht.",
+    "example_sentence_en": "No, I don't want that.",
+    "notes": ""
+  },
+  {
+    "word": "Gute Nacht",
+    "article": null,
+    "pos": "phrase",
+    "translation": "good night",
+    "domains": [
+      "greetings",
+      "time"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Gute Nacht! Schlaf gut!",
+    "example_sentence_en": "Good night! Sleep well!",
+    "notes": ""
+  },
+  {
+    "word": "Wie alt bist du?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "How old are you?",
+    "domains": [
+      "greetings",
+      "questions"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Wie alt bist du? Ich bin sechs Jahre alt.",
+    "example_sentence_en": "How old are you? I am six years old.",
+    "notes": ""
+  },
+  {
+    "word": "Ich bin ... Jahre alt.",
+    "article": null,
+    "pos": "phrase",
+    "translation": "I am ... years old.",
+    "domains": [
+      "greetings",
+      "numbers"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Ich bin fünf Jahre alt.",
+    "example_sentence_en": "I am five years old.",
+    "notes": ""
+  },
+  {
+    "word": "Wie geht es dir?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "How are you?",
+    "domains": [
+      "greetings",
+      "feelings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Wie geht es dir? Mir geht es gut, danke!",
+    "example_sentence_en": "How are you? I'm fine, thank you!",
+    "notes": ""
+  },
+  {
+    "word": "Mir geht es gut.",
+    "article": null,
+    "pos": "phrase",
+    "translation": "I'm fine / I'm doing well.",
+    "domains": [
+      "greetings",
+      "feelings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Mir geht es gut, danke!",
+    "example_sentence_en": "I'm fine, thank you!",
+    "notes": ""
+  },
+  {
+    "word": "Wer ist das?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Who is that?",
+    "domains": [
+      "questions",
+      "family"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Wer ist das? Das ist meine Mama.",
+    "example_sentence_en": "Who is that? That is my mum.",
+    "notes": ""
+  },
+  {
+    "word": "Darf ich ...?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "May I ...? / Am I allowed to ...?",
+    "domains": [
+      "questions"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Darf ich das haben?",
+    "example_sentence_en": "May I have that?",
+    "notes": ""
+  },
+  {
+    "word": "Hast du ... ?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Do you have ...?",
+    "domains": [
+      "questions"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Hast du einen Stift?",
+    "example_sentence_en": "Do you have a pen?",
+    "notes": ""
+  },
+  {
+    "word": "der Opa",
+    "article": "der",
+    "pos": "noun",
+    "translation": "grandpa",
+    "domains": [
+      "family"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Opa liest mir eine Geschichte vor.",
+    "example_sentence_en": "Grandpa reads me a story.",
+    "notes": ""
+  },
+  {
+    "word": "die Puppe",
+    "article": "die",
+    "pos": "noun",
+    "translation": "doll",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Meine Puppe hat blaue Augen.",
+    "example_sentence_en": "My doll has blue eyes.",
+    "notes": ""
+  },
+  {
+    "word": "der Baustein",
+    "article": "der",
+    "pos": "noun",
+    "translation": "building block",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Wir bauen einen Turm aus Bausteinen.",
+    "example_sentence_en": "We are building a tower from blocks.",
+    "notes": ""
+  },
+  {
+    "word": "der Durst",
+    "article": "der",
+    "pos": "noun",
+    "translation": "thirst",
+    "domains": [
+      "food",
+      "feelings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Ich habe Durst. Kann ich Wasser haben?",
+    "example_sentence_en": "I'm thirsty. Can I have water?",
+    "notes": ""
+  },
+  {
+    "word": "der Kuchen",
+    "article": "der",
+    "pos": "noun",
+    "translation": "cake",
+    "domains": [
+      "food"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Magst du Kuchen?",
+    "example_sentence_en": "Do you like cake?",
+    "notes": ""
+  },
+  {
+    "word": "die Schokolade",
+    "article": "die",
+    "pos": "noun",
+    "translation": "chocolate",
+    "domains": [
+      "food"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Magst du Schokolade?",
+    "example_sentence_en": "Do you like chocolate?",
+    "notes": ""
+  },
+  {
+    "word": "lecker",
+    "article": null,
+    "pos": "adjective",
+    "translation": "delicious, yummy",
+    "domains": [
+      "food"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Das ist lecker!",
+    "example_sentence_en": "That's delicious!",
+    "notes": ""
+  },
+  {
+    "word": "orange",
+    "article": null,
+    "pos": "adjective",
+    "translation": "orange",
+    "domains": [
+      "colours"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Ich mag die orange Farbe.",
+    "example_sentence_en": "I like the colour orange.",
+    "notes": ""
+  },
+  {
+    "word": "lila",
+    "article": null,
+    "pos": "adjective",
+    "translation": "purple",
+    "domains": [
+      "colours"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Das ist ein lila Schmetterling.",
+    "example_sentence_en": "That is a purple butterfly.",
+    "notes": ""
+  },
+  {
+    "word": "rosa",
+    "article": null,
+    "pos": "adjective",
+    "translation": "pink",
+    "domains": [
+      "colours"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Sie trägt ein rosa Kleid.",
+    "example_sentence_en": "She is wearing a pink dress.",
+    "notes": ""
+  },
+  {
+    "word": "später",
+    "article": null,
+    "pos": "adverb",
+    "translation": "later",
+    "domains": [
+      "time"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Können wir das später machen?",
+    "example_sentence_en": "Can we do that later?",
+    "notes": ""
+  },
+  {
+    "word": "Komm!",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Come! / Come on!",
+    "domains": [
+      "actions",
+      "greetings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Komm, wir spielen draußen!",
+    "example_sentence_en": "Come on, let's play outside!",
+    "notes": "imperative of kommen"
+  },
+  {
+    "word": "Schau mal!",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Look! / Look at that!",
+    "domains": [
+      "actions",
+      "greetings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Schau mal, ein Regenbogen!",
+    "example_sentence_en": "Look, a rainbow!",
+    "notes": ""
+  },
+  {
+    "word": "Lass uns ...!",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Let's ...!",
+    "domains": [
+      "actions",
+      "play",
+      "greetings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Lass uns Fußball spielen!",
+    "example_sentence_en": "Let's play football!",
+    "notes": ""
+  },
+  {
+    "word": "Ich verstehe nicht.",
+    "article": null,
+    "pos": "phrase",
+    "translation": "I don't understand.",
+    "domains": [
+      "greetings"
+    ],
+    "priority": 9,
+    "example_sentence_de": "Ich verstehe nicht. Kannst du das wiederholen?",
+    "example_sentence_en": "I don't understand. Can you repeat that?",
+    "notes": ""
+  },
+  {
+    "word": "Wohin gehst du?",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Where are you going?",
+    "domains": [
+      "questions",
+      "location",
+      "actions"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Wohin gehst du? Ich gehe in den Garten.",
+    "example_sentence_en": "Where are you going? I'm going to the garden.",
+    "notes": ""
+  },
+  {
+    "word": "das Puzzle",
+    "article": "das",
+    "pos": "noun",
+    "translation": "puzzle, jigsaw",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Das Puzzle hat 50 Teile.",
+    "example_sentence_en": "The puzzle has 50 pieces.",
+    "notes": ""
+  },
+  {
+    "word": "der Teddy",
+    "article": "der",
+    "pos": "noun",
+    "translation": "teddy bear",
+    "domains": [
+      "toys"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich schlafe immer mit meinem Teddy.",
+    "example_sentence_en": "I always sleep with my teddy bear.",
+    "notes": ""
+  },
+  {
+    "word": "das Lego",
+    "article": "das",
+    "pos": "noun",
+    "translation": "Lego",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Wir spielen mit Lego.",
+    "example_sentence_en": "We are playing with Lego.",
+    "notes": ""
+  },
+  {
+    "word": "der Sandkasten",
+    "article": "der",
+    "pos": "noun",
+    "translation": "sandpit, sandbox",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Die Kinder spielen im Sandkasten.",
+    "example_sentence_en": "The children are playing in the sandpit.",
+    "notes": ""
+  },
+  {
+    "word": "die Schaukel",
+    "article": "die",
+    "pos": "noun",
+    "translation": "swing",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Kannst du mich auf der Schaukel anschieben?",
+    "example_sentence_en": "Can you push me on the swing?",
+    "notes": ""
+  },
+  {
+    "word": "die Rutsche",
+    "article": "die",
+    "pos": "noun",
+    "translation": "slide (playground)",
+    "domains": [
+      "toys",
+      "play"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Die Rutsche ist sehr schnell.",
+    "example_sentence_en": "The slide is very fast.",
+    "notes": ""
+  },
+  {
+    "word": "das Mittagessen",
+    "article": "das",
+    "pos": "noun",
+    "translation": "lunch",
+    "domains": [
+      "food",
+      "time"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Zum Mittagessen gibt es Nudeln.",
+    "example_sentence_en": "For lunch there is pasta.",
+    "notes": ""
+  },
+  {
+    "word": "das Abendessen",
+    "article": "das",
+    "pos": "noun",
+    "translation": "dinner, supper",
+    "domains": [
+      "food",
+      "time"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Beim Abendessen essen wir zusammen.",
+    "example_sentence_en": "We eat together at dinner.",
+    "notes": ""
+  },
+  {
+    "word": "der Saft",
+    "article": "der",
+    "pos": "noun",
+    "translation": "juice",
+    "domains": [
+      "food"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich möchte Apfelsaft, bitte.",
+    "example_sentence_en": "I would like apple juice, please.",
+    "notes": ""
+  },
+  {
+    "word": "die Banane",
+    "article": "die",
+    "pos": "noun",
+    "translation": "banana",
+    "domains": [
+      "food"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Die Banane ist gelb.",
+    "example_sentence_en": "The banana is yellow.",
+    "notes": ""
+  },
+  {
+    "word": "der Keks",
+    "article": "der",
+    "pos": "noun",
+    "translation": "biscuit, cookie",
+    "domains": [
+      "food"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Darf ich noch einen Keks haben?",
+    "example_sentence_en": "May I have another cookie?",
+    "notes": ""
+  },
+  {
+    "word": "die Nudeln",
+    "article": "die",
+    "pos": "noun",
+    "translation": "pasta, noodles",
+    "domains": [
+      "food"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Heute gibt es Nudeln mit Tomatensoße.",
+    "example_sentence_en": "Today we're having pasta with tomato sauce.",
+    "notes": ""
+  },
+  {
+    "word": "die Suppe",
+    "article": "die",
+    "pos": "noun",
+    "translation": "soup",
+    "domains": [
+      "food"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Die Suppe ist heiß.",
+    "example_sentence_en": "The soup is hot.",
+    "notes": ""
+  },
+  {
+    "word": "das Obst",
+    "article": "das",
+    "pos": "noun",
+    "translation": "fruit",
+    "domains": [
+      "food"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Iss mehr Obst!",
+    "example_sentence_en": "Eat more fruit!",
+    "notes": ""
+  },
+  {
+    "word": "der Hase",
+    "article": "der",
+    "pos": "noun",
+    "translation": "rabbit, hare",
+    "domains": [
+      "animals"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Der Hase springt im Garten.",
+    "example_sentence_en": "The rabbit is jumping in the garden.",
+    "notes": ""
+  },
+  {
+    "word": "die Ente",
+    "article": "die",
+    "pos": "noun",
+    "translation": "duck",
+    "domains": [
+      "animals"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Die Enten schwimmen im Teich.",
+    "example_sentence_en": "The ducks are swimming in the pond.",
+    "notes": ""
+  },
+  {
+    "word": "der Frosch",
+    "article": "der",
+    "pos": "noun",
+    "translation": "frog",
+    "domains": [
+      "animals"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Der Frosch springt ins Wasser.",
+    "example_sentence_en": "The frog jumps into the water.",
+    "notes": ""
+  },
+  {
+    "word": "der Elefant",
+    "article": "der",
+    "pos": "noun",
+    "translation": "elephant",
+    "domains": [
+      "animals"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Der Elefant hat eine lange Nase.",
+    "example_sentence_en": "The elephant has a long nose.",
+    "notes": ""
+  },
+  {
+    "word": "der Löwe",
+    "article": "der",
+    "pos": "noun",
+    "translation": "lion",
+    "domains": [
+      "animals"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Der Löwe ist der König der Tiere.",
+    "example_sentence_en": "The lion is the king of the animals.",
+    "notes": ""
+  },
+  {
+    "word": "ängstlich",
+    "article": null,
+    "pos": "adjective",
+    "translation": "scared, anxious",
+    "domains": [
+      "feelings"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Bist du ängstlich?",
+    "example_sentence_en": "Are you scared?",
+    "notes": ""
+  },
+  {
+    "word": "gelangweilt",
+    "article": null,
+    "pos": "adjective",
+    "translation": "bored",
+    "domains": [
+      "feelings"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich bin gelangweilt. Wollen wir spielen?",
+    "example_sentence_en": "I'm bored. Shall we play?",
+    "notes": ""
+  },
+  {
+    "word": "aufgeregt",
+    "article": null,
+    "pos": "adjective",
+    "translation": "excited",
+    "domains": [
+      "feelings"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich bin aufgeregt wegen meines Geburtstags!",
+    "example_sentence_en": "I'm excited about my birthday!",
+    "notes": ""
+  },
+  {
+    "word": "der Stift",
+    "article": "der",
+    "pos": "noun",
+    "translation": "pen, pencil, felt-tip",
+    "domains": [
+      "school",
+      "play"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Leihst du mir deinen Stift?",
+    "example_sentence_en": "Can you lend me your pen?",
+    "notes": ""
+  },
+  {
+    "word": "der Bleistift",
+    "article": "der",
+    "pos": "noun",
+    "translation": "pencil",
+    "domains": [
+      "school"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich brauche einen Bleistift.",
+    "example_sentence_en": "I need a pencil.",
+    "notes": ""
+  },
+  {
+    "word": "der Buntstift",
+    "article": "der",
+    "pos": "noun",
+    "translation": "coloured pencil, crayon",
+    "domains": [
+      "school",
+      "colours"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Male mit dem roten Buntstift.",
+    "example_sentence_en": "Colour it with the red crayon.",
+    "notes": ""
+  },
+  {
+    "word": "drinnen",
+    "article": null,
+    "pos": "adverb",
+    "translation": "inside, indoors",
+    "domains": [
+      "location"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Wir spielen heute drinnen.",
+    "example_sentence_en": "We are playing inside today.",
+    "notes": ""
+  },
+  {
+    "word": "immer",
+    "article": null,
+    "pos": "adverb",
+    "translation": "always",
+    "domains": [
+      "time"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich schlafe immer gut.",
+    "example_sentence_en": "I always sleep well.",
+    "notes": ""
+  },
+  {
+    "word": "Ich weiß nicht.",
+    "article": null,
+    "pos": "phrase",
+    "translation": "I don't know.",
+    "domains": [
+      "greetings",
+      "questions"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Ich weiß nicht, wo der Ball ist.",
+    "example_sentence_en": "I don't know where the ball is.",
+    "notes": ""
+  },
+  {
+    "word": "Noch einmal, bitte.",
+    "article": null,
+    "pos": "phrase",
+    "translation": "Once more, please.",
+    "domains": [
+      "greetings"
+    ],
+    "priority": 8,
+    "example_sentence_de": "Noch einmal, bitte! Das war lustig.",
+    "example_sentence_en": "Once more, please! That was fun.",
+    "notes": ""
+  },
+  {
+    "word": "Auf Wiedersehen",
+    "article": null,
+    "pos": "phrase",
+    "translation": "goodbye (formal)",
+    "domains": [
+      "greetings"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Auf Wiedersehen, Frau Müller!",
+    "example_sentence_en": "Goodbye, Mrs Müller!",
+    "notes": ""
+  },
+  {
+    "word": "Guten Abend",
+    "article": null,
+    "pos": "phrase",
+    "translation": "good evening",
+    "domains": [
+      "greetings",
+      "time"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Guten Abend! Wie war dein Tag?",
+    "example_sentence_en": "Good evening! How was your day?",
+    "notes": ""
+  },
+  {
+    "word": "die Gabel",
+    "article": "die",
+    "pos": "noun",
+    "translation": "fork",
+    "domains": [
+      "food"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Benutze die Gabel zum Essen.",
+    "example_sentence_en": "Use the fork for eating.",
+    "notes": ""
+  },
+  {
+    "word": "der Löffel",
+    "article": "der",
+    "pos": "noun",
+    "translation": "spoon",
+    "domains": [
+      "food"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Nimm einen Löffel für die Suppe.",
+    "example_sentence_en": "Take a spoon for the soup.",
+    "notes": ""
+  },
+  {
+    "word": "der Affe",
+    "article": "der",
+    "pos": "noun",
+    "translation": "monkey, ape",
+    "domains": [
+      "animals"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Der Affe klettert auf den Baum.",
+    "example_sentence_en": "The monkey climbs the tree.",
+    "notes": ""
+  },
+  {
+    "word": "das Schaf",
+    "article": "das",
+    "pos": "noun",
+    "translation": "sheep",
+    "domains": [
+      "animals"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Das Schaf sagt Bäh!",
+    "example_sentence_en": "The sheep says baa!",
+    "notes": ""
+  },
+  {
+    "word": "das Huhn",
+    "article": "das",
+    "pos": "noun",
+    "translation": "chicken",
+    "domains": [
+      "animals"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Das Huhn legt Eier.",
+    "example_sentence_en": "The chicken lays eggs.",
+    "notes": ""
+  },
+  {
+    "word": "die Hausaufgabe",
+    "article": "die",
+    "pos": "noun",
+    "translation": "homework",
+    "domains": [
+      "school"
+    ],
+    "priority": 7,
+    "example_sentence_de": "Hast du deine Hausaufgaben gemacht?",
+    "example_sentence_en": "Have you done your homework?",
+    "notes": ""
+  }
+]

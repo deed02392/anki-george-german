@@ -1,0 +1,9 @@
+[project]
+name = "anki-disambiguate"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "rapidfuzz>=3.14.3",
+    "requests>=2.32.5",
+]
