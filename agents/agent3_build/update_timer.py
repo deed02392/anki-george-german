@@ -75,22 +75,25 @@ CSS = """
   }
 }
 
+/* Override Anki's reviewer body { margin: 20px } so we control all spacing */
+html, body, #qa { margin: 0; height: 100%; }
+
 .card {
-  font-family: "Noto Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Noto Sans", sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0; padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  align-content: center;
 }
 
 .kard {
+  box-sizing: border-box;
   max-width: 560px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px 22px 28px;
+  padding: 24px clamp(16px, 5vw, 32px) 28px;
 }
 
 /* ── Header row ── */
@@ -202,14 +205,14 @@ CSS = """
 
 /* ── Main words ── */
 .word-de {
-  font-size: 2.4rem;
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
   font-weight: 700;
   color: var(--accent-de);
   line-height: 1.15;
   margin-bottom: 4px;
 }
 .word-en {
-  font-size: 2rem;
+  font-size: clamp(1.4rem, 5vw, 2rem);
   font-weight: 600;
   color: var(--accent-en);
   line-height: 1.2;
@@ -240,18 +243,27 @@ hr.divider {
   line-height: 1.55;
   color: var(--text);
   margin-bottom: 5px;
+  overflow-wrap: break-word;
 }
 .sentence-en {
   font-size: 0.88rem;
   color: var(--subtext);
   font-style: italic;
   margin-bottom: 12px;
+  overflow-wrap: break-word;
 }
 .context-sentence {
   font-size: 0.88rem;
   color: var(--subtext);
   font-style: italic;
   margin-top: 6px;
+  overflow-wrap: break-word;
+}
+
+/* Cloze sentence — larger than normal sentences */
+.cloze-sentence {
+  font-size: clamp(1rem, 3.5vw, 1.2rem);
+  margin-top: 8px;
 }
 
 /* ── Cloze ── */
@@ -429,7 +441,7 @@ CLOZE_FRONT = """\
     </div>
   </div>
 
-  <div class="sentence-de" id="cloze-q" style="font-size:1.2rem; margin-top:8px;"></div>
+  <div class="sentence-de cloze-sentence" id="cloze-q"></div>
   {{#SentenceTranslation}}<div class="sentence-en">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 </div>
 <script>
@@ -453,7 +465,7 @@ CLOZE_BACK = """\
     {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
   </div>
 
-  <div class="sentence-de" id="cloze-a" style="font-size:1.2rem; margin-top:8px;"></div>
+  <div class="sentence-de cloze-sentence" id="cloze-a"></div>
   {{#SentenceTranslation}}<div class="sentence-en">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 
   <hr class="divider">

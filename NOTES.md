@@ -110,6 +110,29 @@ The front of each card shows a small 22px conic-gradient ring in the header, lef
 - Track is `transparent` so the ring is invisible when empty — no visible outline
 - Not present on any back/reverse template; backs are fully self-contained HTML
 
+---
+
+## Mobile and responsive layout
+
+The card CSS was reworked to fix several issues on AnkiMobile (iOS):
+
+**Problems fixed:**
+- Horizontal scrolling caused by `width: 100%` without `box-sizing: border-box` — padding was added on top of width, overflowing the viewport
+- Asymmetric horizontal margins caused by Anki's hidden `body { margin: 20px }` in `reviewer.scss` conflicting with the card's own padding
+- Vertical scrolling caused by `min-height: 100vh`/`100dvh`/`100svh` — all viewport units resolve to the full webview height, which extends behind Anki's UI chrome
+- Tap targets near the screen bottom being intercepted by a `position: fixed` timer bar (since replaced by the in-flow timer ring)
+
+**Current approach:**
+- `html, body, #qa { margin: 0; height: 100%; }` — resets Anki's body margin and propagates the actual container height down the chain. `#qa` is the wrapper div AnkiMobile uses around card content.
+- `min-height: 100%` on `.card` — resolves to the real usable height (not viewport height), enabling vertical centering without overflow
+- `display: grid; align-content: center` on `.card` — vertically centres content. Grid was chosen over flexbox because `align-items: center` (flex) clips the top of tall cards. Block-level `align-content` (no grid) is too new for Anki's Chromium.
+- `box-sizing: border-box` on `.kard` — ensures `width: 100%` includes padding
+- `overflow-wrap: break-word` on sentence elements — prevents long German text from causing horizontal scroll
+- Responsive font sizes via `clamp()` — e.g. `.word-de` uses `clamp(1.6rem, 6vw, 2.4rem)`
+- Responsive padding via `clamp()` — `.kard` uses `padding-inline: clamp(16px, 5vw, 32px)`
+
+**Note on Browse→Preview:** The preview pane is smaller than the full viewport, so `min-height: 100%` can produce extra space above content there. This only affects previewing — actual review sessions display correctly on both desktop and mobile.
+
 ## Progressive unsuspending
 
 `unsuspend_candidates.py` at the repo root identifies suspended DE→EN and Sentence Cloze cards that are ready to activate based on EN→DE review maturity.

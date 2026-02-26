@@ -95,13 +95,19 @@ CSS = """
 }
 
 .card {
-  font-family: "Noto Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Noto Sans", sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  /* dvh = dynamic viewport height: shrinks when browser/OS chrome is visible.
+     This is the correct unit for mobile — 100vh would be taller than the
+     visible area when the address bar is shown, causing unwanted scroll. */
+  min-height: 100dvh;
   margin: 0; padding: 0;
   display: flex;
-  align-items: center;
+  /* flex-start so content anchors to the top of the viewport.
+     align-items:center would vertically centre the .kard inside a min-height
+     container, which pushes the top of long cards above the visible area. */
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -110,6 +116,8 @@ CSS = """
   width: 100%;
   margin: 0 auto;
   padding: 24px 22px 28px;
+  /* Keep content above the iPhone home-indicator safe area */
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
 }
 
 /* ── Header row ── */
@@ -256,6 +264,8 @@ hr.divider {
   height: 4px;
   background: transparent;
   z-index: 100;
+  /* Must not intercept taps on Anki's answer buttons */
+  pointer-events: none;
 }
 .timer-bar {
   height: 100%;
