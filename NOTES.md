@@ -2,7 +2,7 @@
 
 ## What this repo now does
 
-Originally this repo contained a single script (`main.py`) for identifying disambiguation gaps in the "German Vocabulary" deck. It has been extended with a three-agent pipeline that built a new deck, **"George's German Vocabulary"**, optimised for conversing with two native German-speaking children aged 4 and 6.
+Originally this repo contained a single script (`disambiguate.py`) for identifying disambiguation gaps in the "German Vocabulary" deck. It has been extended with a three-agent pipeline that built a new deck, **"George's German Vocabulary"**, optimised for conversing with two native German-speaking children aged 4 and 6.
 
 ---
 
@@ -100,7 +100,7 @@ This is already applied to `addons21/2055492159/config.json`.
 
 ## Timer ring
 
-The front of each card shows a small 22px conic-gradient ring in the header, left of the phase badge. Implemented in `agents/agent3_build/update_timer.py`.
+The front of each card shows a small 22px conic-gradient ring in the header, left of the phase badge. Implemented in `agents/agent3_build/update_templates.py`.
 
 - Pure CSS `@keyframes` — no JavaScript
 - **3s** invisible lead-in (ring appears empty, giving time to read the card)

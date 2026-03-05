@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Update "George's German Vocab" templates:
-  - Replace JS timer bar with a pure CSS conic-gradient ring on front faces only
-  - Ring sits in the card header next to the phase badge
-  - No timer on any back/reverse template
-  - No hint text — geometry and colour only
+Update "George's German Vocab" CSS and templates via AnkiConnect.
+
+This is the LIVE SOURCE OF TRUTH for all card styling and template HTML.
+Run this script after any template/CSS change to push to Anki.
 """
 
 import requests
@@ -136,23 +135,12 @@ html, body, #qa { margin: 0; height: 100%; }
 /* ── Timer ring ── */
 /*
   A 22px circle drawn entirely with conic-gradient.
-  --timer-pct animates from 0 → 100 over the total duration.
-  The arc colour transitions: phase colour for the first ~60%,
-  then shifts toward amber/red as urgency grows.
-  The track (unfilled portion) matches the card background.
+  --timer-pct animates from 0 → 100 over 16s total.
+  3s invisible lead-in (--timer-pct starts at -23, clamped to 0),
+  then 13s visible sweep.
 
-  Timing: 2s invisible delay, then 10s visible sweep (12s total).
-  We achieve the delay by starting --timer-pct at -20 (2/12 * 100 ≈ 17,
-  rounded to 20 for a clean start-invisible feel) — the conic-gradient
-  clamps negative fills to 0, so it appears empty until ~2s in.
-
-  Colour keyframes: blue/green/orange (phase) → amber at 50% → red at 85%.
-  Since we can't easily vary colour AND percentage together in one property,
-  we use a separate animation on --timer-color via a wrapper class trick.
-  Instead, we use a layered conic-gradient: the arc is always drawn;
-  a second overlay masks the colour transition by blending.
-  Simpler approach used here: single conic-gradient, colour animated
-  separately on the element's custom property via a second @keyframes.
+  Colour: phase colour → amber at 80% → red at 93%.
+  Animated via a separate @keyframes on --timer-ring-colour.
 */
 
 @keyframes timer-sweep {
@@ -198,7 +186,7 @@ html, body, #qa { margin: 0; height: 100%; }
   opacity: 0.9;
 }
 
-/* Phase-specific ring start colours — set via inline style on the element */
+/* Phase-specific ring start colours */
 .timer-ring.phase-1 { --timer-phase-colour: var(--p1); }
 .timer-ring.phase-2 { --timer-phase-colour: var(--p2); }
 .timer-ring.phase-3 { --timer-phase-colour: var(--p3); }
@@ -250,13 +238,6 @@ hr.divider {
   color: var(--subtext);
   font-style: italic;
   margin-bottom: 12px;
-  overflow-wrap: break-word;
-}
-.context-sentence {
-  font-size: 0.88rem;
-  color: var(--subtext);
-  font-style: italic;
-  margin-top: 6px;
   overflow-wrap: break-word;
 }
 
@@ -364,8 +345,12 @@ EN_DE_FRONT = """\
 
   {{#SentenceTranslation}}
   <hr class="divider">
-  <div class="context-sentence">&ldquo;{{SentenceTranslation}}&rdquo;</div>
+  <div class="sentence-en">&ldquo;{{SentenceTranslation}}&rdquo;</div>
   {{/SentenceTranslation}}
+
+  {{#WordTranslationDisambiguate}}
+  <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  {{/WordTranslationDisambiguate}}
 </div>"""
 
 EN_DE_BACK = """\
@@ -382,8 +367,10 @@ EN_DE_BACK = """\
   <div class="word-de">{{Word}}</div>
   {{#POS}}<div class="pos-hint">{{POS}}</div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
 
   {{#Sentence}}<div class="sentence-de">{{Sentence}}</div>{{/Sentence}}
+  {{#SentenceTranslation}}<div class="sentence-en">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
   <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
@@ -404,6 +391,7 @@ DE_EN_FRONT = """\
 
   <div class="word-de">{{Word}}</div>
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
 </div>"""
 
 DE_EN_BACK = """\
@@ -443,18 +431,30 @@ CLOZE_FRONT = """\
 
   <div class="sentence-de cloze-sentence" id="cloze-q"></div>
   {{#SentenceTranslation}}<div class="sentence-en">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
+  {{#Audio}}{{Audio}}{{/Audio}}
 </div>
 <script>
 (function(){
   var sentence = "{{Sentence}}";
-  var word = "{{Word}}".replace(/^(der|die|das|ein|eine)\\s+/i, "").trim();
-  var escaped = word.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
-  var blanked = sentence.replace(
-    new RegExp("(" + escaped + ")", "i"),
-    '<span class="cloze-blank">$1</span>'
-  );
+  var clozeWord = "{{ClozeWord}}".trim();
+  var caseSensitive = true;
+  if (!clozeWord) {
+    clozeWord = "{{Word}}".replace(/^(der|die|das|ein|eine)\\s+/i, "").trim();
+    caseSensitive = false;
+  }
+  var parts = clozeWord.split("|");
+  var result = sentence;
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i].trim();
+    if (!p) continue;
+    var escaped = p.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
+    result = result.replace(
+      new RegExp(escaped, caseSensitive ? "" : "i"),
+      '<span class="cloze-blank">$&</span>'
+    );
+  }
   var el = document.getElementById("cloze-q");
-  if (el) el.innerHTML = blanked;
+  if (el) el.innerHTML = result;
 })();
 </script>"""
 
@@ -472,7 +472,7 @@ CLOZE_BACK = """\
   <div class="word-de">{{Word}}</div>
   {{#POS}}<div class="pos-hint">{{POS}}</div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
-  <div class="word-en" style="font-size:1.2rem;">{{WordTranslation}}</div>
+  <div class="word-en">{{WordTranslation}}</div>
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
 """ + domains_js("dom-cloze") + """
@@ -480,14 +480,25 @@ CLOZE_BACK = """\
 <script>
 (function(){
   var sentence = "{{Sentence}}";
-  var word = "{{Word}}".replace(/^(der|die|das|ein|eine)\\s+/i, "").trim();
-  var escaped = word.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
-  var revealed = sentence.replace(
-    new RegExp("(" + escaped + ")", "i"),
-    '<span class="cloze-answer">$1</span>'
-  );
+  var clozeWord = "{{ClozeWord}}".trim();
+  var caseSensitive = true;
+  if (!clozeWord) {
+    clozeWord = "{{Word}}".replace(/^(der|die|das|ein|eine)\\s+/i, "").trim();
+    caseSensitive = false;
+  }
+  var parts = clozeWord.split("|");
+  var result = sentence;
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i].trim();
+    if (!p) continue;
+    var escaped = p.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
+    result = result.replace(
+      new RegExp(escaped, caseSensitive ? "" : "i"),
+      '<span class="cloze-answer">$&</span>'
+    );
+  }
   var el = document.getElementById("cloze-a");
-  if (el) el.innerHTML = revealed;
+  if (el) el.innerHTML = result;
 })();
 </script>"""
 
@@ -509,9 +520,4 @@ anki("updateModelTemplates", model={
 })
 print("  Done.")
 print()
-print("Timer ring changes:")
-print("  - Pure CSS conic-gradient ring, no requestAnimationFrame loop")
-print("  - 22px ring sits left of phase badge in header, front templates only")
-print("  - 2s invisible lead-in, then 10s sweep (12s total)")
-print("  - Colour: phase colour → amber at 55% → red at 90%")
-print("  - Back templates are fully self-contained, no timer element at all")
+print("Templates and CSS pushed to Anki.")

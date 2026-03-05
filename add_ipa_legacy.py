@@ -1,0 +1,1 @@
+../anki-add-german-IPA/main.py
