@@ -15,14 +15,14 @@ Each script supersedes the previous one. **Always run `update_templates.py` last
 
 ## Timer Implementation
 
-The timer is a **pure CSS conic-gradient ring** (22px), not a JavaScript bar:
-- Lives left of the phase badge in the card header (front templates only)
-- 3s invisible lead-in, then 13s sweep = 16s total
-- Colour: phase colour → amber at 80% → red at 93%
-- No JavaScript involved — entirely CSS `@keyframes` + CSS custom properties (@property)
-- Back templates are completely self-contained with no timer element
+The timer uses **focal urgency** — the word you're looking at shifts colour over 10s:
+- `.word-de.timed` / `.word-en.timed` on front templates animate via `@keyframes urgency-de` / `urgency-en`
+- `.cloze-blank` animates automatically via `@keyframes urgency-blank` (border + subtle bg tint)
+- Two discrete steps: accent holds 0–6s, snaps to amber 6–7s, holds 7–9s, snaps to coral 9–10s, then `forwards` holds coral
+- No JavaScript, no timer ring — purely CSS `@keyframes` on `color` / `border-bottom-color`
+- Back templates have no urgency animation
 
-See `update_templates.py` lines 135–192 for the ring CSS and timing logic.
+See `update_templates.py` lines 119–142 for the urgency CSS.
 
 ## Card Layout — Key Decisions and Lessons Learned
 
@@ -118,10 +118,11 @@ Audio auto-plays via Anki's `[sound:...]` syntax using `{{#Audio}}{{Audio}}{{/Au
 - **Cloze Front** — hear the word as a prompt
 - DE→EN Back and Cloze Back have no audio (already heard on front)
 
-### Current state (as of 2026-02-27)
+### Current state (as of 2026-03-05)
 
 - **IPA**: 713/740 notes have IPA. The 27 missing are phrases (greetings, questions like "Wie heißt du?") that have no Wiktionary page. Only `Lego` (brand name) was a single word without a German Wiktionary entry.
-- **Audio**: 11/740 notes have audio. **729 still need audio downloads** — blocked by `upload.wikimedia.org` rate limiting (429 with `Retry-After: 60`).
+- **Audio**: 16/740 notes have audio (mp3 format). Remaining ~700 still need downloads — blocked by `upload.wikimedia.org` rate limiting (429 with `Retry-After: 60`).
+- **Format**: All audio stored as `.mp3` (converted from Wiktionary's `.ogg` via ffmpeg) for iOS/AnkiMobile compatibility. The enrichment script handles ogg→mp3 conversion automatically.
 
 ### How the script works
 
@@ -133,7 +134,8 @@ Audio auto-plays via Anki's `[sound:...]` syntax using `{{#Audio}}{{Audio}}{{/Au
 6. Extracts IPA via `{{Lautschrift|...}}` regex
 7. Extracts audio filename via `{{Audio|...ogg}}` regex
 8. Downloads audio from Wikimedia Commons using MD5-based URL (no API call needed)
-9. Stores audio in Anki via `storeMediaFile` and updates fields
+9. Converts ogg to mp3 via ffmpeg (required for iOS/AnkiMobile compatibility)
+10. Stores mp3 in Anki via `storeMediaFile` and updates fields
 
 ### Usage
 

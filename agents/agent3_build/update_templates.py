@@ -21,20 +21,10 @@ def anki(action, **params):
 
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
-# @property registers --timer-pct as an animatable number (Houdini).
-# Anki uses Qt WebEngine (Chromium 94+) so this is supported.
-# Fallback: if @property is unsupported the ring simply doesn't animate,
-# which is graceful — the badge still shows phase clearly.
 
 CSS = """
 /* George's German Vocab — shared styles
    Dark/light mode via prefers-color-scheme */
-
-@property --timer-pct {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
 
 :root {
   --bg:         #1a1a2e;
@@ -103,12 +93,6 @@ html, body, #qa { margin: 0; height: 100%; }
   margin-bottom: 14px;
 }
 
-.card-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .card-type {
   font-size: 0.62rem;
   font-weight: 700;
@@ -132,64 +116,33 @@ html, body, #qa { margin: 0; height: 100%; }
 .phase-2 { background: var(--p2); }
 .phase-3 { background: var(--p3); }
 
-/* ── Timer ring ── */
-/*
-  A 22px circle drawn entirely with conic-gradient.
-  --timer-pct animates from 0 → 100 over 16s total.
-  3s invisible lead-in (--timer-pct starts at -23, clamped to 0),
-  then 13s visible sweep.
-
-  Colour: phase colour → amber at 80% → red at 93%.
-  Animated via a separate @keyframes on --timer-ring-colour.
-*/
-
-@keyframes timer-sweep {
-  /* 3s blank lead-in: --timer-pct starts at -23 (3/13 * 100 ≈ 23),
-     conic-gradient clamps negative values to 0 so ring is invisible.
-     Then sweeps to 100 over the remaining 13s (16s total). */
-  from { --timer-pct: -23; }
-  to   { --timer-pct: 100; }
+/* ── Focal urgency ── */
+@keyframes urgency-de {
+  0%   { color: var(--accent-de); }
+  60%  { color: var(--accent-de); }
+  70%  { color: #d4a040; }
+  90%  { color: #d4a040; }
+  100% { color: #c06040; }
 }
 
-@keyframes timer-colour {
-  /* Phase colour holds through most of the comfortable retrieval window,
-     shifting to amber only in the final third, red near the end. */
-  0%   { --timer-ring-colour: var(--timer-phase-colour); }
-  65%  { --timer-ring-colour: var(--timer-phase-colour); }
-  80%  { --timer-ring-colour: #f08030; }
-  93%  { --timer-ring-colour: #e04040; }
-  100% { --timer-ring-colour: #e04040; }
+@keyframes urgency-en {
+  0%   { color: var(--accent-en); }
+  60%  { color: var(--accent-en); }
+  70%  { color: #e07830; }
+  90%  { color: #e07830; }
+  100% { color: #c05040; }
 }
 
-@property --timer-ring-colour {
-  syntax: "<color>";
-  inherits: false;
-  initial-value: #4fa3e0;
+@keyframes urgency-blank {
+  0%   { border-bottom-color: var(--accent-de); background-color: transparent; }
+  60%  { border-bottom-color: var(--accent-de); background-color: transparent; }
+  70%  { border-bottom-color: #d4a040; background-color: rgba(212, 160, 64, 0.06); }
+  90%  { border-bottom-color: #d4a040; background-color: rgba(212, 160, 64, 0.06); }
+  100% { border-bottom-color: #c06040; background-color: rgba(192, 96, 64, 0.10); }
 }
 
-.timer-ring {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation:
-    timer-sweep  16s linear forwards,
-    timer-colour 16s linear forwards;
-  background: conic-gradient(
-    var(--timer-ring-colour) calc(var(--timer-pct) * 1%),
-    transparent              calc(var(--timer-pct) * 1%)
-  );
-  /* Inner cutout: produces a ring rather than a filled pie slice.
-     The outer track is now fully transparent so only the arc is visible. */
-  -webkit-mask: radial-gradient(circle, transparent 55%, black 56%);
-  mask:         radial-gradient(circle, transparent 55%, black 56%);
-  opacity: 0.9;
-}
-
-/* Phase-specific ring start colours */
-.timer-ring.phase-1 { --timer-phase-colour: var(--p1); }
-.timer-ring.phase-2 { --timer-phase-colour: var(--p2); }
-.timer-ring.phase-3 { --timer-phase-colour: var(--p3); }
+.word-de.timed { animation: urgency-de 10s linear forwards; }
+.word-en.timed { animation: urgency-en 10s linear forwards; }
 
 /* ── Main words ── */
 .word-de {
@@ -252,8 +205,11 @@ hr.divider {
   display: inline-block;
   min-width: 72px;
   border-bottom: 2px solid var(--accent-de);
+  border-radius: 4px 4px 0 0;
+  padding: 1px 4px;
   color: transparent;
   user-select: none;
+  animation: urgency-blank 10s linear forwards;
 }
 .cloze-answer {
   color: var(--accent-de);
@@ -302,12 +258,6 @@ hr.divider {
 
 # ── Snippets ─────────────────────────────────────────────────────────────────
 
-# The ring — only on front templates.
-# Uses a Mustache conditional to pick the right phase class.
-# No JS at all.
-TIMER_RING = """\
-{{#Phase}}<div class="timer-ring phase-{{Phase}}"></div>{{/Phase}}"""
-
 def domains_js(elem_id):
     return f"""
 <div class="domains" id="{elem_id}"></div>
@@ -326,22 +276,18 @@ def domains_js(elem_id):
 </script>"""
 
 # ── Templates ────────────────────────────────────────────────────────────────
-# Back templates intentionally contain no timer element whatsoever.
-# The ring's animation is tied to the card load, so even if {{FrontSide}}
-# injects the ring HTML into the back, the animation restarts — undesirable.
-# To be safe, backs are fully self-contained (no {{FrontSide}}).
+# Front templates add class="timed" to the focal word element so the urgency
+# animation shifts its colour over 16s. Cloze blanks animate automatically
+# via the .cloze-blank rule.  Back templates have no urgency animation.
 
 EN_DE_FRONT = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">EN&nbsp;&rarr;&nbsp;DE &middot; Production</div>
-    <div class="card-header-right">
-      """ + TIMER_RING + """
-      {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
-    </div>
+    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
   </div>
 
-  <div class="word-en">{{WordTranslation}}</div>
+  <div class="word-en timed">{{WordTranslation}}</div>
 
   {{#SentenceTranslation}}
   <hr class="divider">
@@ -383,13 +329,10 @@ DE_EN_FRONT = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">DE&nbsp;&rarr;&nbsp;EN &middot; Recognition</div>
-    <div class="card-header-right">
-      """ + TIMER_RING + """
-      {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
-    </div>
+    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
   </div>
 
-  <div class="word-de">{{Word}}</div>
+  <div class="word-de timed">{{Word}}</div>
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
   {{#Audio}}{{Audio}}{{/Audio}}
 </div>"""
@@ -423,10 +366,7 @@ CLOZE_FRONT = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">Sentence Cloze &middot; Context</div>
-    <div class="card-header-right">
-      """ + TIMER_RING + """
-      {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
-    </div>
+    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
   </div>
 
   <div class="sentence-de cloze-sentence" id="cloze-q"></div>

@@ -15,8 +15,11 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
+import tempfile
 import time
 
 import requests
@@ -167,10 +170,30 @@ def download_audio(url, retries=3):
 
 
 def store_audio_in_anki(filename, data):
-    """Store an audio file in Anki's media folder via AnkiConnect."""
-    anki("storeMediaFile",
-         filename=filename,
-         data=base64.b64encode(data).decode("ascii"))
+    """Convert ogg to mp3 and store in Anki's media folder via AnkiConnect.
+
+    Returns the stored filename (*.mp3).
+    """
+    mp3_name = filename.rsplit(".", 1)[0] + ".mp3"
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp_ogg:
+        tmp_ogg.write(data)
+        tmp_ogg_path = tmp_ogg.name
+    tmp_mp3_path = tmp_ogg_path.rsplit(".", 1)[0] + ".mp3"
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-i", tmp_ogg_path, "-codec:a", "libmp3lame",
+             "-q:a", "2", tmp_mp3_path, "-y"],
+            capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg failed for {filename}")
+        with open(tmp_mp3_path, "rb") as f:
+            mp3_b64 = base64.b64encode(f.read()).decode("ascii")
+        anki("storeMediaFile", filename=mp3_name, data=mp3_b64)
+    finally:
+        for p in (tmp_ogg_path, tmp_mp3_path):
+            if os.path.exists(p):
+                os.unlink(p)
+    return mp3_name
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -306,8 +329,8 @@ def main():
             fields_update["IPA"] = ipa
             stats["ipa_added"] += 1
         if audio_data:
-            store_audio_in_anki(audio_filename, audio_data)
-            fields_update["Audio"] = f"[sound:{audio_filename}]"
+            mp3_name = store_audio_in_anki(audio_filename, audio_data)
+            fields_update["Audio"] = f"[sound:{mp3_name}]"
             stats["audio_added"] += 1
 
         if fields_update:

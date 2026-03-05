@@ -50,7 +50,7 @@ Designs the note type and builds the deck:
 **Design decisions:**
 - Dark/light mode via `prefers-color-scheme` CSS media query — switches automatically with macOS system appearance
 - Phase badge (P1/P2/P3) rendered as a pure Mustache conditional `{{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}` — no JavaScript involved
-- Timer ring (22px conic-gradient) in the card header, left of the phase badge — pure CSS, front templates only. See Timer ring section below.
+- Focal urgency animation — the word you're staring at shifts colour over 10s (accent → amber → coral) via pure CSS `@keyframes`. Front templates only. See Focal urgency section below.
 - Cloze blanking done in JavaScript at render time by stripping the article from `Word` and regex-replacing the first match in `Sentence` — does NOT use Anki's native Cloze note type, which would preclude the other two templates
 
 ---
@@ -98,17 +98,20 @@ This is already applied to `addons21/2055492159/config.json`.
 
 ---
 
-## Timer ring
+## Focal urgency
 
-The front of each card shows a small 22px conic-gradient ring in the header, left of the phase badge. Implemented in `agents/agent3_build/update_templates.py`.
+Instead of a separate timer widget, the focal element itself (the word or cloze blank) shifts colour over time to hint at retrieval difficulty. Implemented in `agents/agent3_build/update_templates.py`.
 
 - Pure CSS `@keyframes` — no JavaScript
-- **3s** invisible lead-in (ring appears empty, giving time to read the card)
-- **10s** sweep in phase colour (comfortable retrieval window)
-- Colour shifts to amber at ~65% of the animation, red at ~93%
-- Total duration: **16 seconds**
-- Track is `transparent` so the ring is invisible when empty — no visible outline
-- Not present on any back/reverse template; backs are fully self-contained HTML
+- **10 seconds** total animation, two discrete colour steps:
+  - **0–6s** (0–60%): accent colour holds (reading and initial recall)
+  - **6–7s** (60–70%): rapid snap to amber/orange
+  - **7–9s** (70–90%): amber holds (retrieval effort zone)
+  - **9–10s** (90–100%): rapid snap to coral — `animation-fill-mode: forwards` holds it permanently
+- `.word-de.timed` and `.word-en.timed` classes on front templates trigger the animation
+- `.cloze-blank` animates automatically (border colour + subtle background tint)
+- Not present on any back template
+- Dark/light mode handled automatically since `--accent-de`/`--accent-en` resolve differently per scheme
 
 ---
 
@@ -120,7 +123,7 @@ The card CSS was reworked to fix several issues on AnkiMobile (iOS):
 - Horizontal scrolling caused by `width: 100%` without `box-sizing: border-box` — padding was added on top of width, overflowing the viewport
 - Asymmetric horizontal margins caused by Anki's hidden `body { margin: 20px }` in `reviewer.scss` conflicting with the card's own padding
 - Vertical scrolling caused by `min-height: 100vh`/`100dvh`/`100svh` — all viewport units resolve to the full webview height, which extends behind Anki's UI chrome
-- Tap targets near the screen bottom being intercepted by a `position: fixed` timer bar (since replaced by the in-flow timer ring)
+- Timer bar replaced with a `position: fixed` bar (since replaced by the in-flow focal urgency animation)
 
 **Current approach:**
 - `html, body, #qa { margin: 0; height: 100%; }` — resets Anki's body margin and propagates the actual container height down the chain. `#qa` is the wrapper div AnkiMobile uses around card content.
