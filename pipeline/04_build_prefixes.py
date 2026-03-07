@@ -16,7 +16,7 @@ import requests
 ANKI_URL = "http://localhost:8765"
 MODEL_NAME = "German Prefix"
 DECK_NAME = "George's German Vocabulary::Prefixes"
-DATA_PATH = Path(__file__).parent / "prefix_data.json"
+DATA_PATH = Path(__file__).parent.parent / "data" / "prefix_data.json"
 
 
 def anki(action, **params):

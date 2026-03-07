@@ -12,7 +12,7 @@ from pathlib import Path
 import requests
 
 ANKI_URL = "http://localhost:8765"
-DATA_PATH = Path(__file__).parent / "prefix_data.json"
+DATA_PATH = Path(__file__).parent.parent / "data" / "prefix_data.json"
 
 
 def anki(action, **params):

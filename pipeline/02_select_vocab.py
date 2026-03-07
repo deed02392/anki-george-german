@@ -17,9 +17,10 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-ROOT = Path(__file__).parent.parent.parent
-INPUT_FILE = ROOT / "agents" / "agent1_export" / "deck_export.json"
-OUT_DIR = ROOT / "agents" / "agent2_vocab"
+ROOT = Path(__file__).parent.parent
+PIPELINE_DIR = Path(__file__).parent
+INPUT_FILE = PIPELINE_DIR / "deck_export.json"
+OUT_DIR = PIPELINE_DIR
 OUT_SELECTED = OUT_DIR / "selected_cards.json"
 OUT_NEW_VOCAB = OUT_DIR / "new_vocab.json"
 OUT_REPORT = OUT_DIR / "report.md"

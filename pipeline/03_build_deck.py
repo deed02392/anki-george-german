@@ -23,12 +23,11 @@ ANKI_URL = "http://localhost:8765"
 MODEL_NAME = "George's German Vocab"
 DECK_NAME = "George's German Vocabulary"
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-AGENT2_DIR = PROJECT_ROOT / "agents" / "agent2_vocab"
-AGENT3_DIR = PROJECT_ROOT / "agents" / "agent3_build"
+PROJECT_ROOT = Path(__file__).parent.parent
+PIPELINE_DIR = Path(__file__).parent
 
-SELECTED_CARDS_PATH = AGENT2_DIR / "selected_cards.json"
-NEW_VOCAB_PATH = AGENT2_DIR / "new_vocab.json"
+SELECTED_CARDS_PATH = PIPELINE_DIR / "selected_cards.json"
+NEW_VOCAB_PATH = PIPELINE_DIR / "new_vocab.json"
 
 # ---------------------------------------------------------------------------
 # AnkiConnect helpers
@@ -970,7 +969,7 @@ def main():
         ],
     }
 
-    report_data_path = AGENT3_DIR / "build_data.json"
+    report_data_path = PIPELINE_DIR / "build_data.json"
     with open(report_data_path, "w") as f:
         json.dump(report_data, f, indent=2, ensure_ascii=False)
     print(f"\n[6] Report data saved to {report_data_path}")

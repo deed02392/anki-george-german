@@ -1,18 +1,26 @@
 # Claude Session Context
 
 ## Project Overview
-Three-agent pipeline building a German vocabulary Anki deck for children (ages 4–6). See `NOTES.md` for full documentation.
+Pipeline-built German vocabulary Anki deck for adult learner conversing with children (ages 4–6). See `NOTES.md` for full documentation.
+
+## Repository Structure
+
+```
+pipeline/          Build a deck from scratch (numbered steps)
+tools/             Maintain and enrich a live deck
+data/              Curated data files (prefix_data.json, clozeword_overrides.json)
+img/               Documentation images
+```
 
 ## Critical Files & Execution Order
 
 **DO NOT edit these files directly unless you know the execution order:**
 
-1. `agents/agent3_build/build.py` — Creates vocab note type and imports notes
-2. `build_prefixes.py` — Creates prefix note type and imports 21 prefix notes
-3. `agents/agent3_build/fix_templates.py` — Fixes applied after build (cloze cleanup, dark/light mode)
-4. `agents/agent3_build/update_templates.py` — **LIVE SOURCE OF TRUTH** for CSS and templates (both note types)
+1. `pipeline/03_build_deck.py` — Creates vocab note type and imports notes
+2. `pipeline/04_build_prefixes.py` — Creates prefix note type and imports 21 prefix notes
+3. `tools/update_templates.py` — **LIVE SOURCE OF TRUTH** for CSS and templates (both note types)
 
-Each script supersedes the previous one. **Always run `update_templates.py` last** if you modify templates or CSS, or your changes will be overwritten.
+Each script supersedes the previous one. **Always run `tools/update_templates.py` last** if you modify templates or CSS, or your changes will be overwritten.
 
 ## Timer Implementation
 
@@ -23,7 +31,7 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 - No JavaScript, no timer ring — purely CSS `@keyframes` on `color` / `border-bottom-color`
 - Back templates have no urgency animation
 
-See `update_templates.py` `VOCAB_CLASSES` for the vocab urgency CSS, `PREFIX_CLASSES` for prefix urgency CSS.
+See `tools/update_templates.py` `VOCAB_CLASSES` for the vocab urgency CSS, `PREFIX_CLASSES` for prefix urgency CSS.
 
 ## Prefix Note Type ("German Prefix")
 
@@ -46,7 +54,7 @@ See `update_templates.py` `VOCAB_CLASSES` for the vocab urgency CSS, `PREFIX_CLA
 
 ### CSS architecture
 
-`update_templates.py` splits CSS into shared base + per-note-type sections:
+`tools/update_templates.py` splits CSS into shared base + per-note-type sections:
 - `BASE_VARS` — `:root` design tokens, dark/light mode
 - `BASE_LAYOUT` — `.card`, `.kard`, `.card-header`, `.card-type`, `hr.divider`
 - `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, etc.)
@@ -60,7 +68,7 @@ Lavender: `#c0a0e0` (dark), `#7b5ea7` (light) — distinct from DE cyan and EN g
 
 ### Build script
 
-`build_prefixes.py` reads `prefix_data.json`, creates note type + sub-deck, formats example HTML, imports via `addNotes`.
+`pipeline/04_build_prefixes.py` reads `data/prefix_data.json`, creates note type + sub-deck, formats example HTML, imports via `addNotes`.
 
 ## Card Layout — Key Decisions and Lessons Learned
 
@@ -120,7 +128,7 @@ html, body, #qa { margin: 0; height: 100%; } /* propagate height for centering *
 ## Before Touching Templates or CSS
 
 1. Read `NOTES.md` (especially sections on timer, template fixes, and phase structure)
-2. The authoritative file for all CSS and templates is `update_templates.py`
+2. The authoritative file for all CSS and templates is `tools/update_templates.py`
 3. After editing, run the script to push changes to Anki via AnkiConnect
 4. Test in **actual review mode** on mobile, not just Browse→Preview (viewport units behave differently in the preview pane)
 5. Never manually edit templates in Anki's UI — they'll be overwritten on next script run
@@ -140,13 +148,13 @@ AnkiWeb (browser-based review at ankiweb.net) has known rendering differences:
 - Default URL: `http://localhost:8765`
 - `setSpecificValueOfCard` is allowlisted in config for future use
 
-## Wiktionary Enrichment (`enrich_from_wiktionary.py`)
+## Wiktionary Enrichment (`tools/enrich_ipa_audio.py`)
 
-Script that fetches IPA transcriptions and audio from German Wiktionary for notes missing them. Based on the earlier `add_ipa_legacy.py` but adapted for the new deck's field names and extended with audio support.
+Script that fetches IPA transcriptions and audio from German Wiktionary for notes missing them.
 
 ### Note type changes
 
-An `Audio` field was added after `IPA` (13 fields total, including ClozeWord). Both `build.py` and `update_templates.py` have been updated to include it.
+An `Audio` field was added after `IPA` (13 fields total, including ClozeWord). Both `pipeline/03_build_deck.py` and `tools/update_templates.py` have been updated to include it.
 
 ### Template audio placement
 
@@ -178,10 +186,10 @@ Audio auto-plays via Anki's `[sound:...]` syntax using `{{#Audio}}{{Audio}}{{/Au
 ### Usage
 
 ```sh
-python3 enrich_from_wiktionary.py --ipa-only     # fast, no rate limit issues
-python3 enrich_from_wiktionary.py --audio-only    # slow due to Wikimedia rate limits
-python3 enrich_from_wiktionary.py --dry-run       # preview without changes
-python3 enrich_from_wiktionary.py --audio-delay 65 # customise delay between downloads
+python3 tools/enrich_ipa_audio.py --ipa-only     # fast, no rate limit issues
+python3 tools/enrich_ipa_audio.py --audio-only    # slow due to Wikimedia rate limits
+python3 tools/enrich_ipa_audio.py --dry-run       # preview without changes
+python3 tools/enrich_ipa_audio.py --audio-delay 65 # customise delay between downloads
 ```
 
 ### Rate limiting problem
@@ -195,7 +203,7 @@ python3 enrich_from_wiktionary.py --audio-delay 65 # customise delay between dow
 - **Case sensitivity** (e.g. "Tschüss" exists as "tschüss"): automatic lowercase fallback
 - **Non-German-only pages** (e.g. "lego" is only Italian/Latin/Spanish): require `{{Sprache|Deutsch}}` in wikitext
 
-## ClozeWord Field & Cloze Matching (`backfill_clozeword.py`)
+## ClozeWord Field & Cloze Matching (`tools/backfill_clozeword.py`)
 
 The cloze card JS originally matched the dictionary form (e.g. "rennen") against the sentence, but German morphology changes forms (e.g. "rannte") and separable verbs split ("aufspringen" → "sprang...auf"). This broke 235/740 cloze cards.
 
@@ -205,7 +213,7 @@ A `ClozeWord` field (index 8, after Sentence) stores the exact text to blank in 
 
 **Field position in note type** (13 fields total): Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, **ClozeWord**, SentenceTranslation, Domains, Phase, Note
 
-### Cloze JS logic (in `update_templates.py`)
+### Cloze JS logic (in `tools/update_templates.py`)
 
 1. Read `{{ClozeWord}}`; if non-empty, use it (case-sensitive match)
 2. If empty, fall back to `{{Word}}` with article stripping (case-insensitive match)
@@ -223,8 +231,8 @@ A `ClozeWord` field (index 8, after Sentence) stores the exact text to blank in 
 ### Usage
 
 ```sh
-python3 backfill_clozeword.py --dry-run          # preview matches
-python3 backfill_clozeword.py                     # apply
-python3 backfill_clozeword.py --verify            # check ClozeWord parts exist in sentences
-python3 backfill_clozeword.py --overrides fix.json # apply manual corrections
+python3 tools/backfill_clozeword.py --dry-run          # preview matches
+python3 tools/backfill_clozeword.py                     # apply
+python3 tools/backfill_clozeword.py --verify            # check ClozeWord parts exist in sentences
+python3 tools/backfill_clozeword.py --overrides data/clozeword_overrides.json
 ```
