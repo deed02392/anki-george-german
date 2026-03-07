@@ -154,7 +154,7 @@ def try_phrase_template(word, sentence):
         else:
             return None, 0, None
 
-    return "|".join(matched_parts), 85, "phrase-template"
+    return "~".join(matched_parts), 85, "phrase-template"
 
 
 def try_fuzzy_match(bare, sentence, threshold=65):
@@ -230,7 +230,7 @@ def try_separable_verb(word, sentence, threshold=60):
                     break
 
     if prefix_token:
-        return f"{best_token}|{prefix_token}", best_score, "separable-verb"
+        return f"{best_token}~{prefix_token}", best_score, "separable-verb"
     return None, 0, None
 
 
@@ -308,25 +308,43 @@ def find_cloze_word(word, sentence):
 # ── Verification ─────────────────────────────────────────────────────────────
 
 def verify_cloze_words(notes):
-    """Check that each |‐separated part of ClozeWord appears in Sentence."""
+    """Check that each cloze word part appears in its corresponding sentence variant.
+
+    Supports pipe-separated variants: Sentence and ClozeWord fields may contain
+    multiple variants separated by |. Variant i's ClozeWord is verified against
+    variant i's Sentence. Within each variant, ~ separates parts (e.g. separable
+    verbs) that must each appear in the sentence.
+    """
     errors = []
     checked = 0
     for note in notes:
-        cw = note["fields"].get("ClozeWord", {}).get("value", "")
-        sentence = note["fields"]["Sentence"]["value"]
+        cw_field = note["fields"].get("ClozeWord", {}).get("value", "")
+        sentence_field = note["fields"]["Sentence"]["value"]
         word = note["fields"]["Word"]["value"]
-        if not cw:
+        if not cw_field:
             continue
         checked += 1
-        parts = [p.strip() for p in cw.split("|") if p.strip()]
-        for part in parts:
-            if part not in sentence:
-                errors.append({
-                    "word": word,
-                    "cloze_word": cw,
-                    "missing_part": part,
-                    "sentence": sentence,
-                })
+
+        # Split into variants
+        cw_variants = [v.strip() for v in cw_field.split("|")]
+        sentence_variants = [v.strip() for v in sentence_field.split("|")]
+
+        for vi, cw in enumerate(cw_variants):
+            if not cw:
+                continue
+            # Match variant to corresponding sentence (fall back to first if missing)
+            sentence = sentence_variants[vi] if vi < len(sentence_variants) else sentence_variants[0]
+            parts = [p.strip() for p in cw.split("~") if p.strip()]
+            for part in parts:
+                if part not in sentence:
+                    variant_label = f" (variant {vi+1})" if len(cw_variants) > 1 else ""
+                    errors.append({
+                        "word": word,
+                        "cloze_word": cw,
+                        "missing_part": part,
+                        "sentence": sentence,
+                        "variant": vi + 1 if len(cw_variants) > 1 else None,
+                    })
     return checked, errors
 
 
@@ -373,7 +391,8 @@ def main():
         if errors:
             print(f"\n{len(errors)} ERRORS found:")
             for e in errors:
-                print(f"  {e['word']}: ClozeWord='{e['cloze_word']}' "
+                variant_str = f" variant {e['variant']}" if e.get("variant") else ""
+                print(f"  {e['word']}{variant_str}: ClozeWord='{e['cloze_word']}' "
                       f"missing '{e['missing_part']}' in sentence")
         else:
             print("All ClozeWord values verified OK.")

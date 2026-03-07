@@ -2,8 +2,8 @@
   {
     "prefix": "ab",
     "type": "separable",
-    "core_meaning": "off, away, down",
-    "spatial_sense": "off a surface, away from a point, downward",
+    "core_meaning": "off, away",
+    "spatial_sense": "off a surface, away from a point",
     "examples": [
       {"verb": "absetzen", "translation": "take off, drop off"},
       {"verb": "abbrechen", "translation": "break off, cancel"},
