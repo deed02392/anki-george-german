@@ -31,7 +31,7 @@ WIKT_API = "https://de.wiktionary.org/w/api.php"
 
 # Wikimedia requires a descriptive User-Agent (https://w.wiki/4wJS)
 web = requests.Session()
-web.headers["User-Agent"] = "anki-disambiguate/1.0 (German vocab enrichment script)"
+web.headers["User-Agent"] = "anki-george-german/1.0 (German vocab enrichment script)"
 
 
 # ── AnkiConnect helpers ──────────────────────────────────────────────────────

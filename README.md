@@ -1,4 +1,4 @@
-# anki-disambiguate
+# anki-george-german
 
 ## Who
 George Hafiz @deed02392

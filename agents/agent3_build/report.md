@@ -378,15 +378,15 @@ Ask a German-speaking child (or simulate with a German-speaker):
 
 | File | Purpose |
 |------|---------|
-| `/Users/george/Code/anki-disambiguate/agents/agent3_build/build.py` | Main build script — creates note type, deck, and imports all notes |
-| `/Users/george/Code/anki-disambiguate/agents/agent3_build/fix_phases.py` | Post-import phase correction (moves 35 action/number/location words from Phase 3 → Phase 2) |
-| `/Users/george/Code/anki-disambiguate/agents/agent3_build/check_phases.py` | Analysis helper used during development |
-| `/Users/george/Code/anki-disambiguate/agents/agent3_build/build_data.json` | Machine-readable build output (dedup stats, import stats, domain counts, sample cards) |
+| `/Users/george/Code/anki/agents/agent3_build/build.py` | Main build script — creates note type, deck, and imports all notes |
+| `/Users/george/Code/anki/agents/agent3_build/fix_phases.py` | Post-import phase correction (moves 35 action/number/location words from Phase 3 → Phase 2) |
+| `/Users/george/Code/anki/agents/agent3_build/check_phases.py` | Analysis helper used during development |
+| `/Users/george/Code/anki/agents/agent3_build/build_data.json` | Machine-readable build output (dedup stats, import stats, domain counts, sample cards) |
 
 ### Re-running the build
 
 If the deck needs to be rebuilt from scratch:
 1. Delete the deck `George's German Vocabulary` in Anki
 2. Delete the note type `George's German Vocab` in Anki (Tools > Manage Note Types)
-3. Run: `cd /Users/george/Code/anki-disambiguate && uv run agents/agent3_build/build.py`
+3. Run: `cd /Users/george/Code/anki && uv run agents/agent3_build/build.py`
 4. Run: `uv run agents/agent3_build/fix_phases.py`

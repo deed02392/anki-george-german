@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 
-with open('/Users/george/Code/anki-disambiguate/agents/agent2_vocab/selected_cards.json') as f:
+with open('/Users/george/Code/anki/agents/agent2_vocab/selected_cards.json') as f:
     cards = json.load(f)
 
 phase2_domains = {'play', 'food', 'family', 'animals', 'body', 'colours', 'actions', 'numbers', 'toys', 'location'}
