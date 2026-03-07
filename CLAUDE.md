@@ -7,9 +7,10 @@ Three-agent pipeline building a German vocabulary Anki deck for children (ages 4
 
 **DO NOT edit these files directly unless you know the execution order:**
 
-1. `agents/agent3_build/build.py` — Creates note type and imports notes
-2. `agents/agent3_build/fix_templates.py` — Fixes applied after build (cloze cleanup, dark/light mode)
-3. `agents/agent3_build/update_templates.py` — **LIVE SOURCE OF TRUTH** for CSS and templates
+1. `agents/agent3_build/build.py` — Creates vocab note type and imports notes
+2. `build_prefixes.py` — Creates prefix note type and imports 21 prefix notes
+3. `agents/agent3_build/fix_templates.py` — Fixes applied after build (cloze cleanup, dark/light mode)
+4. `agents/agent3_build/update_templates.py` — **LIVE SOURCE OF TRUTH** for CSS and templates (both note types)
 
 Each script supersedes the previous one. **Always run `update_templates.py` last** if you modify templates or CSS, or your changes will be overwritten.
 
@@ -22,7 +23,44 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 - No JavaScript, no timer ring — purely CSS `@keyframes` on `color` / `border-bottom-color`
 - Back templates have no urgency animation
 
-See `update_templates.py` lines 119–142 for the urgency CSS.
+See `update_templates.py` `VOCAB_CLASSES` for the vocab urgency CSS, `PREFIX_CLASSES` for prefix urgency CSS.
+
+## Prefix Note Type ("German Prefix")
+
+21 cards teaching the German prefix system. Sub-deck `George's German Vocabulary::Prefixes`.
+
+### Note type fields (5)
+
+| # | Field | Purpose |
+|---|-------|---------|
+| 0 | Prefix | The prefix (no hyphen — template adds it) |
+| 1 | PrefixType | `separable` / `inseparable` / `both` |
+| 2 | CoreMeaning | 2-4 word meaning cluster |
+| 3 | SpatialSense | One-sentence spatial intuition |
+| 4 | Examples | HTML with prefix highlighted via `<span class="pfx">` |
+
+### Card templates (2)
+
+- **Prefix → Meaning** — prefix shown on front (lavender, urgency-animated), meaning + examples on back
+- **Meaning → Prefix** — meaning shown on front (lavender, urgency-animated), prefix + examples on back
+
+### CSS architecture
+
+`update_templates.py` splits CSS into shared base + per-note-type sections:
+- `BASE_VARS` — `:root` design tokens, dark/light mode
+- `BASE_LAYOUT` — `.card`, `.kard`, `.card-header`, `.card-type`, `hr.divider`
+- `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, etc.)
+- `PREFIX_CLASSES` — prefix-specific (`.prefix-hero`, `.core-meaning`, `.pfx-examples`, etc.)
+
+Composed: `VOCAB_CSS = BASE_VARS + BASE_LAYOUT + VOCAB_CLASSES`, `PREFIX_CSS = BASE_VARS + BASE_LAYOUT + PREFIX_CLASSES`.
+
+### Accent colour
+
+Lavender: `#c0a0e0` (dark), `#7b5ea7` (light) — distinct from DE cyan and EN gold.
+
+### Build script
+
+`build_prefixes.py` reads `prefix_data.json`, creates note type + sub-deck, formats example HTML, imports via `addNotes`.
 
 ## Card Layout — Key Decisions and Lessons Learned
 

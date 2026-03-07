@@ -1,0 +1,250 @@
+[
+  {
+    "prefix": "ab",
+    "type": "separable",
+    "core_meaning": "off, away, down",
+    "spatial_sense": "off a surface, away from a point, downward",
+    "examples": [
+      {"verb": "absetzen", "translation": "take off, drop off"},
+      {"verb": "abbrechen", "translation": "break off, cancel"},
+      {"verb": "abziehen", "translation": "pull off, withdraw"},
+      {"verb": "abgeben", "translation": "hand in, submit"}
+    ]
+  },
+  {
+    "prefix": "an",
+    "type": "separable",
+    "core_meaning": "on, at, toward",
+    "spatial_sense": "onto a surface, at a point, toward a target",
+    "examples": [
+      {"verb": "anziehen", "translation": "put on, dress"},
+      {"verb": "anlegen", "translation": "put on, invest"},
+      {"verb": "anhalten", "translation": "stop, last"},
+      {"verb": "ansteigen", "translation": "rise, go up"}
+    ]
+  },
+  {
+    "prefix": "auf",
+    "type": "separable",
+    "core_meaning": "up, open",
+    "spatial_sense": "upward, or opening something closed",
+    "examples": [
+      {"verb": "aufstehen", "translation": "stand up, get up"},
+      {"verb": "aufmachen", "translation": "open"},
+      {"verb": "aufwachen", "translation": "wake up"},
+      {"verb": "aufpassen", "translation": "pay attention"},
+      {"verb": "aufspringen", "translation": "jump up"}
+    ]
+  },
+  {
+    "prefix": "aus",
+    "type": "separable",
+    "core_meaning": "out, out of",
+    "spatial_sense": "outward from an enclosed space",
+    "examples": [
+      {"verb": "ausziehen", "translation": "take off, move out"},
+      {"verb": "ausgehen", "translation": "go out"},
+      {"verb": "ausbrechen", "translation": "break out, erupt"},
+      {"verb": "aushalten", "translation": "bear, endure"}
+    ]
+  },
+  {
+    "prefix": "ein",
+    "type": "separable",
+    "core_meaning": "in, into",
+    "spatial_sense": "inward into an enclosed space",
+    "examples": [
+      {"verb": "einsteigen", "translation": "board, get in"},
+      {"verb": "einschlafen", "translation": "fall asleep"},
+      {"verb": "einschalten", "translation": "switch on"},
+      {"verb": "einbauen", "translation": "install, build in"}
+    ]
+  },
+  {
+    "prefix": "zu",
+    "type": "separable",
+    "core_meaning": "closed, toward",
+    "spatial_sense": "closing shut, or movement toward a destination",
+    "examples": [
+      {"verb": "zugehen", "translation": "close, go shut"},
+      {"verb": "zulassen", "translation": "allow, admit"},
+      {"verb": "zunehmen", "translation": "increase, grow"},
+      {"verb": "zukommen", "translation": "come toward, approach"}
+    ]
+  },
+  {
+    "prefix": "vor",
+    "type": "separable",
+    "core_meaning": "forward, in front",
+    "spatial_sense": "to the front, positioned ahead",
+    "examples": [
+      {"verb": "vorlesen", "translation": "read aloud"},
+      {"verb": "vorgehen", "translation": "go ahead, have priority"},
+      {"verb": "vorschreiben", "translation": "prescribe, dictate"},
+      {"verb": "vorangehen", "translation": "go ahead, make progress"}
+    ]
+  },
+  {
+    "prefix": "mit",
+    "type": "separable",
+    "core_meaning": "with, along",
+    "spatial_sense": "alongside, moving together with",
+    "examples": [
+      {"verb": "mitbringen", "translation": "bring along"},
+      {"verb": "mitmachen", "translation": "join in, take part"},
+      {"verb": "mitnehmen", "translation": "take along"},
+      {"verb": "mitteilen", "translation": "inform, communicate"}
+    ]
+  },
+  {
+    "prefix": "weg",
+    "type": "separable",
+    "core_meaning": "away",
+    "spatial_sense": "away from a location",
+    "examples": [
+      {"verb": "weggehen", "translation": "leave, go away"},
+      {"verb": "wegnehmen", "translation": "take away"}
+    ]
+  },
+  {
+    "prefix": "los",
+    "type": "separable",
+    "core_meaning": "off, loose",
+    "spatial_sense": "releasing from a fixed point, coming loose",
+    "examples": [
+      {"verb": "losgehen", "translation": "start, go off"},
+      {"verb": "loslassen", "translation": "let go"}
+    ]
+  },
+  {
+    "prefix": "zur\u00fcck",
+    "type": "separable",
+    "core_meaning": "back",
+    "spatial_sense": "back to a previous position",
+    "examples": [
+      {"verb": "zur\u00fcckgeben", "translation": "give back, return"},
+      {"verb": "zur\u00fcckgehen", "translation": "go back, decrease"},
+      {"verb": "zur\u00fcckhalten", "translation": "hold back, restrain"},
+      {"verb": "zur\u00fccklegen", "translation": "put back, cover distance"}
+    ]
+  },
+  {
+    "prefix": "heraus",
+    "type": "separable",
+    "core_meaning": "out toward you",
+    "spatial_sense": "outward in the speaker\u2019s direction",
+    "examples": [
+      {"verb": "herausfinden", "translation": "find out"},
+      {"verb": "herauskommen", "translation": "come out"},
+      {"verb": "herausnehmen", "translation": "take out"},
+      {"verb": "herausstellen", "translation": "emphasize, come to light"}
+    ]
+  },
+  {
+    "prefix": "weiter",
+    "type": "separable",
+    "core_meaning": "further, onward",
+    "spatial_sense": "further along in the same direction",
+    "examples": [
+      {"verb": "weitermachen", "translation": "carry on, continue"},
+      {"verb": "weitergehen", "translation": "go on"},
+      {"verb": "weitergeben", "translation": "pass on"}
+    ]
+  },
+  {
+    "prefix": "hin",
+    "type": "separable",
+    "core_meaning": "away from you",
+    "spatial_sense": "movement away from the speaker toward a distant point",
+    "examples": [
+      {"verb": "hingehen", "translation": "go there"},
+      {"verb": "hinfahren", "translation": "drive there"},
+      {"verb": "hinausgehen", "translation": "go out, exceed"}
+    ]
+  },
+  {
+    "prefix": "her",
+    "type": "separable",
+    "core_meaning": "toward you",
+    "spatial_sense": "movement toward the speaker from a distant point",
+    "examples": [
+      {"verb": "herkommen", "translation": "come here"},
+      {"verb": "hereinkommen", "translation": "come in"}
+    ]
+  },
+  {
+    "prefix": "ver",
+    "type": "inseparable",
+    "core_meaning": "away, wrongly, change",
+    "spatial_sense": "transformation, going astray, or carrying through to a changed state",
+    "examples": [
+      {"verb": "verstecken", "translation": "hide"},
+      {"verb": "verlassen", "translation": "leave behind"},
+      {"verb": "vergeben", "translation": "give away, forgive"},
+      {"verb": "verraten", "translation": "betray, give away a secret"},
+      {"verb": "verzichten", "translation": "do without, give up"}
+    ]
+  },
+  {
+    "prefix": "be",
+    "type": "inseparable",
+    "core_meaning": "upon, onto",
+    "spatial_sense": "directing action onto an object \u2014 often makes intransitive verbs take a direct object",
+    "examples": [
+      {"verb": "bearbeiten", "translation": "work on, revise"},
+      {"verb": "begegnen", "translation": "meet, come across"},
+      {"verb": "betreuen", "translation": "look after, care for"},
+      {"verb": "berechnen", "translation": "calculate, charge"},
+      {"verb": "bewirken", "translation": "cause, bring about"}
+    ]
+  },
+  {
+    "prefix": "er",
+    "type": "inseparable",
+    "core_meaning": "achieving, completing",
+    "spatial_sense": "reaching a result or end state, often after effort or process",
+    "examples": [
+      {"verb": "erfahren", "translation": "experience, find out"},
+      {"verb": "erwachen", "translation": "wake up"},
+      {"verb": "erziehen", "translation": "bring up, educate"},
+      {"verb": "erwischen", "translation": "catch"},
+      {"verb": "er\u00f6ffnen", "translation": "open, start"}
+    ]
+  },
+  {
+    "prefix": "ent",
+    "type": "inseparable",
+    "core_meaning": "away, un-, de-",
+    "spatial_sense": "removal, reversal, or escape from a state",
+    "examples": [
+      {"verb": "entschuldigen", "translation": "excuse, apologize"},
+      {"verb": "entziehen", "translation": "take away, remove"},
+      {"verb": "entnehmen", "translation": "extract, infer"},
+      {"verb": "entschlie\u00dfen", "translation": "decide"}
+    ]
+  },
+  {
+    "prefix": "unter",
+    "type": "both",
+    "core_meaning": "under, below",
+    "spatial_sense": "position beneath \u2014 separable when spatial, inseparable when abstract",
+    "examples": [
+      {"verb": "unterbrechen", "translation": "interrupt"},
+      {"verb": "unterst\u00fctzen", "translation": "support"},
+      {"verb": "unterscheiden", "translation": "distinguish"},
+      {"verb": "untersuchen", "translation": "examine"},
+      {"verb": "unternehmen", "translation": "undertake, do"}
+    ]
+  },
+  {
+    "prefix": "\u00fcber",
+    "type": "both",
+    "core_meaning": "over, across, beyond",
+    "spatial_sense": "extent over or across \u2014 separable when spatial, inseparable when abstract",
+    "examples": [
+      {"verb": "\u00fcbernehmen", "translation": "take over"},
+      {"verb": "\u00fcbergeben", "translation": "hand over, transfer"},
+      {"verb": "\u00fcberziehen", "translation": "cover, put on, overdraw"}
+    ]
+  }
+]
