@@ -55,6 +55,15 @@ VALID_POS_STR = "|".join(VALID_POS)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+_nlp_model = None
+
+def _get_nlp():
+    """Lazy-load the spaCy model (expensive, only load once)."""
+    global _nlp_model
+    if _nlp_model is None:
+        _nlp_model = spacy.load("de_dep_news_trf")
+    return _nlp_model
+
 # German function-word POS tags to filter out
 FILTER_POS = {"DET", "ADP", "CONJ", "CCONJ", "SCONJ", "PRON", "AUX",
               "PUNCT", "SPACE", "SYM", "X", "PART"}
@@ -448,15 +457,41 @@ _ARTICLES_RE = re.compile(
 )
 
 
+def _find_noun_chunk(sentence, bare):
+    """Find the spaCy noun chunk containing `bare` in `sentence`.
+
+    Returns the chunk text if a valid noun phrase is found (starts with
+    DET/PRON, contains only one noun), else None.
+    """
+    nlp = _get_nlp()
+    doc = nlp(sentence)
+    best = None
+    for chunk in doc.noun_chunks:
+        if bare not in chunk.text:
+            continue
+        # Only accept chunks headed by a determiner or pronoun
+        if chunk[0].pos_ not in ("DET", "PRON"):
+            continue
+        # Reject chunks containing multiple nouns
+        if sum(1 for t in chunk if t.pos_ in ("NOUN", "PROPN")) > 1:
+            continue
+        if best is None or len(chunk.text) < len(best.text):
+            best = chunk
+    return best.text if best else None
+
+
 def normalise_cloze(card):
-    """Fix common LLM cloze_word issues before validation.
+    """Fix common cloze_word issues using spaCy noun chunks.
 
     Fixes applied:
-    1. Case correction: 'Der Meister' → 'den Meister' if case-insensitive match
-    2. Article form mismatch: if cloze_word 'Der Schachmeister' isn't in the
-       sentence but the bare noun 'Schachmeister' is, find the actual preceding
-       article in the sentence and rebuild the cloze_word
-    3. Strip leading 'NOT:' from disambiguation
+    1. Bare noun expansion: if cloze_word is a single bare noun and the
+       sentence has a determiner before it, expand to the full noun phrase
+       (e.g. 'Kind' → 'Jedes Kind')
+    2. Case correction: 'Der Meister' → 'den Meister' if case-insensitive
+       match exists in sentence
+    3. Article form mismatch: if cloze_word has a different article than
+       the sentence, find the correct noun phrase via spaCy
+    4. Strip leading 'NOT:' from disambiguation
     """
     sentences = card.get("sentences")
     if not sentences:
@@ -473,11 +508,18 @@ def normalise_cloze(card):
         parts = [p.strip() for p in cloze.split("~") if p.strip()]
         new_parts = []
         for part in parts:
+            # 1. Exact match — but check if bare noun needs expansion
             if part in sentence:
+                if sent.get("pos") == "noun" and " " not in part:
+                    chunk = _find_noun_chunk(sentence, part)
+                    if chunk and chunk != part and chunk in sentence:
+                        new_parts.append(chunk)
+                        repairs.append(f"noun chunk: '{part}' → '{chunk}'")
+                        continue
                 new_parts.append(part)
                 continue
 
-            # Try case-insensitive match
+            # 2. Case-insensitive match
             idx = sentence.lower().find(part.lower())
             if idx >= 0:
                 actual = sentence[idx:idx + len(part)]
@@ -485,45 +527,24 @@ def normalise_cloze(card):
                 repairs.append(f"case fix: '{part}' → '{actual}'")
                 continue
 
-            # Try stripping article and finding bare noun in sentence,
-            # then rebuilding with article + any adjectives + noun
+            # 3. Article form mismatch — strip article, find bare noun,
+            #    use spaCy to rebuild noun phrase
             m = _ARTICLES_RE.match(part)
             if m:
                 bare = part[m.end():]
-                # Find the bare noun in the sentence
                 bare_idx = sentence.find(bare)
                 if bare_idx < 0:
-                    # Try case-insensitive bare noun search
                     bare_idx_ci = sentence.lower().find(bare.lower())
                     if bare_idx_ci >= 0:
                         bare = sentence[bare_idx_ci:bare_idx_ci + len(bare)]
-                        bare_idx = bare_idx_ci
 
-                if bare_idx > 0:
-                    # Walk backwards from the noun to find the nearest article
-                    before = sentence[:bare_idx].rstrip()
-                    if before:
-                        words_before = before.split()
-                        rebuilt = None
-                        for j in range(len(words_before) - 1, -1, -1):
-                            w = words_before[j].strip(".,;:!?\"'()[]{}–—")
-                            if _ARTICLES_RE.match(w + " "):
-                                # Grab from article through to end of noun
-                                art_start = sentence.find(
-                                    words_before[j],
-                                    len(" ".join(words_before[:j]))
-                                )
-                                rebuilt = sentence[art_start:bare_idx + len(bare)]
-                                break
-                        if rebuilt and rebuilt in sentence:
-                            new_parts.append(rebuilt)
-                            repairs.append(
-                                f"noun phrase fix: '{part}' → '{rebuilt}'"
-                            )
-                            continue
+                chunk = _find_noun_chunk(sentence, bare)
+                if chunk and chunk in sentence:
+                    new_parts.append(chunk)
+                    repairs.append(f"noun phrase fix: '{part}' → '{chunk}'")
+                    continue
 
-            new_parts.append(part)
-
+            # Fallback: keep original
             new_parts.append(part)
 
         sent["cloze_word"] = "~".join(new_parts)
@@ -1394,6 +1415,87 @@ def cmd_domain(args):
     print(f"  Imported:  {len(imported)}")
 
 
+# ── Fix-cloze subcommand ─────────────────────────────────────────────────────
+
+def cmd_fix_cloze(args):
+    """Fix noun cloze words missing articles across existing deck cards."""
+    note_ids = anki("findNotes", query=f'deck:"{DECK}" "note:{MODEL}"')
+    notes = anki("notesInfo", notes=note_ids)
+    print(f"Loaded {len(notes)} notes from deck.")
+
+    updates = []
+
+    for note in notes:
+        fields = note["fields"]
+        pos_raw = fields.get("POS", {}).get("value", "")
+        sentences_raw = fields.get("Sentence", {}).get("value", "")
+        clozes_raw = fields.get("ClozeWord", {}).get("value", "")
+        if not sentences_raw or not clozes_raw:
+            continue
+
+        sentences = sentences_raw.split("|")
+        clozes = clozes_raw.split("|")
+        poses = pos_raw.split("|")
+
+        # Replicate single POS across all variants
+        if len(poses) == 1 and len(sentences) > 1:
+            poses = poses * len(sentences)
+
+        if "noun" not in poses:
+            continue
+
+        # Build a card dict that normalise_cloze expects
+        card = {
+            "word": fields.get("Word", {}).get("value", ""),
+            "sentences": [
+                {
+                    "sentence": sentences[i] if i < len(sentences) else "",
+                    "cloze_word": clozes[i] if i < len(clozes) else "",
+                    "pos": poses[i] if i < len(poses) else "",
+                    "sentence_translation": "",
+                }
+                for i in range(len(sentences))
+            ],
+        }
+
+        old_clozes = [s["cloze_word"] for s in card["sentences"]]
+        normalise_cloze(card)
+        new_clozes = [s["cloze_word"] for s in card["sentences"]]
+
+        if old_clozes != new_clozes:
+            updates.append({
+                "noteId": note["noteId"],
+                "word": card["word"],
+                "sentences": sentences,
+                "old_clozes": old_clozes,
+                "new_clozes": new_clozes,
+            })
+
+    prefix = "[dry-run] " if args.dry_run else ""
+    print(f"\n{prefix}Noun cloze fixes ({len(updates)} cards):\n")
+    for u in updates:
+        print(f"  {u['word']}")
+        for i, (sent, old_c, new_c) in enumerate(
+            zip(u["sentences"], u["old_clozes"], u["new_clozes"])
+        ):
+            if old_c != new_c:
+                print(f"    [{i+1}] {sent}")
+                print(f"        {old_c} → {new_c}")
+        print()
+
+    if args.dry_run:
+        print(f"[dry-run] Would update {len(updates)} cards.")
+        return
+
+    for u in updates:
+        anki("updateNoteFields", note={
+            "id": u["noteId"],
+            "fields": {"ClozeWord": "|".join(u["new_clozes"])}
+        })
+
+    print(f"Updated {len(updates)} cards.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -1451,6 +1553,11 @@ def main():
     enrich_p.add_argument("--dry-run", action="store_true",
                           help="Preview without updating")
 
+    fix_p = sub.add_parser("fix-cloze",
+                           help="Fix noun cloze words missing articles")
+    fix_p.add_argument("--dry-run", action="store_true",
+                       help="Preview without updating")
+
     args = parser.parse_args()
 
     if args.command == "text":
@@ -1459,6 +1566,8 @@ def main():
         cmd_domain(args)
     elif args.command == "enrich":
         cmd_enrich(args)
+    elif args.command == "fix-cloze":
+        cmd_fix_cloze(args)
 
 
 if __name__ == "__main__":
