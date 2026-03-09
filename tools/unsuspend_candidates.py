@@ -4,14 +4,16 @@ Weekly script: identify cards in "George's German Vocabulary" that are ready
 to have their DE→EN or Sentence Cloze templates unsuspended.
 
 Thresholds:
-  DE→EN unsuspend:    EN→DE card interval >= 14 days AND ease >= 2200
+  DE→EN unsuspend:    EN→DE card interval >= 14 days
   Cloze unsuspend:    EN→DE interval >= 21 days AND DE→EN interval >= 21 days
 
 Usage:
-  uv run unsuspend_candidates.py           # dry run — print candidates only
-  uv run unsuspend_candidates.py --apply   # unsuspend the candidates in Anki
+  uv run unsuspend_candidates.py                # dry run — print candidates only
+  uv run unsuspend_candidates.py --apply        # unsuspend the candidates in Anki
+  uv run unsuspend_candidates.py --apply --max 10  # unsuspend at most 10 per type
 """
 
+import argparse
 import os
 import sys
 
@@ -20,11 +22,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _anki import anki
 
-DRY_RUN = "--apply" not in sys.argv
+parser = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("--apply", action="store_true",
+                    help="Actually unsuspend (default is dry run)")
+parser.add_argument("--max", type=int, default=None,
+                    help="Max cards to unsuspend per type (DE→EN / Cloze)")
+args = parser.parse_args()
+
+DRY_RUN = not args.apply
+MAX_PER_TYPE = args.max
 
 EN_DE_MIN_INTERVAL  = 14   # days — gate for unsuspending DE→EN
 DE_EN_MIN_INTERVAL  = 21   # days — gate for unsuspending Cloze (alongside EN→DE)
-MIN_EASE            = 2200 # ease factor gate for DE→EN unsuspend
 
 
 # ── Fetch all three card templates for the deck ───────────────────────────────
@@ -62,19 +72,18 @@ cloze_by_note  = by_note(cloze_cards)
 
 # ── Evaluate candidates ───────────────────────────────────────────────────────
 
-de_en_candidates  = []   # (cardId, word, en_de_interval, ease)
+de_en_candidates  = []   # (cardId, word, en_de_interval)
 cloze_candidates  = []   # (cardId, word, en_de_interval, de_en_interval)
 
 for note_id, en_de in en_de_by_note.items():
     word      = en_de["fields"]["Word"]["value"]
     en_de_ivl = en_de["interval"]
-    en_de_ease = en_de["factor"]
 
     # ── DE→EN candidate ──────────────────────────────────────────────────────
     de_en = de_en_by_note.get(note_id)
     if de_en and de_en["queue"] == -1:   # -1 = suspended
-        if en_de_ivl >= EN_DE_MIN_INTERVAL and en_de_ease >= MIN_EASE:
-            de_en_candidates.append((de_en["cardId"], word, en_de_ivl, en_de_ease))
+        if en_de_ivl >= EN_DE_MIN_INTERVAL:
+            de_en_candidates.append((de_en["cardId"], word, en_de_ivl))
 
     # ── Cloze candidate ───────────────────────────────────────────────────────
     cloze = cloze_by_note.get(note_id)
@@ -93,12 +102,12 @@ else:
 print()
 
 print(f"── DE→EN candidates ({len(de_en_candidates)}) ─────────────────────────")
-print(f"   Threshold: EN→DE interval ≥ {EN_DE_MIN_INTERVAL}d, ease ≥ {MIN_EASE}")
+print(f"   Threshold: EN→DE interval ≥ {EN_DE_MIN_INTERVAL}d")
 print()
 if de_en_candidates:
     de_en_candidates.sort(key=lambda x: -x[2])
-    for card_id, word, ivl, ease in de_en_candidates:
-        print(f"  {word:<30}  EN→DE interval: {ivl:>4}d   ease: {ease}")
+    for card_id, word, ivl in de_en_candidates:
+        print(f"  {word:<30}  EN→DE interval: {ivl:>4}d")
 else:
     print("  None ready yet.")
 
@@ -114,6 +123,11 @@ else:
     print("  None ready yet.")
 
 # ── Apply ─────────────────────────────────────────────────────────────────────
+
+# Apply --max cap (sorted by longest interval first, so strongest cards win)
+if MAX_PER_TYPE:
+    de_en_candidates = de_en_candidates[:MAX_PER_TYPE]
+    cloze_candidates = cloze_candidates[:MAX_PER_TYPE]
 
 if not DRY_RUN:
     all_to_unsuspend = (
@@ -132,6 +146,7 @@ else:
     print()
     total = len(de_en_candidates) + len(cloze_candidates)
     if total:
-        print(f"{total} card(s) would be unsuspended. Re-run with --apply to action.")
+        cap_note = f" (capped to {MAX_PER_TYPE} per type)" if MAX_PER_TYPE else ""
+        print(f"{total} card(s) would be unsuspended{cap_note}. Re-run with --apply to action.")
     else:
         print("Nothing to unsuspend yet — keep reviewing.")
