@@ -7,21 +7,16 @@ from scratch) and update_templates.py (which pushes CSS/templates).
 """
 
 import json
+import os
+import sys
 from pathlib import Path
 
-import requests
+# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-ANKI_URL = "http://localhost:8765"
+from _anki import anki
+
 DATA_PATH = Path(__file__).parent.parent / "data" / "prefix_data.json"
-
-
-def anki(action, **params):
-    r = requests.post(ANKI_URL, json={"action": action, "version": 6, "params": params})
-    r.raise_for_status()
-    result = r.json()
-    if result.get("error"):
-        raise RuntimeError(f"AnkiConnect [{action}]: {result['error']}")
-    return result["result"]
 
 
 def format_examples_html(prefix, examples):

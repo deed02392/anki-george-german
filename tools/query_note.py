@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Quick query to show fields for a specific word."""
-import requests, sys
+import os
+import sys
 
-def anki(action, **params):
-    return requests.post("http://localhost:8765", json={"action": action, "params": params, "version": 6}).json()["result"]
+# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from _anki import anki
 
 word = sys.argv[1] if len(sys.argv) > 1 else "der Saft"
 ids = anki("findNotes", query=f"deck:\"George's German Vocabulary\" Word:\"{word}\"")

@@ -12,25 +12,19 @@ Usage:
   uv run unsuspend_candidates.py --apply   # unsuspend the candidates in Anki
 """
 
+import os
 import sys
-import requests
 
-URL = "http://localhost:8765"
+# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from _anki import anki
 
 DRY_RUN = "--apply" not in sys.argv
 
 EN_DE_MIN_INTERVAL  = 14   # days — gate for unsuspending DE→EN
 DE_EN_MIN_INTERVAL  = 21   # days — gate for unsuspending Cloze (alongside EN→DE)
 MIN_EASE            = 2200 # ease factor gate for DE→EN unsuspend
-
-
-def anki(action, **params):
-    r = requests.post(URL, json={"action": action, "version": 6, "params": params})
-    r.raise_for_status()
-    result = r.json()
-    if result.get("error"):
-        raise RuntimeError(f"AnkiConnect [{action}]: {result['error']}")
-    return result["result"]
 
 
 # ── Fetch all three card templates for the deck ───────────────────────────────

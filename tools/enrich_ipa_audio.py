@@ -6,15 +6,14 @@ in "George's German Vocabulary" that are missing them. Audio files are
 downloaded from Wikimedia Commons and stored in Anki's media folder.
 
 Usage:
-    python3 enrich_from_wiktionary.py              # IPA + audio (slow due to rate limits)
-    python3 enrich_from_wiktionary.py --ipa-only    # just IPA (fast, no rate limit issues)
-    python3 enrich_from_wiktionary.py --audio-only  # just audio downloads
-    python3 enrich_from_wiktionary.py --dry-run     # preview without changes
+    uv run python tools/enrich_ipa_audio.py              # IPA + audio
+    uv run python tools/enrich_ipa_audio.py --ipa-only   # just IPA (fast)
+    uv run python tools/enrich_ipa_audio.py --audio-only  # just audio downloads
+    uv run python tools/enrich_ipa_audio.py --dry-run     # preview without changes
 """
 import argparse
 import base64
 import hashlib
-import json
 import os
 import re
 import subprocess
@@ -22,38 +21,18 @@ import sys
 import tempfile
 import time
 
+# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import requests
 
-DECK = "George's German Vocabulary"
-MODEL = "George's German Vocab"
-ANKI_URL = "http://localhost:8765"
+from _anki import anki, DECK, MODEL
+
 WIKT_API = "https://de.wiktionary.org/w/api.php"
 
 # Wikimedia requires a descriptive User-Agent (https://w.wiki/4wJS)
 web = requests.Session()
 web.headers["User-Agent"] = "anki-george-german/1.0 (German vocab enrichment script)"
-
-
-# ── AnkiConnect helpers ──────────────────────────────────────────────────────
-
-def anki(action, **params):
-    body = json.dumps({"action": action, "params": params, "version": 6})
-    resp = requests.get(ANKI_URL, data=body).json()
-    if resp.get("error"):
-        raise RuntimeError(f"AnkiConnect {action}: {resp['error']}")
-    return resp["result"]
-
-
-def ensure_audio_field():
-    """Add the Audio field to the note type if it doesn't already exist."""
-    fields = anki("modelFieldNames", modelName=MODEL)
-    if "Audio" in fields:
-        return False
-    ipa_idx = fields.index("IPA") if "IPA" in fields else len(fields) - 1
-    anki("modelFieldAdd", modelName=MODEL,
-         fieldName="Audio", index=ipa_idx + 1)
-    print("Added 'Audio' field to note type (after IPA).")
-    return True
 
 
 # ── Word extraction ──────────────────────────────────────────────────────────
@@ -196,58 +175,54 @@ def store_audio_in_anki(filename, data):
     return mp3_name
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# ── Core enrichment function (importable) ────────────────────────────────────
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Preview changes without applying them")
-    parser.add_argument("--ipa-only", action="store_true",
-                        help="Only fetch and update IPA (fast, no audio downloads)")
-    parser.add_argument("--audio-only", action="store_true",
-                        help="Only download and store audio files")
-    parser.add_argument("--audio-delay", type=float, default=5.0,
-                        help="Seconds between audio downloads (default: 5)")
-    args = parser.parse_args()
+def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
+                 audio_delay=5.0, dry_run=False):
+    """Enrich notes with IPA and/or audio from Wiktionary.
 
-    do_ipa = not args.audio_only
-    do_audio = not args.ipa_only
+    Args:
+        note_ids: List of note IDs to enrich. If None, finds all notes
+                  missing IPA/audio in the deck.
+        ipa_only: Only fetch IPA (skip audio).
+        audio_only: Only fetch audio (skip IPA).
+        audio_delay: Seconds between audio downloads.
+        dry_run: Preview without applying changes.
+
+    Returns:
+        Dict with counts: ipa_added, audio_added, skipped_phrase, not_found.
+    """
+    do_ipa = not audio_only
+    do_audio = not ipa_only
 
     # Ensure the Audio field exists
-    if do_audio:
-        if not args.dry_run:
-            ensure_audio_field()
-        else:
-            fields = anki("modelFieldNames", modelName=MODEL)
-            if "Audio" not in fields:
-                print("[dry-run] Would add 'Audio' field to note type.\n")
+    if do_audio and not dry_run:
+        fields = anki("modelFieldNames", modelName=MODEL)
+        if "Audio" not in fields:
+            ipa_idx = fields.index("IPA") if "IPA" in fields else len(fields) - 1
+            anki("modelFieldAdd", modelName=MODEL,
+                 fieldName="Audio", index=ipa_idx + 1)
+            print("Added 'Audio' field to note type (after IPA).")
 
     # Find notes needing enrichment
-    all_ids = set()
-    ids_no_ipa = set()
-    ids_no_audio = set()
-    if do_ipa:
-        ids_no_ipa = set(anki("findNotes", query=f'\"deck:{DECK}\" IPA:'))
-        all_ids |= ids_no_ipa
-    if do_audio:
-        ids_no_audio = set(anki("findNotes", query=f'\"deck:{DECK}\" Audio:'))
-        all_ids |= ids_no_audio
-    all_ids = sorted(all_ids)
+    if note_ids is not None:
+        all_ids = sorted(set(note_ids))
+    else:
+        all_ids = set()
+        if do_ipa:
+            all_ids |= set(anki("findNotes", query=f'\"deck:{DECK}\" IPA:'))
+        if do_audio:
+            all_ids |= set(anki("findNotes", query=f'\"deck:{DECK}\" Audio:'))
+        all_ids = sorted(all_ids)
 
     if not all_ids:
-        print("Nothing to do.")
-        return
+        print("Nothing to enrich.")
+        return {"ipa_added": 0, "audio_added": 0, "skipped_phrase": 0, "not_found": 0}
 
     notes = anki("notesInfo", notes=all_ids)
 
-    mode = "IPA" if args.ipa_only else ("audio" if args.audio_only else "IPA + audio")
-    print(f"Mode: {mode}")
-    if ids_no_ipa:
-        print(f"  Missing IPA:   {len(ids_no_ipa)}")
-    if ids_no_audio:
-        print(f"  Missing Audio: {len(ids_no_audio)}")
-    print()
+    mode = "IPA" if ipa_only else ("audio" if audio_only else "IPA + audio")
+    print(f"Enrichment mode: {mode} ({len(notes)} notes)")
 
     stats = {"ipa_added": 0, "audio_added": 0, "skipped_phrase": 0,
              "not_found": 0, "already_ok": 0}
@@ -288,7 +263,7 @@ def main():
         audio_data = None
         if needs_audio:
             audio_filename = extract_audio_filename(wikitext)
-            if audio_filename and not args.dry_run:
+            if audio_filename and not dry_run:
                 url = commons_url_from_filename(audio_filename)
                 audio_data = download_audio(url)
 
@@ -298,25 +273,25 @@ def main():
             if ipa:
                 parts.append(f"IPA={ipa}")
             elif has_ipa:
-                parts.append("IPA=✓")
+                parts.append("IPA=ok")
             else:
-                parts.append("IPA=✗")
+                parts.append("IPA=miss")
         if do_audio:
             if has_audio:
-                parts.append("audio=✓")
+                parts.append("audio=ok")
             elif audio_filename:
-                if audio_data or args.dry_run:
+                if audio_data or dry_run:
                     parts.append(f"audio={audio_filename}")
                 else:
-                    parts.append(f"audio=✗ ({audio_filename} download failed)")
+                    parts.append(f"audio=fail ({audio_filename})")
             else:
-                parts.append("audio=✗ (none on Wiktionary)")
+                parts.append("audio=miss")
 
-        prefix = "[dry-run] " if args.dry_run else "  "
+        prefix = "[dry-run] " if dry_run else "  "
         status_str = "  ".join(parts)
         print(f"{prefix}{word_field:<30} {status_str}")
 
-        if args.dry_run:
+        if dry_run:
             if ipa:
                 stats["ipa_added"] += 1
             if audio_filename:
@@ -336,16 +311,15 @@ def main():
         if fields_update:
             anki("updateNoteFields", note={"id": nid, "fields": fields_update})
 
-        # Rate limiting — Wiktionary API is fine at 0.5s; audio needs more
+        # Rate limiting
         if needs_audio and audio_filename:
-            time.sleep(args.audio_delay)
+            time.sleep(audio_delay)
         else:
             time.sleep(0.5)
 
     # Summary
-    print()
-    prefix = "[dry-run] " if args.dry_run else ""
-    print(f"{prefix}Summary:")
+    prefix = "[dry-run] " if dry_run else ""
+    print(f"\n{prefix}Enrichment summary:")
     if do_ipa:
         print(f"  IPA added:        {stats['ipa_added']}")
     if do_audio:
@@ -354,6 +328,31 @@ def main():
     print(f"  Not found:        {stats['not_found']}")
     if stats["already_ok"]:
         print(f"  Already complete: {stats['already_ok']}")
+
+    return stats
+
+
+# ── CLI entry point ──────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Preview changes without applying them")
+    parser.add_argument("--ipa-only", action="store_true",
+                        help="Only fetch and update IPA (fast, no audio downloads)")
+    parser.add_argument("--audio-only", action="store_true",
+                        help="Only download and store audio files")
+    parser.add_argument("--audio-delay", type=float, default=5.0,
+                        help="Seconds between audio downloads (default: 5)")
+    args = parser.parse_args()
+
+    enrich_notes(
+        ipa_only=args.ipa_only,
+        audio_only=args.audio_only,
+        audio_delay=args.audio_delay,
+        dry_run=args.dry_run,
+    )
 
 
 if __name__ == "__main__":

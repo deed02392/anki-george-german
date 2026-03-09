@@ -1,37 +1,81 @@
 # Claude Session Context
 
 ## Project Overview
-Pipeline-built German vocabulary Anki deck for adult learner conversing with children (ages 4–6). See `NOTES.md` for full documentation.
+German vocabulary Anki deck for an adult learner. Vocabulary is generated from German texts (literature, articles) and domain briefs using an LLM-powered pipeline. See `NOTES.md` for full documentation.
 
 ## Repository Structure
 
 ```
-pipeline/          Build a deck from scratch (numbered steps)
-tools/             Maintain and enrich a live deck
-data/              Curated data files (prefix_data.json, clozeword_overrides.json)
-img/               Documentation images
+tools/                  Active scripts for deck maintenance and vocab generation
+  generate_vocab.py     Main vocab generation (text extraction + domain briefs)
+  _anki.py              Shared AnkiConnect helper (all tools import from here)
+  _llm.py               Shared Floodgate/LLM helper
+  enrich_ipa_audio.py   IPA + audio enrichment from Wiktionary (importable + CLI)
+  update_templates.py   LIVE SOURCE OF TRUTH for CSS and templates
+  unsuspend_candidates.py  Weekly card unsuspension
+  update_prefix_fields.py  Sync prefix data to Anki
+  query_note.py         Quick note lookup
+data/
+  prefix_data.json      Prefix teaching data (21 entries)
+  clozeword_overrides.json  Manual ClozeWord corrections (legacy)
+  books/                Source texts for vocab extraction
+  generated/            JSON checkpoints from generation runs
+pipeline/
+  archive/              Original deck build scripts (01-04, historical)
+img/                    Documentation images
 ```
 
-## Critical Files & Execution Order
+## Vocabulary Generation (`tools/generate_vocab.py`)
 
-**DO NOT edit these files directly unless you know the execution order:**
+Two modes for generating new vocabulary cards:
 
-1. `pipeline/03_build_deck.py` — Creates vocab note type and imports notes
-2. `pipeline/04_build_prefixes.py` — Creates prefix note type and imports 21 prefix notes
-3. `tools/update_templates.py` — **LIVE SOURCE OF TRUTH** for CSS and templates (both note types)
+### Text extraction mode
+```sh
+uv run python tools/generate_vocab.py text \
+    --file data/books/Schachenovelle.txt \
+    --source schachnovelle --paragraphs 1-30 \
+    --domain literature --phase 4 --dry-run
+```
 
-Each script supersedes the previous one. **Always run `tools/update_templates.py` last** if you modify templates or CSS, or your changes will be overwritten.
+Pipeline stages:
+1. **Ingest** — read paragraph range from text file
+2. **spaCy extraction** — tokenize + lemmatize with `de_dep_news_trf`, filter function words
+3. **Deck check** — skip existing words (tag them `source::{source}`), keep new ones
+4. **Compound detection** — CharSplit filters transparent compounds (both parts known)
+5. **Summarise** — LLM summarises the text chunk for thematic context
+6. **LLM enrichment** — Claude Sonnet generates all card fields in batches of ~10
+7. **Validation** — cloze substring check, verbatim quote rejection, field presence
+8. **Import** — `addNotes` to Anki with source/domain/phase tags
+9. **IPA enrichment** — automatic Wiktionary IPA lookup for new notes
+10. **Checkpoint** — save JSON to `data/generated/`
+
+### Domain brief mode
+```sh
+uv run python tools/generate_vocab.py domain \
+    --brief "IT security vocabulary" \
+    --source it_security --count 30 \
+    --domain security,technology --phase 4 --dry-run
+```
+
+Skips spaCy/compound stages; LLM generates words from the brief directly.
+
+## Shared Modules
+
+- **`tools/_anki.py`** — `anki(action, **params)`, `ANKI_URL`, `DECK`, `MODEL` constants. All tools import from here.
+- **`tools/_llm.py`** — `get_floodgate_token()`, `call_llm(messages, token)` with JSON parsing and code fence stripping.
+- **`tools/enrich_ipa_audio.py`** — importable `enrich_notes()` function + CLI. `generate_vocab.py` calls it directly after import.
+
+## Critical Files
+
+**`tools/update_templates.py`** is the LIVE SOURCE OF TRUTH for all card CSS and template HTML. Always run it after any template/CSS change.
 
 ## Timer Implementation
 
 The timer uses **focal urgency** — the word you're looking at shifts colour over 10s:
 - `.word-de.timed` / `.word-en.timed` on front templates animate via `@keyframes urgency-de` / `urgency-en`
 - `.cloze-blank` animates automatically via `@keyframes urgency-blank` (border + subtle bg tint)
-- Two discrete steps: accent holds 0–6s, snaps to amber 6–7s, holds 7–9s, snaps to coral 9–10s, then `forwards` holds coral
-- No JavaScript, no timer ring — purely CSS `@keyframes` on `color` / `border-bottom-color`
+- Two discrete steps: accent holds 0–6s, snaps to amber 6–7s, holds 7–9s, snaps to coral 9–10s
 - Back templates have no urgency animation
-
-See `tools/update_templates.py` `VOCAB_CLASSES` for the vocab urgency CSS, `PREFIX_CLASSES` for prefix urgency CSS.
 
 ## Prefix Note Type ("German Prefix")
 
@@ -47,192 +91,94 @@ See `tools/update_templates.py` `VOCAB_CLASSES` for the vocab urgency CSS, `PREF
 | 3 | SpatialSense | One-sentence spatial intuition |
 | 4 | Examples | HTML with prefix highlighted via `<span class="pfx">` |
 
-### Card templates (2)
-
-- **Prefix → Meaning** — prefix shown on front (lavender, urgency-animated), meaning + examples on back
-- **Meaning → Prefix** — meaning shown on front (lavender, urgency-animated), prefix + examples on back
-
 ### CSS architecture
 
 `tools/update_templates.py` splits CSS into shared base + per-note-type sections:
 - `BASE_VARS` — `:root` design tokens, dark/light mode
 - `BASE_LAYOUT` — `.card`, `.kard`, `.card-header`, `.card-type`, `hr.divider`
-- `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, etc.)
-- `PREFIX_CLASSES` — prefix-specific (`.prefix-hero`, `.core-meaning`, `.pfx-examples`, etc.)
+- `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, phase badges)
+- `PREFIX_CLASSES` — prefix-specific (`.prefix-hero`, `.core-meaning`, `.pfx-examples`)
 
-Composed: `VOCAB_CSS = BASE_VARS + BASE_LAYOUT + VOCAB_CLASSES`, `PREFIX_CSS = BASE_VARS + BASE_LAYOUT + PREFIX_CLASSES`.
+## Phase Badges
 
-### Accent colour
+| Phase | Colour (dark) | Colour (light) | CSS class |
+|-------|--------------|----------------|-----------|
+| P1 | #4fa3e0 (blue) | #1a6fa8 | `.phase-1` |
+| P2 | #3dbb72 (green) | #217a44 | `.phase-2` |
+| P3 | #f08030 (orange) | #c05a00 | `.phase-3` |
+| P4 | #9b59b6 (purple) | #6c3483 | `.phase-4` |
 
-Lavender: `#c0a0e0` (dark), `#7b5ea7` (light) — distinct from DE cyan and EN gold.
+## Tag Structure
 
-### Build script
+- `source::schachnovelle`, `source::it_security` — origin of the card
+- `domain::literature`, `domain::security` — extends existing `domain::play`, etc.
+- `phase::4` — new phases beyond the original 1-3
+- Existing tags (`child_vocab`, `phase::1`, etc.) are untouched
 
-`pipeline/04_build_prefixes.py` reads `data/prefix_data.json`, creates note type + sub-deck, formats example HTML, imports via `addNotes`.
+## Vocab Note Type Fields (13)
 
-## Card Layout — Key Decisions and Lessons Learned
+Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, SentenceTranslation, Domains, Phase, Note
 
-The layout went through extensive iteration. Here's what works and why:
+### ClozeWord convention
 
-### What's live (working on both desktop and mobile)
+- Stores the exact text to blank in the cloze sentence
+- `|` separates parts for separable verbs: `sprang|auf`
+- Set at generation time by the LLM — no backfill step needed
 
+## Card Layout — Key Decisions
+
+### What's live (desktop + AnkiMobile)
 ```css
-body { margin: 0; }                          /* override Anki's 20px body margin */
-html, body, #qa { margin: 0; height: 100%; } /* propagate height for centering */
+html, body, #qa { margin: 0; height: 100%; }
 .card { min-height: 100%; display: grid; align-content: center; }
 .kard { box-sizing: border-box; max-width: 560px; width: 100%; }
 ```
 
-### Anki's rendering environment
-
-- **Anki's reviewer injects `body { margin: 20px }`** via `reviewer.scss`. This must be overridden to `0` in our card CSS, otherwise it creates asymmetric-looking margins and eats into content width.
-- **AnkiMobile wraps card content in a `#qa` div.** Setting `height: 100%` on `html`, `body`, AND `#qa` is required for `min-height: 100%` to resolve on `.card`.
-- **`position: fixed` is broken on AnkiMobile** — fixed elements are relative to `#qa`, not the viewport.
-- **`env(safe-area-inset-*)` returns 0** on AnkiMobile because the webview doesn't set `viewport-fit=cover`.
-
-### Viewport units — what was tried and why they failed
-
-| Unit | Desktop | Mobile (review) | Mobile (Browse→Preview) |
-|------|---------|-----------------|-------------------------|
-| `100vh` | Works | Too tall (includes space behind OS chrome) | Way too tall |
-| `100dvh` | Works | Same as vh in Anki's webview | Way too tall |
-| `100svh` | Works | Works | Way too tall |
-| `100%` (without height chain) | No centering (resolves to 0) | No centering | No centering |
-| `100%` (with `html,body,#qa { height:100% }`) | **Works** | **Works** | Too tall but acceptable |
-
-**`min-height: 100%` with the full height chain is the correct solution.** It resolves to the actual container height on both platforms. Browse→Preview will show extra space because the preview pane is smaller than the viewport, but actual review sessions are correct — and that's what matters.
-
-### Vertical centering
-
-- **`display: grid; align-content: center`** on `.card` — works correctly.
-- **`align-items: center` (flex)** was tried first but clips the top of tall cards (content pushed above viewport with no way to scroll up).
-- **`margin: auto` on `.kard`** doesn't work with `align-items: stretch` (flex stretches the child, leaving no space for auto margins).
-- **`place-content: center` (grid)** centres both axes but shrinks the grid column to content width, breaking horizontal layout.
-- **Block-level `align-content: center`** (no grid/flex) is too new for Anki's embedded Chromium.
-
-### Horizontal sizing
-
-- **`box-sizing: border-box` on `.kard` is essential.** Without it, `width: 100%` is the content width, and padding is added on top — causing horizontal overflow (the `<hr>` divider made this especially visible).
-- **`overflow-wrap: break-word`** on sentence elements prevents long German compounds from causing horizontal scroll.
-- **Font sizes use `clamp()`** for responsive scaling: e.g. `.word-de` is `clamp(1.6rem, 6vw, 2.4rem)`.
-- **Cloze sentence** font size is a CSS class `.cloze-sentence` (not an inline style) using `clamp(1rem, 3.5vw, 1.2rem)`.
-- **Font stack** is `"Noto Sans", sans-serif` — no backward-compat fallbacks needed.
-
-### What NOT to do
-
-- **Don't use `margin: -20px`** to counteract body margin — it expands `.card` beyond the viewport.
-- **Don't use `@media (min-width: ...)` to conditionally apply `min-height`** — fragile, device-dependent.
-- **Don't remove `min-height` after confirming it works** — the `html,body,#qa { height:100% }` chain is not a "hack", it's required for `100%` to resolve.
-- **Don't use inline `style="font-size:..."` on template elements** when a CSS class can handle it responsively.
+### Key rules
+- Override Anki's `body { margin: 20px }` to `0`
+- `#qa` height chain required for AnkiMobile
+- `box-sizing: border-box` on `.kard` prevents horizontal overflow
+- Font sizes use `clamp()` for responsive scaling
+- Font stack: `"Noto Sans", sans-serif`
 
 ## Before Touching Templates or CSS
 
-1. Read `NOTES.md` (especially sections on timer, template fixes, and phase structure)
-2. The authoritative file for all CSS and templates is `tools/update_templates.py`
-3. After editing, run the script to push changes to Anki via AnkiConnect
-4. Test in **actual review mode** on mobile, not just Browse→Preview (viewport units behave differently in the preview pane)
-5. Never manually edit templates in Anki's UI — they'll be overwritten on next script run
-
-## AnkiWeb
-
-AnkiWeb (browser-based review at ankiweb.net) has known rendering differences:
-- The card is a `<div>` inside a full webpage, not its own webview — so `html`/`body` selectors affect the whole page
-- `background: var(--bg)` on `.card` colours only the card box, not the surrounding AnkiWeb UI
-- `min-height: 100%` doesn't behave the same — the container height model differs
-- The parent container likely grows with content (not fixed-height), so a `height`-based approach may work if this is ever worth fixing
-- George doesn't review on AnkiWeb so this is low priority
+1. Read `NOTES.md`
+2. The authoritative file is `tools/update_templates.py`
+3. After editing, run the script to push to Anki via AnkiConnect
+4. Test in **actual review mode** on mobile, not just Browse→Preview
+5. Never manually edit templates in Anki's UI
 
 ## AnkiConnect Setup
 
 - Requires Anki running with AnkiConnect add-on (2055492159)
 - Default URL: `http://localhost:8765`
-- `setSpecificValueOfCard` is allowlisted in config for future use
+- All tools that call AnkiConnect must run in **tmux pane 4** (sandbox has network access)
 
-## Wiktionary Enrichment (`tools/enrich_ipa_audio.py`)
+## Wiktionary Enrichment
 
-Script that fetches IPA transcriptions and audio from German Wiktionary for notes missing them.
-
-### Note type changes
-
-An `Audio` field was added after `IPA` (13 fields total, including ClozeWord). Both `pipeline/03_build_deck.py` and `tools/update_templates.py` have been updated to include it.
-
-### Template audio placement
-
-Audio auto-plays via Anki's `[sound:...]` syntax using `{{#Audio}}{{Audio}}{{/Audio}}`:
-- **EN→DE Back** — hear the word after answering (production reinforcement)
-- **DE→EN Front** — hear the word as a prompt (recognition)
-- **Cloze Front** — hear the word as a prompt
-- DE→EN Back and Cloze Back have no audio (already heard on front)
-
-### Current state (as of 2026-03-05)
-
-- **IPA**: 713/740 notes have IPA. The 27 missing are phrases (greetings, questions like "Wie heißt du?") that have no Wiktionary page. Only `Lego` (brand name) was a single word without a German Wiktionary entry.
-- **Audio**: 16/740 notes have audio (mp3 format). Remaining ~700 still need downloads — blocked by `upload.wikimedia.org` rate limiting (429 with `Retry-After: 60`).
-- **Format**: All audio stored as `.mp3` (converted from Wiktionary's `.ogg` via ffmpeg) for iOS/AnkiMobile compatibility. The enrichment script handles ogg→mp3 conversion automatically.
-
-### How the script works
-
-1. Queries AnkiConnect for notes with empty IPA or Audio
-2. Strips articles (der/die/das) from the Word field to get the lookup word
-3. Skips phrases (words containing spaces, `?`, `!`, `...`)
-4. Fetches wikitext from `de.wiktionary.org` (falls back to lowercase if needed, e.g. Tschüss → tschüss)
-5. Extracts the German section (`{{Sprache|Deutsch}}`), then the `{{Aussprache}}` block to avoid matching IPA/audio from other languages (e.g. Danish on the "orange" page) or prose
-6. Extracts IPA via `{{Lautschrift|...}}` regex
-7. Extracts audio filename via `{{Audio|...ogg}}` regex
-8. Downloads audio from Wikimedia Commons using MD5-based URL (no API call needed)
-9. Converts ogg to mp3 via ffmpeg (required for iOS/AnkiMobile compatibility)
-10. Stores mp3 in Anki via `storeMediaFile` and updates fields
+`tools/enrich_ipa_audio.py` fetches IPA + audio from de.wiktionary.org. Importable as a module (`from tools.enrich_ipa_audio import enrich_notes`) or run as CLI.
 
 ### Usage
-
 ```sh
-python3 tools/enrich_ipa_audio.py --ipa-only     # fast, no rate limit issues
-python3 tools/enrich_ipa_audio.py --audio-only    # slow due to Wikimedia rate limits
-python3 tools/enrich_ipa_audio.py --dry-run       # preview without changes
-python3 tools/enrich_ipa_audio.py --audio-delay 65 # customise delay between downloads
+uv run python tools/enrich_ipa_audio.py --ipa-only     # fast
+uv run python tools/enrich_ipa_audio.py --audio-only    # slow (rate limits)
+uv run python tools/enrich_ipa_audio.py --dry-run
 ```
 
-### Rate limiting problem
+## Dependencies
 
-`upload.wikimedia.org` aggressively rate-limits audio downloads — returns 429 after 2–3 requests regardless of delay. The `Retry-After` header says 60s. The Wiktionary parse API (`de.wiktionary.org/w/api.php`) has no such issue. Requires a `User-Agent` header (Wikimedia policy).
-
-### Wiktionary wikitext edge cases handled
-
-- **Multi-language pages** (e.g. "orange" has German, Danish, English): extract `{{Sprache|Deutsch}}` section only
-- **Prose Lautschrift** (e.g. "orange" has `{{Lautschrift|…ʃ}}` in an annotation paragraph): restrict search to `{{Aussprache}}` block
-- **Case sensitivity** (e.g. "Tschüss" exists as "tschüss"): automatic lowercase fallback
-- **Non-German-only pages** (e.g. "lego" is only Italian/Latin/Spanish): require `{{Sprache|Deutsch}}` in wikitext
-
-## ClozeWord Field & Cloze Matching (`tools/backfill_clozeword.py`)
-
-The cloze card JS originally matched the dictionary form (e.g. "rennen") against the sentence, but German morphology changes forms (e.g. "rannte") and separable verbs split ("aufspringen" → "sprang...auf"). This broke 235/740 cloze cards.
-
-### Solution
-
-A `ClozeWord` field (index 8, after Sentence) stores the exact text to blank in the sentence. The `|` separator handles separable verbs: `sprang|auf` blanks both parts independently.
-
-**Field position in note type** (13 fields total): Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, **ClozeWord**, SentenceTranslation, Domains, Phase, Note
-
-### Cloze JS logic (in `tools/update_templates.py`)
-
-1. Read `{{ClozeWord}}`; if non-empty, use it (case-sensitive match)
-2. If empty, fall back to `{{Word}}` with article stripping (case-insensitive match)
-3. Split on `|`, blank each part independently in the sentence
-
-### Backfill matching cascade
-
-1. **Exact match** — bare word found verbatim in sentence
-2. **Annotation stripping** — remove `(sich)`, `(r, s)`, `OR ...`, `...`
-3. **Phrase template** — `Wo ist ...?` → strip `...` and punctuation, match core words
-4. **Umlaut/plural** — try a→ä, o→ö, u→ü + common plural suffixes
-5. **Separable verb** — detect prefix (ab/an/auf/aus/etc.), fuzzy-match stem, verify prefix at clause end
-6. **Fuzzy match** — rapidfuzz.fuzz.ratio ≥65 threshold against sentence tokens
-
-### Usage
-
-```sh
-python3 tools/backfill_clozeword.py --dry-run          # preview matches
-python3 tools/backfill_clozeword.py                     # apply
-python3 tools/backfill_clozeword.py --verify            # check ClozeWord parts exist in sentences
-python3 tools/backfill_clozeword.py --overrides data/clozeword_overrides.json
+```toml
+dependencies = [
+    "rapidfuzz>=3.14.3",
+    "requests>=2.32.5",
+    "spacy[transformers]>=3.7",
+    "charsplit @ git+https://github.com/dtuggener/CharSplit.git",
+    "torch>=2.0",
+    "spacy-transformers>=1.3",
+]
 ```
+
+spaCy model (one-time): `uv run python -m spacy download de_dep_news_trf`
+
+All commands use `uv run` — never bare `python` or `pip`.

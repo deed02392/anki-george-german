@@ -6,4 +6,9 @@ requires-python = ">=3.13"
 dependencies = [
     "rapidfuzz>=3.14.3",
     "requests>=2.32.5",
+    "spacy[transformers]>=3.7",
+    "charsplit @ git+https://github.com/dtuggener/CharSplit.git",
+    "torch>=2.0",
+    "spacy-transformers>=1.3",
+    "pip>=26.0.1",
 ]

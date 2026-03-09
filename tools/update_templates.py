@@ -10,18 +10,13 @@ Note types managed:
   2. "German Prefix"          — prefix teaching cards (Prefix→Meaning, Meaning→Prefix)
 """
 
-import requests
+import os
+import sys
 
-URL = "http://localhost:8765"
+# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-
-def anki(action, **params):
-    r = requests.post(URL, json={"action": action, "version": 6, "params": params})
-    r.raise_for_status()
-    result = r.json()
-    if result.get("error"):
-        raise RuntimeError(f"AnkiConnect [{action}]: {result['error']}")
-    return result["result"]
+from _anki import anki
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -35,6 +30,7 @@ BASE_VARS = """
   --bg:         #1a1a2e;
   --surface:    #16213e;
   --text:       #e0e0e0;
+  --text-de:    #a8d4e8;
   --subtext:    #8892a4;
   --border:     rgba(255,255,255,0.08);
   --accent-de:  #7ec8e3;
@@ -42,6 +38,7 @@ BASE_VARS = """
   --p1:         #4fa3e0;
   --p2:         #3dbb72;
   --p3:         #f08030;
+  --p4:         #9b59b6;
   --disambig-fg:#f08080;
   --disambig-bg:rgba(240,128,128,0.08);
   --note-fg:    #90c0a0;
@@ -55,6 +52,7 @@ BASE_VARS = """
     --bg:         #f5f7fa;
     --surface:    #ffffff;
     --text:       #1a1a2e;
+    --text-de:    #2a5a7a;
     --subtext:    #5a6478;
     --border:     rgba(0,0,0,0.10);
     --accent-de:  #1a6fa8;
@@ -62,6 +60,7 @@ BASE_VARS = """
     --p1:         #1a6fa8;
     --p2:         #217a44;
     --p3:         #c05a00;
+    --p4:         #6c3483;
     --disambig-fg:#c0302a;
     --disambig-bg:rgba(192,48,42,0.07);
     --note-fg:    #2a7a4a;
@@ -125,20 +124,21 @@ hr.divider {
 # ══════════════════════════════════════════════════════════════════════════════
 
 VOCAB_CLASSES = """
-/* ── Phase badge ── */
-.phase-badge {
+/* ── Source badge ── */
+.source-badge {
   display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 4px;
   padding: 2px 8px;
   color: #fff;
 }
-.phase-1 { background: var(--p1); }
-.phase-2 { background: var(--p2); }
-.phase-3 { background: var(--p3); }
+.source-1 { background: var(--p1); }
+.source-2 { background: var(--p2); }
+.source-3 { background: var(--p3); }
+.source-4 { background: var(--p4); }
 
 /* ── Focal urgency ── */
 @keyframes urgency-de {
@@ -199,12 +199,13 @@ VOCAB_CLASSES = """
 .sentence-de {
   font-size: 1.05rem;
   line-height: 1.55;
-  color: var(--text);
+  color: var(--text-de);
   margin-bottom: 5px;
   overflow-wrap: break-word;
 }
 .sentence-en {
   font-size: 0.88rem;
+  line-height: 1.5;
   color: var(--subtext);
   font-style: italic;
   margin-bottom: 12px;
@@ -217,8 +218,10 @@ VOCAB_CLASSES = """
 .cloze-sentence {
   font-size: clamp(1rem, 3.5vw, 1.2rem);
   font-weight: 500;
+  line-height: 1.55;
   color: var(--cloze-text);
   margin-top: 8px;
+  overflow-wrap: break-word;
 }
 
 /* ── Cloze ── */
@@ -336,7 +339,7 @@ PREFIX_CLASSES = """
 .pfx-examples {
   font-size: 0.92rem;
   line-height: 1.8;
-  color: var(--text);
+  color: var(--text-de);
 }
 .pfx-examples .pfx {
   color: var(--accent-pfx);
@@ -365,6 +368,29 @@ PREFIX_CSS = BASE_VARS + BASE_LAYOUT + PREFIX_CLASSES
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+def source_badge_js(elem_id):
+    """JS that extracts source::X from tags and displays as a colour-hashed badge."""
+    return f"""
+<span class="source-badge" id="{elem_id}"></span>
+<script>
+(function(){{
+  var tags = "{{{{Tags}}}}";
+  var el = document.getElementById("{elem_id}");
+  if (!el) return;
+  var m = tags.match(/source::([^\\s]+)/);
+  if (m) {{
+    var s = m[1];
+    el.textContent = s.replace(/_/g, " ");
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    el.className = "source-badge source-" + ((Math.abs(h) % 4) + 1);
+  }} else {{
+    el.style.display = "none";
+  }}
+}})();
+</script>"""
+
+
 def domains_js(elem_id):
     return f"""
 <div class="domains" id="{elem_id}"></div>
@@ -383,17 +409,24 @@ def domains_js(elem_id):
 </script>"""
 
 
-def variant_picker_js(sentence_id, translation_id=None, is_front=False):
-    """JS that picks a random variant from pipe-separated Sentence/SentenceTranslation.
+def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=None):
+    """JS that picks a random variant from pipe-separated Sentence/SentenceTranslation/POS.
 
     is_front=True:  pick random index, store in sessionStorage for back to read.
     is_front=False: load index from sessionStorage (fallback to random).
+    pos_id:         element id to fill with the variant-matched POS value.
     """
     tr_line = ""
     if translation_id:
         tr_line = f"""
   var tel = document.getElementById("{translation_id}");
   if (tel) tel.textContent = (translations[idx] || "").trim();"""
+    pos_line = ""
+    if pos_id:
+        pos_line = f"""
+  var posVals = "{{{{POS}}}}".split("|");
+  var pel = document.getElementById("{pos_id}");
+  if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();"""
     if is_front:
         idx_logic = """\
   var idx = Math.floor(Math.random() * sentences.length);
@@ -410,16 +443,17 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False):
   var translations = "{{{{SentenceTranslation}}}}".split("|");
   {idx_logic}
   var el = document.getElementById("{sentence_id}");
-  if (el) el.textContent = sentences[idx].trim();{tr_line}
+  if (el) el.textContent = sentences[idx].trim();{tr_line}{pos_line}
 }})();
 </script>"""
 
 
-def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False):
+def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos_id=None):
     """JS that picks a random variant and applies cloze blanking.
 
     is_front=True:  pick random index, store in sessionStorage.
     is_front=False: load index from sessionStorage (fallback to random).
+    pos_id:         element id to fill with the variant-matched POS value.
     """
     if is_front:
         idx_logic = """\
@@ -430,6 +464,12 @@ def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False):
   var idx;
   try { idx = parseInt(sessionStorage.getItem("v_" + "{{{{Word}}}}")); } catch(e) {}
   if (isNaN(idx) || idx < 0 || idx >= sentences.length) idx = Math.floor(Math.random() * sentences.length);"""
+    pos_line = ""
+    if pos_id:
+        pos_line = f"""
+  var posVals = "{{{{POS}}}}".split("|");
+  var pel = document.getElementById("{pos_id}");
+  if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();"""
     return f"""
 <script>
 (function(){{
@@ -459,7 +499,7 @@ def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False):
   var el = document.getElementById("{sentence_id}");
   if (el) el.innerHTML = result;
   var tel = document.getElementById("{translation_id}");
-  if (tel) tel.textContent = (translations[idx] || "").trim();
+  if (tel) tel.textContent = (translations[idx] || "").trim();{pos_line}
 }})();
 </script>"""
 
@@ -474,7 +514,7 @@ EN_DE_FRONT = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">EN&nbsp;&rarr;&nbsp;DE &middot; Production</div>
-    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
+    """ + source_badge_js("src-ende-f") + """
   </div>
 
   <div class="word-en timed">{{WordTranslation}}</div>
@@ -493,7 +533,7 @@ EN_DE_BACK = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">EN&nbsp;&rarr;&nbsp;DE &middot; Production</div>
-    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
+    """ + source_badge_js("src-ende-b") + """
   </div>
 
   <div class="word-en">{{WordTranslation}}</div>
@@ -501,25 +541,25 @@ EN_DE_BACK = """\
   <hr class="divider">
 
   <div class="word-de">{{Word}}</div>
-  {{#POS}}<div class="pos-hint">{{POS}}</div>{{/POS}}
+  {{#POS}}<div class="pos-hint" id="ende-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
   {{#Audio}}{{Audio}}{{/Audio}}
 
   {{#Sentence}}<div class="sentence-de" id="ende-s-back"></div>{{/Sentence}}
-  {{#SentenceTranslation}}<div class="sentence-en" id="ende-tr-back"></div>{{/SentenceTranslation}}
+  {{#SentenceTranslation}}<div class="sentence-en quoted" id="ende-tr-back"></div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
   <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
   {{/WordTranslationDisambiguate}}
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
-""" + domains_js("dom-en-de") + "\n</div>" + variant_picker_js("ende-s-back", "ende-tr-back")
+""" + domains_js("dom-en-de") + "\n</div>" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
 
 DE_EN_FRONT = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">DE&nbsp;&rarr;&nbsp;EN &middot; Recognition</div>
-    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
+    """ + source_badge_js("src-deen-f") + """
   </div>
 
   <div class="word-de timed">{{Word}}</div>
@@ -531,11 +571,11 @@ DE_EN_BACK = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">DE&nbsp;&rarr;&nbsp;EN &middot; Recognition</div>
-    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
+    """ + source_badge_js("src-deen-b") + """
   </div>
 
   <div class="word-de">{{Word}}</div>
-  {{#POS}}<div class="pos-hint">{{POS}}</div>{{/POS}}
+  {{#POS}}<div class="pos-hint" id="deen-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
 
   <hr class="divider">
@@ -543,24 +583,24 @@ DE_EN_BACK = """\
   <div class="word-en">{{WordTranslation}}</div>
 
   {{#Sentence}}<div class="sentence-de" id="deen-s-back"></div>{{/Sentence}}
-  {{#SentenceTranslation}}<div class="sentence-en" id="deen-tr-back"></div>{{/SentenceTranslation}}
+  {{#SentenceTranslation}}<div class="sentence-en quoted" id="deen-tr-back"></div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
   <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
   {{/WordTranslationDisambiguate}}
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
-""" + domains_js("dom-de-en") + "\n</div>" + variant_picker_js("deen-s-back", "deen-tr-back")
+""" + domains_js("dom-de-en") + "\n</div>" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
 
 CLOZE_FRONT = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">Sentence Cloze &middot; Context</div>
-    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
+    """ + source_badge_js("src-cloze-f") + """
   </div>
 
   <div class="sentence-de cloze-sentence" id="cloze-q"></div>
-  {{#SentenceTranslation}}<div class="sentence-en" id="cloze-tr"></div>{{/SentenceTranslation}}
+  {{#SentenceTranslation}}<div class="sentence-en quoted" id="cloze-tr"></div>{{/SentenceTranslation}}
   {{#Audio}}{{Audio}}{{/Audio}}
 </div>""" + cloze_picker_js("cloze-q", "cloze-tr", "cloze-blank", is_front=True)
 
@@ -568,21 +608,21 @@ CLOZE_BACK = """\
 <div class="kard">
   <div class="card-header">
     <div class="card-type">Sentence Cloze &middot; Context</div>
-    {{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}
+    """ + source_badge_js("src-cloze-b") + """
   </div>
 
   <div class="sentence-de cloze-sentence" id="cloze-a"></div>
-  {{#SentenceTranslation}}<div class="sentence-en" id="cloze-tr-back"></div>{{/SentenceTranslation}}
+  {{#SentenceTranslation}}<div class="sentence-en quoted" id="cloze-tr-back"></div>{{/SentenceTranslation}}
 
   <hr class="divider">
   <div class="word-de">{{Word}}</div>
-  {{#POS}}<div class="pos-hint">{{POS}}</div>{{/POS}}
+  {{#POS}}<div class="pos-hint" id="cloze-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
   <div class="word-en">{{WordTranslation}}</div>
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
 """ + domains_js("dom-cloze") + """
-</div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer")
+</div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Prefix templates
