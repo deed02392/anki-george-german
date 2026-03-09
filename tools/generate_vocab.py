@@ -46,6 +46,13 @@ from _anki import anki, DECK, MODEL
 from _llm import get_floodgate_token, call_llm
 from enrich_ipa_audio import enrich_notes
 
+VALID_POS = (
+    "noun", "verb", "adjective", "adverb",
+    "pronoun", "preposition", "numeral",
+    "conjunction", "interjection", "phrase",
+)
+VALID_POS_STR = "|".join(VALID_POS)
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # German function-word POS tags to filter out
@@ -350,7 +357,7 @@ Rules:
 - Generate exactly {num_sentences} example sentence(s) per word in the "sentences" array
 - Each sentence should show the word in a DIFFERENT grammatical context \
 (different tenses, cases, nominalised forms, etc.)
-- Each sentence entry has its own "pos" (noun|verb|adjective|adverb) and "cloze_word"
+- Each sentence entry has its own "pos" ({VALID_POS_STR}) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive). \
 Copy-paste from the sentence — if the sentence has "den Apfel", cloze_word must be "den Apfel" not "Der Apfel". \
 For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
@@ -377,7 +384,7 @@ Each element in the JSON array:
       "sentence": "<German example sentence>",
       "cloze_word": "<exact form in sentence, ~ for separable verbs>",
       "sentence_translation": "<English translation of sentence>",
-      "pos": "<noun|verb|adjective|adverb>"
+      "pos": "<{VALID_POS_STR}>"
     }}
   ],
   "domains": "<comma-separated domains>",
@@ -564,7 +571,7 @@ def validate_card(card, source_text=None):
             continue
 
         # POS validation
-        if sent["pos"] not in ("noun", "verb", "adjective", "adverb"):
+        if sent["pos"] not in VALID_POS:
             errors.append(f"{prefix}: invalid pos '{sent['pos']}'")
 
         if sent["pos"] == "noun":
@@ -825,7 +832,7 @@ Return ONLY a JSON array (no markdown, no commentary). Each element:
       "sentence": "<German example sentence, 5-15 words>",
       "cloze_word": "<exact form in sentence, ~ for separable verbs>",
       "sentence_translation": "<English translation of sentence (British English)>",
-      "pos": "<noun|verb|adjective|adverb>"
+      "pos": "<{VALID_POS_STR}>"
     }}
   ],
   "domains": "<comma-separated domains>",
@@ -846,7 +853,7 @@ Rules:
 - For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
 (e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
 - Use British English (colour, mum, favourite)
-- Mix word types: nouns, verbs, adjectives, adverbs
+- Mix word types: nouns, verbs, adjectives, adverbs, and other parts of speech where relevant
 - Choose words that are practical and commonly used in the domain
 """
     messages = [{"role": "user", "content": prompt}]
@@ -894,7 +901,7 @@ DIFFERENT from the existing ones. Return ONLY a JSON array (no markdown, no comm
 Rules:
 - Each new sentence should show the word in a different grammatical context \
 (different tenses, cases, nominalised forms) from the existing sentences
-- Each sentence entry has its own "pos" (noun|verb|adjective|adverb) and "cloze_word"
+- Each sentence entry has its own "pos" ({VALID_POS_STR}) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive)
 - For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
@@ -914,7 +921,7 @@ Each element in the JSON array:
       "sentence": "<German example sentence>",
       "cloze_word": "<exact form in sentence, ~ for separable verbs>",
       "sentence_translation": "<English translation>",
-      "pos": "<noun|verb|adjective|adverb>"
+      "pos": "<{VALID_POS_STR}>"
     }}
   ]
 }}"""
@@ -978,7 +985,7 @@ def validate_new_sentences(new_sentences):
         if not sent.get("pos") or not sent.get("sentence") or not sent.get("cloze_word"):
             continue
 
-        if sent["pos"] not in ("noun", "verb", "adjective", "adverb"):
+        if sent["pos"] not in VALID_POS:
             errors.append(f"{prefix}: invalid pos '{sent['pos']}'")
             continue
 
