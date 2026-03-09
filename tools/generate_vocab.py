@@ -589,8 +589,13 @@ def validate_card(card, source_text=None):
                     errors.append(f"{prefix}: too similar to source ({similarity}%)")
                     break
 
-    # Article iff noun (check across all sentence variants)
-    if has_noun and not card.get("article"):
+    # Article check: require article only when the word is primarily a noun
+    # (all sentences are nouns). Mixed POS (e.g. verb with one nominalised
+    # sentence) doesn't need a top-level article.
+    all_noun = has_noun and all(
+        s.get("pos") == "noun" for s in sentences if s.get("pos")
+    )
+    if all_noun and not card.get("article"):
         errors.append("noun missing article")
     if not has_noun and card.get("article"):
         errors.append(f"non-noun has article '{card['article']}'")
