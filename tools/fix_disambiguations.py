@@ -71,6 +71,7 @@ without naming them.
 
 Rules:
 - Keep it very short (3-8 words)
+- Use ONLY English — absolutely NO German words
 - NEVER name the other German word(s) — only describe meanings
 - Describe the semantic context, register, or usage that this word is NOT
 - For gendered pairs (Lehrer/Lehrerin), use "male" or "female"
@@ -82,9 +83,11 @@ Examples of GOOD disambiguation:
   "physical direction" (for a static-location synonym)
   "animals, not humans" (for a human-eating synonym)
 
-Examples of BAD disambiguation (naming the other word):
-  "der Körper (modern body)" ← WRONG, names the word
-  "not aufwachen" ← WRONG, names the word
+Examples of BAD disambiguation:
+  "der Körper (modern body)" ← WRONG, contains German
+  "not aufwachen" ← WRONG, contains German
+  "erwischen, fangen" ← WRONG, lists German synonyms
+  "deshalb" ← WRONG, just a German word
 
 Groups to disambiguate:
 {groups_block}
