@@ -142,6 +142,25 @@ def extract_lemmas(text, nlp):
 
 # ── Stage 3: Check existing deck ─────────────────────────────────────────────
 
+def _gendered_counterpart(bare):
+    """Return the bare counterpart of a gendered noun, if any.
+
+    Given 'lehrerin', returns 'lehrer' (masculine of feminine -in form).
+    Given 'lehrer', returns 'lehrerin' (feminine of masculine form).
+    Works on bare words (no article).
+    """
+    low = bare.lower()
+    # Feminine -> masculine: Lehrerin -> Lehrer, Freundin -> Freund
+    if low.endswith("erin") and len(low) > 5:
+        return low[:-2]  # drop "in" from "erin" -> "er"
+    if low.endswith("in") and len(low) > 3 and not low.endswith("stein"):
+        return low[:-2]  # Freundin -> Freund
+    # Masculine -> feminine
+    if low.endswith("er") and len(low) > 3:
+        return low + "in"  # Lehrer -> Lehrerin
+    return None
+
+
 def check_existing_deck(lemmas, source):
     """Check which lemmas already exist in the deck.
 
@@ -165,12 +184,18 @@ def check_existing_deck(lemmas, source):
         known[bare] = note["noteId"]
 
     existing = []
+    gendered_skipped = []
     new = []
     for lemma, pos, count in lemmas:
         if lemma.lower() in known:
             existing.append((lemma, known[lemma.lower()]))
         else:
-            new.append((lemma, pos, count))
+            # Skip feminine/masculine forms whose counterpart already exists
+            counterpart = _gendered_counterpart(lemma.lower())
+            if counterpart and counterpart in known:
+                gendered_skipped.append((lemma, counterpart))
+            else:
+                new.append((lemma, pos, count))
 
     # Tag existing notes with source
     if existing and source:
@@ -183,7 +208,12 @@ def check_existing_deck(lemmas, source):
             anki("addTags", notes=batch, tags=tag)
         print(f"  Tagged {len(existing)} existing notes with '{tag}'")
 
-    print(f"  Existing: {len(existing)}, New: {len(new)}")
+    if gendered_skipped:
+        print(f"  Skipped {len(gendered_skipped)} gendered duplicates:")
+        for fem, masc in gendered_skipped:
+            print(f"    {fem} (counterpart '{masc}' already in deck)")
+
+    print(f"  Existing: {len(existing)}, Gendered skips: {len(gendered_skipped)}, New: {len(new)}")
     return new
 
 
@@ -328,6 +358,7 @@ For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g
 - Sentences should be 5-15 words, NOT verbatim quotes from the source
 - "domains" is a comma-separated list of relevant topic domains
 - "note" is an optional usage note (empty if not needed)
+
 
 Words:
 {words_block}
@@ -478,6 +509,86 @@ def validate_batch(cards, source_text=None):
             print(f"  INVALID: {word} — {'; '.join(errors)}")
             error_count += 1
     return valid, error_count
+
+
+def check_duplicate_translations(cards):
+    """Warn about cards whose translation already exists in the deck.
+
+    For any match, prints a warning so the user can add disambiguation.
+    Does not block import — just informational.
+    """
+    # Fetch existing translations from deck
+    note_ids = anki("findNotes", query=f'deck:"{DECK}" "note:{MODEL}"')
+    if not note_ids:
+        return
+
+    existing_notes = anki("notesInfo", notes=note_ids)
+    existing_trans = {}  # lower translation -> list of words
+    for note in existing_notes:
+        word = note["fields"]["Word"]["value"]
+        trans = note["fields"]["WordTranslation"]["value"].strip().lower()
+        if trans:
+            existing_trans.setdefault(trans, []).append(word)
+
+    # Check new cards
+    warnings = []
+    for card in cards:
+        trans = card.get("translation", "").strip().lower()
+        if trans in existing_trans:
+            existing_words = existing_trans[trans]
+            if not card.get("disambiguation"):
+                warnings.append((card["word"], card["translation"], existing_words))
+
+    if warnings:
+        print(f"\n  WARNING: {len(warnings)} cards share a translation with "
+              f"existing deck words (consider adding disambiguation):")
+        for word, trans, existing in warnings:
+            print(f"    {word} → \"{trans}\" — also used by: "
+                  f"{', '.join(existing)}")
+        print()
+
+
+def dedup_gendered_pairs(cards):
+    """Remove gendered duplicates from a batch of cards.
+
+    If a batch contains both 'der Lehrer' and 'die Lehrerin', keep whichever
+    appears first. The -in/-erin suffix is regular and doesn't need a
+    separate card.
+    """
+    seen_bare = {}  # bare stem -> card word
+    keep = []
+    dropped = []
+
+    for card in cards:
+        word = card.get("word", "")
+        bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word,
+                      flags=re.IGNORECASE).strip().lower()
+
+        # Compute the stem that both gendered forms share
+        stem = bare
+        if bare.endswith("erin") and len(bare) > 5:
+            stem = bare[:-2]  # lehrerin -> lehrer
+        elif bare.endswith("in") and len(bare) > 3 and not bare.endswith("stein"):
+            stem = bare[:-2]  # freundin -> freund
+
+        counterpart = _gendered_counterpart(bare)
+        counterpart_stem = counterpart if counterpart else None
+
+        # Check if we've already seen this word's gendered counterpart
+        if counterpart_stem and counterpart_stem in seen_bare:
+            dropped.append((word, seen_bare[counterpart_stem]))
+        elif stem in seen_bare and stem != bare:
+            dropped.append((word, seen_bare[stem]))
+        else:
+            seen_bare[bare] = word
+            keep.append(card)
+
+    if dropped:
+        print(f"  Dropped {len(dropped)} gendered duplicate(s):")
+        for word, kept in dropped:
+            print(f"    {word} (keeping {kept})")
+
+    return keep
 
 
 # ── Stage 8: Import to Anki ──────────────────────────────────────────────────
@@ -866,6 +977,12 @@ def cmd_text(args):
         print("No valid cards generated.")
         return
 
+    # Check for duplicate translations against existing deck
+    check_duplicate_translations(all_cards)
+
+    # Dedup gendered pairs within batch
+    all_cards = dedup_gendered_pairs(all_cards)
+
     # Stage 8: Import to Anki
     print("\n── Stage 8: Import to Anki ──")
     imported = import_to_anki(
@@ -1079,6 +1196,7 @@ def cmd_domain(args):
 
     new_cards = []
     existing_count = 0
+    gendered_count = 0
     for card in result:
         word = card.get("word", "")
         bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word,
@@ -1091,9 +1209,17 @@ def cmd_domain(args):
             if matching:
                 anki("addTags", notes=matching, tags=f"source::{args.source}")
         else:
-            new_cards.append(card)
+            # Skip gendered duplicates
+            counterpart = _gendered_counterpart(bare)
+            if counterpart and counterpart in known_words:
+                gendered_count += 1
+                print(f"    Skipped gendered duplicate: {word} "
+                      f"(counterpart '{counterpart}' in deck)")
+            else:
+                new_cards.append(card)
 
-    print(f"  Existing: {existing_count}, New: {len(new_cards)}")
+    print(f"  Existing: {existing_count}, Gendered skips: {gendered_count}, "
+          f"New: {len(new_cards)}")
 
     if not new_cards:
         print("All generated words already in deck.")
@@ -1107,6 +1233,12 @@ def cmd_domain(args):
     if not valid:
         print("No valid cards after validation.")
         return
+
+    # Check for duplicate translations against existing deck
+    check_duplicate_translations(valid)
+
+    # Dedup gendered pairs within batch
+    valid = dedup_gendered_pairs(valid)
 
     # Stage 8: Import
     print("\n── Import to Anki ──")
