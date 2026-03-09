@@ -180,7 +180,7 @@ def check_existing_deck(lemmas, source):
         if "Word" not in note["fields"]:
             continue
         word = note["fields"]["Word"]["value"]
-        bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word, flags=re.IGNORECASE).strip().lower()
+        bare = re.sub(r"^(der|die|das|ein|eine|sich)\s+", "", word, flags=re.IGNORECASE).strip().lower()
         known[bare] = note["noteId"]
 
     existing = []
@@ -343,6 +343,7 @@ array (no markdown, no commentary).
 
 Rules:
 - For nouns: include the article (der/die/das) in the "word" field
+- For reflexive verbs: use "sich" + infinitive (e.g. "sich bemühen", not "bemühen (sich)")
 - "article" is "der", "die", or "das" for nouns, empty string for others
 - "translation" is a concise English translation (British English: colour, mum, favourite)
 - "disambiguation" clarifies meaning if the word has multiple common translations (else empty)
@@ -355,6 +356,8 @@ Copy-paste from the sentence — if the sentence has "den Apfel", cloze_word mus
 For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
+- For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
+(e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
 - "sentence_translation" is the English translation (British English)
 - Sentences should be 5-15 words, NOT verbatim quotes from the source
 - "domains" is a comma-separated list of relevant topic domains
@@ -365,7 +368,7 @@ Words:
 {words_block}
 Each element in the JSON array:
 {{
-  "word": "<word with article for nouns>",
+  "word": "<word with article for nouns, sich + infinitive for reflexive verbs>",
   "article": "<der|die|das or empty>",
   "translation": "<English translation>",
   "disambiguation": "<disambiguation or empty>",
@@ -831,6 +834,7 @@ Return ONLY a JSON array (no markdown, no commentary). Each element:
 
 Rules:
 - For nouns: include the article (der/die/das) in "word"
+- For reflexive verbs: use "sich" + infinitive (e.g. "sich bemühen", not "bemühen (sich)")
 - Generate exactly {num_sentences} sentence(s) per word in the "sentences" array
 - Each sentence should show the word in a DIFFERENT grammatical context \
 (different tenses, cases, nominalised forms, etc.)
@@ -839,6 +843,8 @@ Rules:
 - For separable verbs, use ~ (tilde) between separated parts (e.g. "machte~auf")
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
+- For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
+(e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
 - Use British English (colour, mum, favourite)
 - Mix word types: nouns, verbs, adjectives, adverbs
 - Choose words that are practical and commonly used in the domain
@@ -893,6 +899,8 @@ Rules:
 - For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
+- For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
+(e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
 - Sentences should be 5-15 words
 - Use British English for translations (colour, mum, favourite)
 
