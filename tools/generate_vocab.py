@@ -322,6 +322,8 @@ Rules:
 - Each sentence entry has its own "pos" (noun|verb|adjective|adverb) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive). \
 For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
+- For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
+(e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
 - "sentence_translation" is the English translation (British English)
 - Sentences should be 5-15 words, NOT verbatim quotes from the source
 - "domains" is a comma-separated list of relevant topic domains
@@ -610,6 +612,8 @@ Rules:
 - Each sentence entry has its own "pos" and "cloze_word"
 - "cloze_word" must be an exact substring of "sentence" (case-sensitive)
 - For separable verbs, use ~ (tilde) between separated parts (e.g. "machte~auf")
+- For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
+(e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
 - Use British English (colour, mum, favourite)
 - Mix word types: nouns, verbs, adjectives, adverbs
 - Choose words that are practical and commonly used in the domain
@@ -662,6 +666,8 @@ Rules:
 - Each sentence entry has its own "pos" (noun|verb|adjective|adverb) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive)
 - For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
+- For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
+(e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
 - Sentences should be 5-15 words
 - Use British English for translations (colour, mum, favourite)
 

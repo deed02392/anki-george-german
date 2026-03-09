@@ -227,10 +227,11 @@ VOCAB_CLASSES = """
 /* ── Cloze ── */
 .cloze-blank {
   display: inline-block;
-  min-width: 72px;
+  min-width: 2.5em;
   border-bottom: 2px solid var(--accent-de);
   border-radius: 4px 4px 0 0;
   padding: 1px 4px;
+  margin: 0 2px;
   color: transparent;
   user-select: none;
   animation: urgency-blank 10s linear forwards;
