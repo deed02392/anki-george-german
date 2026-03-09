@@ -351,6 +351,7 @@ Rules:
 (different tenses, cases, nominalised forms, etc.)
 - Each sentence entry has its own "pos" (noun|verb|adjective|adverb) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive). \
+Copy-paste from the sentence — if the sentence has "den Apfel", cloze_word must be "den Apfel" not "Der Apfel". \
 For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
@@ -429,6 +430,107 @@ def enrich_batch(batch, token, context_summary, source_text=None,
 
 # ── Stage 7: Quality validation ──────────────────────────────────────────────
 
+_ARTICLES_RE = re.compile(
+    r'^(der|die|das|den|dem|des|ein|eine|einen|einem|eines|einer|'
+    r'kein|keine|keinen|keinem|keines|keiner|'
+    r'dieser|diese|dieses|diesen|diesem|jeder|jede|jedes|jeden|jedem)\s+',
+    re.IGNORECASE,
+)
+
+
+def normalise_cloze(card):
+    """Fix common LLM cloze_word issues before validation.
+
+    Fixes applied:
+    1. Case correction: 'Der Meister' → 'den Meister' if case-insensitive match
+    2. Article form mismatch: if cloze_word 'Der Schachmeister' isn't in the
+       sentence but the bare noun 'Schachmeister' is, find the actual preceding
+       article in the sentence and rebuild the cloze_word
+    3. Strip leading 'NOT:' from disambiguation
+    """
+    sentences = card.get("sentences")
+    if not sentences:
+        return card
+
+    repairs = []
+
+    for sent in sentences:
+        sentence = sent.get("sentence", "")
+        cloze = sent.get("cloze_word", "")
+        if not sentence or not cloze:
+            continue
+
+        parts = [p.strip() for p in cloze.split("~") if p.strip()]
+        new_parts = []
+        for part in parts:
+            if part in sentence:
+                new_parts.append(part)
+                continue
+
+            # Try case-insensitive match
+            idx = sentence.lower().find(part.lower())
+            if idx >= 0:
+                actual = sentence[idx:idx + len(part)]
+                new_parts.append(actual)
+                repairs.append(f"case fix: '{part}' → '{actual}'")
+                continue
+
+            # Try stripping article and finding bare noun in sentence,
+            # then rebuilding with article + any adjectives + noun
+            m = _ARTICLES_RE.match(part)
+            if m:
+                bare = part[m.end():]
+                # Find the bare noun in the sentence
+                bare_idx = sentence.find(bare)
+                if bare_idx < 0:
+                    # Try case-insensitive bare noun search
+                    bare_idx_ci = sentence.lower().find(bare.lower())
+                    if bare_idx_ci >= 0:
+                        bare = sentence[bare_idx_ci:bare_idx_ci + len(bare)]
+                        bare_idx = bare_idx_ci
+
+                if bare_idx > 0:
+                    # Walk backwards from the noun to find the nearest article
+                    before = sentence[:bare_idx].rstrip()
+                    if before:
+                        words_before = before.split()
+                        rebuilt = None
+                        for j in range(len(words_before) - 1, -1, -1):
+                            w = words_before[j].strip(".,;:!?\"'()[]{}–—")
+                            if _ARTICLES_RE.match(w + " "):
+                                # Grab from article through to end of noun
+                                art_start = sentence.find(
+                                    words_before[j],
+                                    len(" ".join(words_before[:j]))
+                                )
+                                rebuilt = sentence[art_start:bare_idx + len(bare)]
+                                break
+                        if rebuilt and rebuilt in sentence:
+                            new_parts.append(rebuilt)
+                            repairs.append(
+                                f"noun phrase fix: '{part}' → '{rebuilt}'"
+                            )
+                            continue
+
+            new_parts.append(part)
+
+            new_parts.append(part)
+
+        sent["cloze_word"] = "~".join(new_parts)
+
+    # Strip 'NOT: ' from disambiguation
+    disambig = card.get("disambiguation", "")
+    if disambig.startswith("NOT: ") or disambig.startswith("NOT:"):
+        cleaned = disambig.removeprefix("NOT: ").removeprefix("NOT:")
+        repairs.append("stripped 'NOT:' from disambiguation")
+        card["disambiguation"] = cleaned
+
+    if repairs:
+        print(f"  REPAIR {card.get('word', '?')}: {'; '.join(repairs)}")
+
+    return card
+
+
 def validate_card(card, source_text=None):
     """Validate a single enriched card. Returns (is_valid, errors)."""
     errors = []
@@ -501,6 +603,7 @@ def validate_batch(cards, source_text=None):
     valid = []
     error_count = 0
     for card in cards:
+        card = normalise_cloze(card)
         is_valid, errors = validate_card(card, source_text)
         if is_valid:
             valid.append(card)
@@ -636,20 +739,26 @@ def import_to_anki(cards, source, domains_override, phase, dry_run=False):
         })
 
     if dry_run:
-        print(f"\n[dry-run] Would import {len(anki_notes)} notes:")
+        print(f"\n[dry-run] Would import {len(anki_notes)} notes:\n")
         for n in anki_notes:
             f = n["fields"]
-            print(f"  {f['Word']:<30} {f['WordTranslation']:<25} "
-                  f"[{f['POS']}] P{f['Phase']}")
-            # Show each sentence variant
+            article_str = f" ({f['Article']})" if f["Article"] else ""
+            disambig_str = f"  NOT: {f['WordTranslationDisambiguate']}" if f["WordTranslationDisambiguate"] else ""
+            print(f"  {f['Word']}{article_str:<6} → {f['WordTranslation']}{disambig_str}")
+            # Show each sentence variant with POS
             sents = f["Sentence"].split("|")
             clozes = f["ClozeWord"].split("|")
             trans = f["SentenceTranslation"].split("|")
-            for i, (s, c, t) in enumerate(zip(sents, clozes, trans)):
-                label = f"  [{i+1}]" if len(sents) > 1 else "    "
-                print(f"  {label} {s[:80]}")
-                print(f"       ClozeWord: {c}")
-                print(f"       EN: {t[:80]}")
+            poses = f["POS"].split("|")
+            for i, (s, c, t, p) in enumerate(
+                zip(sents, clozes, trans, poses)
+            ):
+                print(f"    [{i+1}] [{p}] {s}")
+                print(f"        cloze: {c}")
+                print(f"        EN: {t}")
+            if f.get("Note"):
+                print(f"    note: {f['Note']}")
+            print()
         return []
 
     # Import in batches of 50
@@ -931,10 +1040,7 @@ def cmd_text(args):
         return
 
     if args.dry_run and not args.enrich:
-        print(f"\n[dry-run] {len(new_lemmas)} words to generate:")
-        for lemma, pos, count in new_lemmas:
-            print(f"  {lemma:<30} [{pos}] (freq: {count})")
-        return
+        print(f"\n[dry-run] {len(new_lemmas)} words to generate")
 
     # Authenticate for LLM
     print("\n── Authenticating ──")

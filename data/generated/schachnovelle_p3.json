@@ -1,0 +1,1784 @@
+[
+  {
+    "word": "die Karriere",
+    "article": "die",
+    "translation": "career",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Karriere begann völlig unerwartet mit einem Turniersieg.",
+        "cloze_word": "Karriere",
+        "sentence_translation": "His career began completely unexpectedly with a tournament victory.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der Meister blickte auf eine erfolgreiche Karriere zurück.",
+        "cloze_word": "Karriere",
+        "sentence_translation": "The master looked back on a successful career.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, professional life, biography",
+    "note": ""
+  },
+  {
+    "word": "die Tat",
+    "article": "die",
+    "translation": "deed, act",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine erste große Tat war der Sieg gegen den Grossmeister.",
+        "cloze_word": "Tat",
+        "sentence_translation": "His first great deed was the victory against the grandmaster.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "In der Tat überraschte der junge Spieler alle Experten.",
+        "cloze_word": "der Tat",
+        "sentence_translation": "Indeed, the young player surprised all the experts.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, achievement, actions",
+    "note": "Often used in the phrase 'in der Tat' meaning 'indeed'"
+  },
+  {
+    "word": "erinnern",
+    "article": "",
+    "translation": "to remember, to remind",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Niemand konnte sich an seine frühen Schachpartien erinnern.",
+        "cloze_word": "erinnern",
+        "sentence_translation": "Nobody could remember his early chess games.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Der Pfarrer erinnerte ihn täglich an seine Aufgaben.",
+        "cloze_word": "erinnerte",
+        "sentence_translation": "The priest reminded him daily of his duties.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "memory, chess, education",
+    "note": "Reflexive 'sich erinnern an' means 'to remember'"
+  },
+  {
+    "word": "jung",
+    "article": "",
+    "translation": "young",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der junge Champion verblüffte die erfahrenen Meister.",
+        "cloze_word": "junge",
+        "sentence_translation": "The young champion amazed the experienced masters.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Als Junge zeigte er bereits außergewöhnliche Fähigkeiten.",
+        "cloze_word": "Junge",
+        "sentence_translation": "As a boy, he already showed extraordinary abilities.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "age, chess prodigies, biography",
+    "note": "Can be used as noun 'der Junge' meaning 'the boy'"
+  },
+  {
+    "word": "der Weltmeister",
+    "article": "der",
+    "translation": "world champion",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der neue Weltmeister stammte aus einfachen Verhältnissen.",
+        "cloze_word": "Der neue Weltmeister",
+        "sentence_translation": "The new world champion came from humble circumstances.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Alle träumten davon, einmal Weltmeister zu werden.",
+        "cloze_word": "Weltmeister",
+        "sentence_translation": "Everyone dreamt of becoming world champion one day.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, competition, titles",
+    "note": ""
+  },
+  {
+    "word": "sogar",
+    "article": "",
+    "translation": "even",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Sogar berühmte Meister respektierten sein außergewöhnliches Talent.",
+        "cloze_word": "Sogar",
+        "sentence_translation": "Even famous masters respected his extraordinary talent.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Er konnte sogar komplizierte Stellungen mühelos analysieren.",
+        "cloze_word": "sogar",
+        "sentence_translation": "He could even analyse complicated positions effortlessly.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "emphasis, chess abilities, surprise",
+    "note": ""
+  },
+  {
+    "word": "die Einzelheit",
+    "article": "die",
+    "translation": "detail",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Jede Einzelheit seiner Partien wurde von Experten studiert.",
+        "cloze_word": "Einzelheit",
+        "sentence_translation": "Every detail of his games was studied by experts.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "In den Einzelheiten zeigte sich sein wahres Genie.",
+        "cloze_word": "den Einzelheiten",
+        "sentence_translation": "His true genius showed itself in the details.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess analysis, precision, study",
+    "note": "Often used in plural 'die Einzelheiten'"
+  },
+  {
+    "word": "der Zusammenhang",
+    "article": "der",
+    "translation": "connection, context",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Zusammenhang zwischen Talent und Erfolg war offensichtlich.",
+        "cloze_word": "Der Zusammenhang",
+        "sentence_translation": "The connection between talent and success was obvious.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Seine Züge standen in keinem logischen Zusammenhang.",
+        "cloze_word": "Zusammenhang",
+        "sentence_translation": "His moves had no logical connection.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "logic, chess strategy, relationships",
+    "note": ""
+  },
+  {
+    "word": "raketenhaft",
+    "article": "",
+    "translation": "meteoric, rocket-like",
+    "disambiguation": "describing rapid rise or speed",
+    "sentences": [
+      {
+        "sentence": "Sein raketenhafter Aufstieg überraschte die Schachwelt.",
+        "cloze_word": "raketenhafter",
+        "sentence_translation": "His meteoric rise surprised the chess world.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Die Karriere entwickelte sich raketenhaft schnell.",
+        "cloze_word": "raketenhaft",
+        "sentence_translation": "The career developed with meteoric speed.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "speed, success, chess careers",
+    "note": "Figurative use describing very rapid progress"
+  },
+  {
+    "word": "aufmerksam",
+    "article": "",
+    "translation": "attentive, observant",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der aufmerksame Pfarrer bemerkte sein ungewöhnliches Talent.",
+        "cloze_word": "aufmerksame",
+        "sentence_translation": "The attentive priest noticed his unusual talent.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Er verfolgte aufmerksam jede Bewegung seines Gegners.",
+        "cloze_word": "aufmerksam",
+        "sentence_translation": "He attentively followed every movement of his opponent.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "observation, chess playing, attention",
+    "note": ""
+  },
+  {
+    "word": "der Zeitungsleser",
+    "article": "der",
+    "translation": "newspaper reader",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Zeitungsleser verfolgte aufmerksam die Schachberichte aus aller Welt.",
+        "cloze_word": "Der Zeitungsleser",
+        "sentence_translation": "The newspaper reader followed the chess reports from around the world attentively.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Viele Zeitungsleser kannten bereits den Namen des jungen Meisters.",
+        "cloze_word": "Zeitungsleser",
+        "sentence_translation": "Many newspaper readers already knew the name of the young master.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "media,chess,literature",
+    "note": ""
+  },
+  {
+    "word": "die Reihe",
+    "article": "die",
+    "translation": "row, series",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Eine ganze Reihe berühmter Schachmeister hatte er bereits besiegt.",
+        "cloze_word": "Reihe",
+        "sentence_translation": "He had already defeated a whole series of famous chess masters.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "In den vorderen Reihen saßen die erfahrensten Spieler.",
+        "cloze_word": "Reihen",
+        "sentence_translation": "The most experienced players sat in the front rows.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess,general",
+    "note": ""
+  },
+  {
+    "word": "die Anekdote",
+    "article": "die",
+    "translation": "anecdote",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Über seine bescheidenen Anfänge kursierten viele merkwürdige Anekdoten.",
+        "cloze_word": "Anekdoten",
+        "sentence_translation": "Many strange anecdotes circulated about his modest beginnings.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der Priester erzählte gern diese Anekdote über seinen ehemaligen Schützling.",
+        "cloze_word": "diese Anekdote",
+        "sentence_translation": "The priest liked to tell this anecdote about his former protégé.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "literature,storytelling",
+    "note": ""
+  },
+  {
+    "word": "ergänzen",
+    "article": "",
+    "translation": "to supplement, to add",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Kenntnisse der Eröffnungstheorie musste er noch ergänzen.",
+        "cloze_word": "ergänzen",
+        "sentence_translation": "He still had to supplement his knowledge of opening theory.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Der Autor ergänzte seine Erzählung um weitere interessante Details.",
+        "cloze_word": "ergänzte",
+        "sentence_translation": "The author added further interesting details to his story.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "general,chess,literature",
+    "note": ""
+  },
+  {
+    "word": "etwa",
+    "article": "",
+    "translation": "about, approximately",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Mit etwa zwölf Jahren verlor er seinen Vater.",
+        "cloze_word": "etwa",
+        "sentence_translation": "At about twelve years old, he lost his father.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Das Turnier dauerte etwa drei Wochen lang.",
+        "cloze_word": "etwa",
+        "sentence_translation": "The tournament lasted for about three weeks.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "general,time",
+    "note": ""
+  },
+  {
+    "word": "das Jahr",
+    "article": "das",
+    "translation": "year",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "In diesem Jahr gewann er seinen ersten großen Titel.",
+        "cloze_word": "Jahr",
+        "sentence_translation": "This year he won his first major title.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Die Jahre seiner Kindheit waren von großer Armut geprägt.",
+        "cloze_word": "Jahre",
+        "sentence_translation": "The years of his childhood were marked by great poverty.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "time,general",
+    "note": ""
+  },
+  {
+    "word": "der Schlag",
+    "article": "der",
+    "translation": "blow, stroke",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der überraschende Schlag des jungen Meisters verblüfte alle Experten.",
+        "cloze_word": "Der überraschende Schlag",
+        "sentence_translation": "The surprising move of the young master astonished all experts.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Mit einem einzigen brillanten Schlag entschied er die Partie.",
+        "cloze_word": "Schlag",
+        "sentence_translation": "With a single brilliant move he decided the game.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess,general",
+    "note": ""
+  },
+  {
+    "word": "bewährt",
+    "article": "",
+    "translation": "proven, tried and tested",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine bewährte Spielweise brachte ihm viele Siege ein.",
+        "cloze_word": "bewährte",
+        "sentence_translation": "His proven playing style brought him many victories.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Die alten, bewährten Methoden versagten gegen den Newcomer.",
+        "cloze_word": "bewährten",
+        "sentence_translation": "The old, tried and tested methods failed against the newcomer.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "chess,general",
+    "note": ""
+  },
+  {
+    "word": "der Altmeister",
+    "article": "der",
+    "translation": "old master, veteran master",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Selbst erfahrene Altmeister konnten seine Züge nicht verstehen.",
+        "cloze_word": "Altmeister",
+        "sentence_translation": "Even experienced old masters could not understand his moves.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der ehrwürdige Altmeister musste sich dem jungen Talent geschlagen geben.",
+        "cloze_word": "Der ehrwürdige Altmeister",
+        "sentence_translation": "The venerable old master had to admit defeat to the young talent.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess,expertise",
+    "note": ""
+  },
+  {
+    "word": "die Schachkunst",
+    "article": "die",
+    "translation": "art of chess",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine außergewöhnliche Begabung für die Schachkunst war unbestritten.",
+        "cloze_word": "die Schachkunst",
+        "sentence_translation": "His extraordinary talent for the art of chess was undisputed.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Trotz seiner Bildung verstand er nur wenig von der Schachkunst.",
+        "cloze_word": "der Schachkunst",
+        "sentence_translation": "Despite his education, he understood little of the art of chess.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess,art",
+    "note": ""
+  },
+  {
+    "word": "stellen",
+    "article": "",
+    "translation": "to place, to put",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Trainer stellte den jungen Schachspieler vor eine schwierige Aufgabe.",
+        "cloze_word": "stellte",
+        "sentence_translation": "The trainer set the young chess player a difficult task.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Man wird ihn bald zu den grossen Meistern stellen müssen.",
+        "cloze_word": "stellen",
+        "sentence_translation": "One will soon have to place him amongst the great masters.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "chess, competition, education",
+    "note": ""
+  },
+  {
+    "word": "das Auftreten",
+    "article": "das",
+    "translation": "appearance, emergence",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Sein plötzliches Auftreten überraschte die Schachwelt völlig.",
+        "cloze_word": "Auftreten",
+        "sentence_translation": "His sudden emergence completely surprised the chess world.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Das bescheidene Auftreten des Champions täuschte über sein Talent hinweg.",
+        "cloze_word": "Das bescheidene Auftreten",
+        "sentence_translation": "The champion's modest appearance was deceptive about his talent.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, appearance, competition",
+    "note": ""
+  },
+  {
+    "word": "siebenjährig",
+    "article": "",
+    "translation": "seven-year-old",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der siebenjährige Junge zeigte bereits aussergewöhnliche Begabung.",
+        "cloze_word": "siebenjährige",
+        "sentence_translation": "The seven-year-old boy already showed extraordinary talent.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Nach siebenjähriger Ausbildung war er endlich bereit für Turniere.",
+        "cloze_word": "siebenjähriger",
+        "sentence_translation": "After seven years of training he was finally ready for tournaments.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "age, education, chess",
+    "note": ""
+  },
+  {
+    "word": "das Wunderkind",
+    "article": "das",
+    "translation": "child prodigy",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Das Wunderkind gewann sein erstes Turnier mit zwölf Jahren.",
+        "cloze_word": "Das Wunderkind",
+        "sentence_translation": "The child prodigy won his first tournament at twelve years old.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Alle sprachen über das neue Wunderkind aus dem Dorf.",
+        "cloze_word": "das neue Wunderkind",
+        "sentence_translation": "Everyone was talking about the new child prodigy from the village.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, talent, youth",
+    "note": ""
+  },
+  {
+    "word": "das Schachturnier",
+    "article": "das",
+    "translation": "chess tournament",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Das internationale Schachturnier dauerte drei Wochen.",
+        "cloze_word": "Das internationale Schachturnier",
+        "sentence_translation": "The international chess tournament lasted three weeks.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Er siegte in jedem Schachturnier, an dem er teilnahm.",
+        "cloze_word": "Schachturnier",
+        "sentence_translation": "He won every chess tournament he participated in.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, competition, tournaments",
+    "note": ""
+  },
+  {
+    "word": "völlig",
+    "article": "",
+    "translation": "completely",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Niederlage kam für alle völlig unerwartet.",
+        "cloze_word": "völlig",
+        "sentence_translation": "His defeat came completely unexpectedly for everyone.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Der junge Meister war völlig unbekannt gewesen.",
+        "cloze_word": "völlig",
+        "sentence_translation": "The young master had been completely unknown.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "emphasis, completeness",
+    "note": ""
+  },
+  {
+    "word": "der Unbekannte",
+    "article": "der",
+    "translation": "unknown person",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Unbekannte besiegte alle erfahrenen Spieler mühelos.",
+        "cloze_word": "Der Unbekannte",
+        "sentence_translation": "The unknown person defeated all experienced players effortlessly.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Niemand hatte von diesem Unbekannten je gehört.",
+        "cloze_word": "diesem Unbekannten",
+        "sentence_translation": "No one had ever heard of this unknown person.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, mystery, competition",
+    "note": ""
+  },
+  {
+    "word": "ruhmreich",
+    "article": "",
+    "translation": "glorious",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine ruhmreiche Laufbahn begann mit einem überraschenden Sieg.",
+        "cloze_word": "ruhmreiche",
+        "sentence_translation": "His glorious career began with a surprising victory.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Der Champion blickte auf ruhmreiche Jahrzehnte zurück.",
+        "cloze_word": "ruhmreiche",
+        "sentence_translation": "The champion looked back on glorious decades.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "chess, success, fame",
+    "note": ""
+  },
+  {
+    "word": "die Gilde",
+    "article": "die",
+    "translation": "guild",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Die alte Gilde der Schachmeister nahm ihn widerwillig auf.",
+        "cloze_word": "Die alte Gilde",
+        "sentence_translation": "The old guild of chess masters reluctantly accepted him.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Er gehörte nun zur ehrwürdigen Gilde der Grossmeister.",
+        "cloze_word": "zur ehrwürdigen Gilde",
+        "sentence_translation": "He now belonged to the venerable guild of grandmasters.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, tradition, membership",
+    "note": ""
+  },
+  {
+    "word": "derart",
+    "article": "",
+    "translation": "to such an extent",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Sein Talent war derart aussergewöhnlich, dass alle staunten.",
+        "cloze_word": "derart",
+        "sentence_translation": "His talent was extraordinary to such an extent that everyone was amazed.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Die Überraschung war derart gross, dass niemand sprach.",
+        "cloze_word": "derart",
+        "sentence_translation": "The surprise was great to such an extent that no one spoke.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "emphasis, degree, intensity",
+    "note": ""
+  },
+  {
+    "word": "allgemein",
+    "article": "",
+    "translation": "general",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der junge Meister war für seine allgemeine Bildung nicht bekannt.",
+        "cloze_word": "allgemeine",
+        "sentence_translation": "The young master was not known for his general education.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Im Allgemeinen zeigten sich seine Schwächen außerhalb des Schachs.",
+        "cloze_word": "Allgemeinen",
+        "sentence_translation": "In general, his weaknesses showed outside of chess.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "education,chess,literature",
+    "note": ""
+  },
+  {
+    "word": "erregen",
+    "article": "",
+    "translation": "to arouse",
+    "disambiguation": "to cause, provoke, or generate",
+    "sentences": [
+      {
+        "sentence": "Sein plötzlicher Aufstieg erregte großes Aufsehen in Schachkreisen.",
+        "cloze_word": "erregte",
+        "sentence_translation": "His sudden rise aroused great attention in chess circles.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Die Nachricht wird sicherlich Neugier bei den Journalisten erregen.",
+        "cloze_word": "erregen",
+        "sentence_translation": "The news will certainly arouse curiosity amongst the journalists.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "chess,journalism,literature",
+    "note": ""
+  },
+  {
+    "word": "intellektuell",
+    "article": "",
+    "translation": "intellectual",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine intellektuellen Fähigkeiten beschränkten sich auf das Schachspiel.",
+        "cloze_word": "intellektuellen",
+        "sentence_translation": "His intellectual abilities were limited to the game of chess.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Der Pfarrer zweifelte an den intellektuellen Fortschritten des Jungen.",
+        "cloze_word": "intellektuellen",
+        "sentence_translation": "The priest doubted the boy's intellectual progress.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "education,chess,psychology",
+    "note": ""
+  },
+  {
+    "word": "die Eigenschaft",
+    "article": "die",
+    "translation": "characteristic",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Diese besondere Eigenschaft machte ihn zu einem rätselhaften Champion.",
+        "cloze_word": "Eigenschaft",
+        "sentence_translation": "This particular characteristic made him an enigmatic champion.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der Meister besaß die Eigenschaften eines wahren Genies.",
+        "cloze_word": "die Eigenschaften",
+        "sentence_translation": "The master possessed the characteristics of a true genius.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "psychology,chess,character",
+    "note": ""
+  },
+  {
+    "word": "scheinen",
+    "article": "",
+    "translation": "to seem",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der stumme Junge schien für das Lernen ungeeignet.",
+        "cloze_word": "schien",
+        "sentence_translation": "The silent boy seemed unsuited for learning.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Seine Erfolge scheinen allen Erwartungen zu widersprechen.",
+        "cloze_word": "scheinen",
+        "sentence_translation": "His successes seem to contradict all expectations.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "education,chess,perception",
+    "note": ""
+  },
+  {
+    "word": "keineswegs",
+    "article": "",
+    "translation": "by no means",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Weltmeister war keineswegs ein begabter Schüler gewesen.",
+        "cloze_word": "keineswegs",
+        "sentence_translation": "The world champion had by no means been a gifted pupil.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Seine Sprachkenntnisse waren keineswegs beeindruckend für einen Weltreisenden.",
+        "cloze_word": "keineswegs",
+        "sentence_translation": "His language skills were by no means impressive for a world traveller.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "education,chess,language",
+    "note": ""
+  },
+  {
+    "word": "blendend",
+    "article": "",
+    "translation": "brilliant",
+    "disambiguation": "dazzling, excellent",
+    "sentences": [
+      {
+        "sentence": "Am Schachbrett zeigte er eine blendende Spieltechnik.",
+        "cloze_word": "blendende",
+        "sentence_translation": "At the chessboard he showed brilliant playing technique.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Der junge Champion spielte blendend gegen erfahrene Großmeister.",
+        "cloze_word": "blendend",
+        "sentence_translation": "The young champion played brilliantly against experienced grandmasters.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "chess,performance,excellence",
+    "note": ""
+  },
+  {
+    "word": "vornherein",
+    "article": "",
+    "translation": "from the outset",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Von vornherein schien der Knabe für Bücher ungeeignet.",
+        "cloze_word": "vornherein",
+        "sentence_translation": "From the outset the lad seemed unsuited for books.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Man hatte von vornherein wenig Hoffnung in seine Bildung gesetzt.",
+        "cloze_word": "vornherein",
+        "sentence_translation": "One had placed little hope in his education from the outset.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "education,expectations,time",
+    "note": "Usually used in the phrase 'von vornherein'"
+  },
+  {
+    "word": "weissagen",
+    "article": "",
+    "translation": "to prophesy",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Niemand konnte seinen Erfolg im Schach weissagen.",
+        "cloze_word": "weissagen",
+        "sentence_translation": "Nobody could prophesy his success in chess.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Der alte Pfarrer hatte diese Wendung nicht weissagen können.",
+        "cloze_word": "weissagen",
+        "sentence_translation": "The old priest had not been able to prophesy this turn of events.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "prediction,fate,literature",
+    "note": ""
+  },
+  {
+    "word": "sickern",
+    "article": "",
+    "translation": "to seep",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Die Nachricht von seinem Triumph sickerte langsam durch Europa.",
+        "cloze_word": "sickerte",
+        "sentence_translation": "News of his triumph slowly seeped through Europe.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Gerüchte über den jungen Champion sickern durch die Schachwelt.",
+        "cloze_word": "sickern",
+        "sentence_translation": "Rumours about the young champion seep through the chess world.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "news,chess,information",
+    "note": ""
+  },
+  {
+    "word": "das Geheimnis",
+    "article": "das",
+    "translation": "secret",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Das Geheimnis seines Erfolgs blieb allen Schachexperten verborgen.",
+        "cloze_word": "Das Geheimnis",
+        "sentence_translation": "The secret of his success remained hidden from all chess experts.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Er hütete die Geheimnisse seiner Spielvorbereitung sehr sorgfältig.",
+        "cloze_word": "Geheimnisse",
+        "sentence_translation": "He guarded the secrets of his game preparation very carefully.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, mystery, personal life",
+    "note": ""
+  },
+  {
+    "word": "der Schachmeister",
+    "article": "der",
+    "translation": "chess master",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der junge Schachmeister überraschte die internationale Fachwelt.",
+        "cloze_word": "Der junge Schachmeister",
+        "sentence_translation": "The young chess master surprised the international expert community.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Viele Schachmeister konnten seine Spielweise nicht verstehen.",
+        "cloze_word": "Schachmeister",
+        "sentence_translation": "Many chess masters could not understand his style of play.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, sports, competition",
+    "note": ""
+  },
+  {
+    "word": "das Privatleben",
+    "article": "das",
+    "translation": "private life",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Sein Privatleben interessierte die Journalisten mehr als seine Siege.",
+        "cloze_word": "Privatleben",
+        "sentence_translation": "His private life interested the journalists more than his victories.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Details über das Privatleben des Meisters blieben unbekannt.",
+        "cloze_word": "das Privatleben",
+        "sentence_translation": "Details about the master's private life remained unknown.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "personal life, privacy, biography",
+    "note": ""
+  },
+  {
+    "word": "außerstande",
+    "article": "",
+    "translation": "unable",
+    "disambiguation": "incapable of doing something",
+    "sentences": [
+      {
+        "sentence": "Er war außerstande, seine Gedanken klar auszudrücken.",
+        "cloze_word": "außerstande",
+        "sentence_translation": "He was unable to express his thoughts clearly.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Der Champion schien außerstande, einfache Fragen zu beantworten.",
+        "cloze_word": "außerstande",
+        "sentence_translation": "The champion seemed unable to answer simple questions.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "ability, limitation, communication",
+    "note": "Always used with 'sein' + 'zu' + infinitive"
+  },
+  {
+    "word": "die Sprache",
+    "article": "die",
+    "translation": "language",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Muttersprache beherrschte er nur unvollkommen.",
+        "cloze_word": "Muttersprache",
+        "sentence_translation": "He mastered his mother tongue only imperfectly.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "In fremden Sprachen konnte er sich kaum verständigen.",
+        "cloze_word": "Sprachen",
+        "sentence_translation": "He could hardly communicate in foreign languages.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "language, communication, education",
+    "note": ""
+  },
+  {
+    "word": "der Satz",
+    "article": "der",
+    "translation": "sentence",
+    "disambiguation": "grammatical unit",
+    "sentences": [
+      {
+        "sentence": "Jeder Satz enthielt mehrere grammatische Fehler.",
+        "cloze_word": "Jeder Satz",
+        "sentence_translation": "Every sentence contained several grammatical errors.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Er konnte keine fehlerfreien Sätze formulieren.",
+        "cloze_word": "Sätze",
+        "sentence_translation": "He could not formulate error-free sentences.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "language, grammar, writing",
+    "note": ""
+  },
+  {
+    "word": "orthographisch",
+    "article": "",
+    "translation": "orthographic",
+    "disambiguation": "relating to spelling",
+    "sentences": [
+      {
+        "sentence": "Seine orthographischen Kenntnisse waren äußerst mangelhaft.",
+        "cloze_word": "orthographischen",
+        "sentence_translation": "His orthographic knowledge was extremely deficient.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Der Brief war orthographisch völlig fehlerhaft geschrieben.",
+        "cloze_word": "orthographisch",
+        "sentence_translation": "The letter was written with complete orthographic errors.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "language, spelling, education",
+    "note": ""
+  },
+  {
+    "word": "der Fehler",
+    "article": "der",
+    "translation": "mistake",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Briefe wimmelten von peinlichen Fehlern.",
+        "cloze_word": "Fehlern",
+        "sentence_translation": "His letters were teeming with embarrassing mistakes.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der offensichtliche Fehler entging niemandem.",
+        "cloze_word": "Der offensichtliche Fehler",
+        "sentence_translation": "The obvious mistake escaped no one's notice.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "language, education, criticism",
+    "note": ""
+  },
+  {
+    "word": "verärgert",
+    "article": "",
+    "translation": "annoyed",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Die Journalisten waren verärgert über seine kurzen Antworten.",
+        "cloze_word": "verärgert",
+        "sentence_translation": "The journalists were annoyed by his brief answers.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Sein unhöfliches Verhalten verärgerte die anderen Spieler.",
+        "cloze_word": "verärgerte",
+        "sentence_translation": "His rude behaviour annoyed the other players.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "emotion, interpersonal relations, communication",
+    "note": ""
+  },
+  {
+    "word": "der Kollege",
+    "article": "der",
+    "translation": "colleague",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Kollegen respektierten nur sein Schachtalent.",
+        "cloze_word": "Kollegen",
+        "sentence_translation": "His colleagues respected only his chess talent.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der erfahrene Kollege gab ihm wertvolle Ratschläge.",
+        "cloze_word": "Der erfahrene Kollege",
+        "sentence_translation": "The experienced colleague gave him valuable advice.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "chess, professional relations, competition",
+    "note": ""
+  },
+  {
+    "word": "ingrimmig",
+    "article": "",
+    "translation": "furiously, with bitter anger",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Meister blickte ingrimmig auf das verlorene Spiel.",
+        "cloze_word": "ingrimmig",
+        "sentence_translation": "The master looked furiously at the lost game.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Sie schüttelte ingrimmig den Kopf über seine Dummheit.",
+        "cloze_word": "ingrimmig",
+        "sentence_translation": "She shook her head furiously at his stupidity.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "emotions, literature, chess",
+    "note": "literary register, expressing intense bitter anger"
+  },
+  {
+    "word": "spotten",
+    "article": "",
+    "translation": "to mock, to scoff",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Die anderen Spieler spotten über seine einfache Herkunft.",
+        "cloze_word": "spotten",
+        "sentence_translation": "The other players mock his humble origins.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Er hatte schon als Kind über die Gelehrten gespottet.",
+        "cloze_word": "gespottet",
+        "sentence_translation": "Even as a child he had scoffed at scholars.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "social interaction, literature, chess",
+    "note": "often used with preposition 'über'"
+  },
+  {
+    "word": "die Unbildung",
+    "article": "die",
+    "translation": "lack of education, ignorance",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Unbildung war in allen Gesprächen deutlich spürbar.",
+        "cloze_word": "Unbildung",
+        "sentence_translation": "His lack of education was clearly noticeable in all conversations.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Trotz ihrer Unbildung zeigte sie erstaunliche Intuition.",
+        "cloze_word": "Unbildung",
+        "sentence_translation": "Despite her ignorance, she showed remarkable intuition.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "education, social class, literature",
+    "note": ""
+  },
+  {
+    "word": "das Gebiet",
+    "article": "das",
+    "translation": "area, field, domain",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Auf diesem Gebiet war er ein absoluter Meister.",
+        "cloze_word": "Gebiet",
+        "sentence_translation": "In this field he was an absolute master.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Die Gebiete der Mathematik blieben ihm völlig fremd.",
+        "cloze_word": "Gebiete",
+        "sentence_translation": "The areas of mathematics remained completely foreign to him.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "knowledge, chess, education",
+    "note": ""
+  },
+  {
+    "word": "universell",
+    "article": "",
+    "translation": "universally, comprehensively",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Seine Begabung war nicht universell, sondern sehr spezifisch.",
+        "cloze_word": "universell",
+        "sentence_translation": "His talent was not universal, but very specific.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Der Professor dachte universell über alle Wissenschaften nach.",
+        "cloze_word": "universell",
+        "sentence_translation": "The professor thought comprehensively about all sciences.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "knowledge, education, chess",
+    "note": ""
+  },
+  {
+    "word": "der Sohn",
+    "article": "der",
+    "translation": "son",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Sohn des armen Schiffers wurde weltberühmt.",
+        "cloze_word": "Sohn",
+        "sentence_translation": "The son of the poor boatman became world-famous.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Als kleiner Sohn hatte er keine Bildung erhalten.",
+        "cloze_word": "Sohn",
+        "sentence_translation": "As a small son he had received no education.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "family, social class, biography",
+    "note": ""
+  },
+  {
+    "word": "blutarm",
+    "article": "",
+    "translation": "extremely poor, destitute",
+    "disambiguation": "literal: anaemic",
+    "sentences": [
+      {
+        "sentence": "Die bluturme Familie lebte in ärmlichsten Verhältnissen.",
+        "cloze_word": "bluturme",
+        "sentence_translation": "The destitute family lived in the most wretched conditions.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Er stammte aus blutarmen Verhältnissen am Fluss.",
+        "cloze_word": "blutarmen",
+        "sentence_translation": "He came from extremely poor circumstances by the river.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "poverty, social class, family",
+    "note": "figurative use meaning extremely poor"
+  },
+  {
+    "word": "südslawisch",
+    "article": "",
+    "translation": "South Slavic",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Er sprach einen südslawischen Dialekt aus seiner Heimat.",
+        "cloze_word": "südslawischen",
+        "sentence_translation": "He spoke a South Slavic dialect from his homeland.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Die südslawische Herkunft prägte seine frühe Kindheit.",
+        "cloze_word": "südslawische",
+        "sentence_translation": "His South Slavic origins shaped his early childhood.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "ethnicity, geography, language",
+    "note": ""
+  },
+  {
+    "word": "der Donauschiffer",
+    "article": "der",
+    "translation": "Danube boatman",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der alte Donauschiffer kannte jeden Flussabschnitt genau.",
+        "cloze_word": "Donauschiffer",
+        "sentence_translation": "The old Danube boatman knew every section of the river precisely.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Als Donauschiffer verdiente sein Vater nur wenig Geld.",
+        "cloze_word": "Donauschiffer",
+        "sentence_translation": "As a Danube boatman his father earned very little money.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "professions, rivers, social class",
+    "note": ""
+  },
+  {
+    "word": "winzig",
+    "article": "",
+    "translation": "tiny, minute",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Das winzige Dorf lag versteckt am Flussufer.",
+        "cloze_word": "winzige",
+        "sentence_translation": "The tiny village lay hidden on the riverbank.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Seine Handschrift war winzig und kaum lesbar.",
+        "cloze_word": "winzig",
+        "sentence_translation": "His handwriting was minute and barely readable.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "size, description, villages",
+    "note": ""
+  },
+  {
+    "word": "die Barke",
+    "article": "die",
+    "translation": "barge, small boat",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Die alte Barke trieb langsam den Fluss hinunter.",
+        "cloze_word": "Die alte Barke",
+        "sentence_translation": "The old barge drifted slowly down the river.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Der Fischer reparierte seine beschädigte Barke am Ufer.",
+        "cloze_word": "Barke",
+        "sentence_translation": "The fisherman repaired his damaged barge on the shore.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "transport, maritime, historical",
+    "note": ""
+  },
+  {
+    "word": "der Getreidedampfer",
+    "article": "der",
+    "translation": "grain steamer",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der schwer beladene Getreidedampfer verließ den Hafen bei Sonnenaufgang.",
+        "cloze_word": "Der schwer beladene Getreidedampfer",
+        "sentence_translation": "The heavily loaded grain steamer left the harbour at sunrise.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Auf dem Getreidedampfer arbeiteten viele arme Männer aus der Region.",
+        "cloze_word": "dem Getreidedampfer",
+        "sentence_translation": "Many poor men from the region worked on the grain steamer.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "transport, maritime, commerce, historical",
+    "note": ""
+  },
+  {
+    "word": "überrennen",
+    "article": "",
+    "translation": "to overrun, to overwhelm",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Die Ereignisse überrannten den jungen Mann völlig unerwartet.",
+        "cloze_word": "überrannten",
+        "sentence_translation": "The events overwhelmed the young man completely unexpectedly.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Der Erfolg wird ihn bald überrennen und alles verändern.",
+        "cloze_word": "überrennen",
+        "sentence_translation": "Success will soon overwhelm him and change everything.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "emotions, conflict, sudden change",
+    "note": ""
+  },
+  {
+    "word": "damals",
+    "article": "",
+    "translation": "at that time, back then",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Damals war das Leben auf dem Dorf noch sehr einfach.",
+        "cloze_word": "Damals",
+        "sentence_translation": "At that time, life in the village was still very simple.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Er erinnerte sich oft an die schweren Jahre damals.",
+        "cloze_word": "damals",
+        "sentence_translation": "He often remembered the difficult years back then.",
+        "pos": "adverb"
+      }
+    ],
+    "domains": "time, memory, historical",
+    "note": ""
+  },
+  {
+    "word": "der Zwölfjährige",
+    "article": "der",
+    "translation": "twelve-year-old",
+    "disambiguation": "boy or male person aged twelve",
+    "sentences": [
+      {
+        "sentence": "Der begabte Zwölfjährige gewann sein erstes Schachturnier überraschend.",
+        "cloze_word": "Der begabte Zwölfjährige",
+        "sentence_translation": "The gifted twelve-year-old surprisingly won his first chess tournament.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Niemand traute dem stillen Zwölfjährigen solche Fähigkeiten zu.",
+        "cloze_word": "dem stillen Zwölfjährigen",
+        "sentence_translation": "Nobody attributed such abilities to the quiet twelve-year-old.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "age, childhood, chess",
+    "note": "Adjectival noun; can refer to any twelve-year-old male"
+  },
+  {
+    "word": "der Tod",
+    "article": "der",
+    "translation": "death",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der plötzliche Tod des Vaters veränderte alles für den Jungen.",
+        "cloze_word": "Der plötzliche Tod",
+        "sentence_translation": "The sudden death of the father changed everything for the boy.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Nach dem Tod seiner Eltern lebte er bei Verwandten.",
+        "cloze_word": "dem Tod",
+        "sentence_translation": "After the death of his parents, he lived with relatives.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "life events, family, tragedy",
+    "note": ""
+  },
+  {
+    "word": "der Pfarrer",
+    "article": "der",
+    "translation": "priest, vicar",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der gütige Pfarrer nahm den Waisenjungen bei sich auf.",
+        "cloze_word": "Der gütige Pfarrer",
+        "sentence_translation": "The kind priest took in the orphaned boy.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Beim örtlichen Pfarrer lernte er die ersten Grundlagen des Lesens.",
+        "cloze_word": "Pfarrer",
+        "sentence_translation": "With the local priest, he learnt the first basics of reading.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "religion, education, village life",
+    "note": ""
+  },
+  {
+    "word": "abgelegen",
+    "article": "",
+    "translation": "remote, secluded",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Das abgelegene Dorf war nur schwer zu erreichen.",
+        "cloze_word": "abgelegene",
+        "sentence_translation": "The remote village was difficult to reach.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Er wuchs völlig abgelegen von der modernen Welt auf.",
+        "cloze_word": "abgelegen",
+        "sentence_translation": "He grew up completely secluded from the modern world.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "geography, isolation, rural life",
+    "note": ""
+  },
+  {
+    "word": "der Ort",
+    "article": "der",
+    "translation": "place, location",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der kleine Ort hatte nur wenige hundert Einwohner damals.",
+        "cloze_word": "Der kleine Ort",
+        "sentence_translation": "The small place had only a few hundred inhabitants back then.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "An diesem friedlichen Ort verbrachte er seine Kindheit.",
+        "cloze_word": "diesem friedlichen Ort",
+        "sentence_translation": "He spent his childhood in this peaceful place.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "geography, location, village life",
+    "note": ""
+  },
+  {
+    "word": "das Mitleid",
+    "article": "das",
+    "translation": "pity, compassion",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Aus Mitleid nahm der alte Mann den Waisen auf.",
+        "cloze_word": "Mitleid",
+        "sentence_translation": "Out of pity, the old man took in the orphan.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Das Mitleid der Dorfbewohner half dem jungen Mann sehr.",
+        "cloze_word": "Das Mitleid",
+        "sentence_translation": "The compassion of the villagers helped the young man greatly.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "emotions, charity, human relations",
+    "note": ""
+  },
+  {
+    "word": "aufnehmen",
+    "article": "",
+    "translation": "to take in, to receive, to admit",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Priester nahm den Waisenjungen in sein Haus auf.",
+        "cloze_word": "nahm~auf",
+        "sentence_translation": "The priest took the orphaned boy into his house.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Die Schule wird ihn trotz seiner schwachen Noten aufnehmen.",
+        "cloze_word": "aufnehmen",
+        "sentence_translation": "The school will admit him despite his weak grades.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "family, education, social care",
+    "note": "separable verb"
+  },
+  {
+    "word": "der Pater",
+    "article": "der",
+    "translation": "father (priest)",
+    "disambiguation": "Catholic priest title",
+    "sentences": [
+      {
+        "sentence": "Der Pater unterrichtete die Dorfkinder in Latein und Mathematik.",
+        "cloze_word": "Der Pater",
+        "sentence_translation": "The father taught the village children Latin and mathematics.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Mit großer Geduld erklärte ihm der alte Pater die Grundlagen.",
+        "cloze_word": "Pater",
+        "sentence_translation": "With great patience, the old father explained the basics to him.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "religion, education, clergy",
+    "note": ""
+  },
+  {
+    "word": "redlich",
+    "article": "",
+    "translation": "honestly, sincerely, earnestly",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Er gab sich redlich Mühe, dem Knaben etwas beizubringen.",
+        "cloze_word": "redlich",
+        "sentence_translation": "He made an honest effort to teach the lad something.",
+        "pos": "adverb"
+      },
+      {
+        "sentence": "Seine redlichen Absichten wurden leider nicht belohnt.",
+        "cloze_word": "redlichen",
+        "sentence_translation": "His sincere intentions were unfortunately not rewarded.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "character, morality, effort",
+    "note": ""
+  },
+  {
+    "word": "häuslich",
+    "article": "",
+    "translation": "domestic, homely",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der häusliche Unterricht war für ihn eine Qual.",
+        "cloze_word": "häusliche",
+        "sentence_translation": "The domestic lessons were torture for him.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Sie führte ein ruhiges, häusliches Leben im Dorf.",
+        "cloze_word": "häusliches",
+        "sentence_translation": "She led a quiet, domestic life in the village.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "home, education, lifestyle",
+    "note": ""
+  },
+  {
+    "word": "die Nachhilfe",
+    "article": "die",
+    "translation": "tutoring, extra tuition",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der schwache Schüler brauchte dringend Nachhilfe in Mathematik.",
+        "cloze_word": "Nachhilfe",
+        "sentence_translation": "The weak student urgently needed tutoring in mathematics.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "Trotz privater Nachhilfe verbesserten sich seine Leistungen nicht.",
+        "cloze_word": "Nachhilfe",
+        "sentence_translation": "Despite private tutoring, his performance did not improve.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "education, learning, support",
+    "note": ""
+  },
+  {
+    "word": "wettmachen",
+    "article": "",
+    "translation": "to make up for, to compensate",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Er hoffte, seine schlechten Noten durch Fleiß wettzumachen.",
+        "cloze_word": "wettzumachen",
+        "sentence_translation": "He hoped to make up for his poor grades through diligence.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Keine Anstrengung konnte seine natürliche Begabungslosigkeit wettmachen.",
+        "cloze_word": "wettmachen",
+        "sentence_translation": "No effort could compensate for his natural lack of talent.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "compensation, effort, achievement",
+    "note": "separable verb"
+  },
+  {
+    "word": "maulfaul",
+    "article": "",
+    "translation": "taciturn, tight-lipped",
+    "disambiguation": "reluctant to speak",
+    "sentences": [
+      {
+        "sentence": "Der maulfaule Junge antwortete nur mit Nicken oder Kopfschütteln.",
+        "cloze_word": "maulfaule",
+        "sentence_translation": "The taciturn boy only answered with nods or head shakes.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Seine maulfaule Art machte den Unterricht sehr schwierig.",
+        "cloze_word": "maulfaule",
+        "sentence_translation": "His tight-lipped manner made teaching very difficult.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "personality, communication, behaviour",
+    "note": "colloquial"
+  },
+  {
+    "word": "dumpf",
+    "article": "",
+    "translation": "dull, muffled, dim",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Sein dumpfer Blick verriet keine Regung des Verstandes.",
+        "cloze_word": "dumpfer",
+        "sentence_translation": "His dull gaze betrayed no stirring of understanding.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Die Kinder starrten ihn mit dumpfem Unverständnis an.",
+        "cloze_word": "dumpfem",
+        "sentence_translation": "The children stared at him with dim incomprehension.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "intelligence, perception, mental state",
+    "note": ""
+  },
+  {
+    "word": "breitstirnig",
+    "article": "",
+    "translation": "broad-browed, having a wide forehead",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der breitstirnige Knabe wirkte älter als seine Jahre.",
+        "cloze_word": "breitstirnige",
+        "sentence_translation": "The broad-browed lad seemed older than his years.",
+        "pos": "adjective"
+      },
+      {
+        "sentence": "Sein breitstirniges Gesicht zeigte keinerlei Ausdruck von Intelligenz.",
+        "cloze_word": "breitstirniges",
+        "sentence_translation": "His wide-foreheaded face showed no expression of intelligence.",
+        "pos": "adjective"
+      }
+    ],
+    "domains": "physical appearance, facial features",
+    "note": ""
+  },
+  {
+    "word": "die Dorfschule",
+    "article": "die",
+    "translation": "village school",
+    "disambiguation": "",
+    "sentences": [
+      {
+        "sentence": "Der Pfarrer brachte den Jungen zur Dorfschule.",
+        "cloze_word": "Dorfschule",
+        "sentence_translation": "The priest brought the boy to the village school.",
+        "pos": "noun"
+      },
+      {
+        "sentence": "In der kleinen Dorfschule lernte er nur langsam lesen.",
+        "cloze_word": "der kleinen Dorfschule",
+        "sentence_translation": "In the small village school he learned to read only slowly.",
+        "pos": "noun"
+      }
+    ],
+    "domains": "education,rural life,childhood",
+    "note": ""
+  },
+  {
+    "word": "vermögen",
+    "article": "",
+    "translation": "to be able to, to manage",
+    "disambiguation": "capability, not wealth",
+    "sentences": [
+      {
+        "sentence": "Der begabte Spieler vermochte komplexe Züge zu durchschauen.",
+        "cloze_word": "vermochte",
+        "sentence_translation": "The gifted player was able to see through complex moves.",
+        "pos": "verb"
+      },
+      {
+        "sentence": "Niemand wird seine außergewöhnliche Leistung zu erklären vermögen.",
+        "cloze_word": "vermögen",
+        "sentence_translation": "No one will be able to explain his extraordinary achievement.",
+        "pos": "verb"
+      }
+    ],
+    "domains": "ability,chess,intellectual capacity",
+    "note": "Formal register, often used with zu + infinitive"
+  }
+]
