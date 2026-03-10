@@ -50,6 +50,7 @@ Return ONLY a JSON array (no markdown). Each element:
 Rules:
 - Use standard IPA symbols for German
 - Do NOT include square brackets — just the transcription
+- For nouns with articles (der/die/das): only transcribe the NOUN, not the article
 - For compound words, provide the full compound pronunciation
 - For phrases, provide the pronunciation of the key words
 - If unsure, provide the most standard/common pronunciation
