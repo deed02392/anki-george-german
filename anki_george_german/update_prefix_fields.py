@@ -7,16 +7,11 @@ from scratch) and update_templates.py (which pushes CSS/templates).
 """
 
 import json
-import os
-import sys
-from pathlib import Path
 
-# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from . import DATA_DIR
+from ._anki import anki
 
-from _anki import anki
-
-DATA_PATH = Path(__file__).parent.parent / "data" / "prefix_data.json"
+DATA_PATH = DATA_DIR / "prefix_data.json"
 
 
 def format_examples_html(prefix, examples):

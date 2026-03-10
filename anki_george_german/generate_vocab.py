@@ -28,40 +28,38 @@ Requires:
 """
 import argparse
 import json
-import os
 import re
 import sys
 import time
 from pathlib import Path
 
-# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-import requests
-import spacy
-from charsplit import Splitter
-from rapidfuzz import fuzz
-
-from _anki import anki, DECK, MODEL
-from _llm import get_floodgate_token, call_llm
-from enrich_ipa_audio import enrich_notes
-
-VALID_POS = (
-    "noun", "verb", "adjective", "adverb",
-    "pronoun", "preposition", "numeral",
-    "conjunction", "interjection", "phrase",
+from . import DATA_DIR
+from ._anki import anki, DECK, MODEL, strip_article, fetch_vocab_notes
+from ._llm import get_floodgate_token, call_llm, call_llm_text, call_llm_with_retry
+from ._vocab_prompts import (
+    VALID_POS, VALID_POS_STR,
+    build_enrichment_prompt, build_domain_prompt, build_enrich_prompt,
 )
-VALID_POS_STR = "|".join(VALID_POS)
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from ._vocab_validate import (
+    normalise_cloze, validate_card, validate_batch, validate_new_sentences,
+    _find_noun_chunk,
+)
+from . import _vocab_validate
+from .enrich_ipa_audio import enrich_notes
 
 _nlp_model = None
 
 def _get_nlp():
-    """Lazy-load the spaCy model (expensive, only load once)."""
+    """Lazy-load the spaCy model (expensive, only load once).
+
+    Also shares the model with _vocab_validate so normalise_cloze
+    and _find_noun_chunk use the same instance.
+    """
     global _nlp_model
     if _nlp_model is None:
+        import spacy
         _nlp_model = spacy.load("de_dep_news_trf")
+        _vocab_validate._nlp_model = _nlp_model
     return _nlp_model
 
 # German function-word POS tags to filter out
@@ -183,12 +181,10 @@ def check_existing_deck(lemmas, source):
     For existing notes: tags them with source::{source}.
     Returns: list of new lemmas (not in deck).
     """
-    note_ids = anki("findNotes", query=f'"deck:{DECK}" "note:{MODEL}"')
-    if not note_ids:
+    all_notes = fetch_vocab_notes()
+    if not all_notes:
         print("No existing notes found in deck.")
         return lemmas
-
-    all_notes = anki("notesInfo", notes=note_ids)
 
     # Build lookup: lowercase bare word -> note_id
     known = {}
@@ -196,7 +192,7 @@ def check_existing_deck(lemmas, source):
         if "Word" not in note["fields"]:
             continue
         word = note["fields"]["Word"]["value"]
-        bare = re.sub(r"^(der|die|das|ein|eine|sich)\s+", "", word, flags=re.IGNORECASE).strip().lower()
+        bare = strip_article(word)
         known[bare] = note["noteId"]
 
     existing = []
@@ -272,6 +268,7 @@ def filter_transparent_compounds(lemmas, known_words):
     Uses CharSplit for character n-gram compound splitting.
     Recursively splits components that aren't directly known.
     """
+    from charsplit import Splitter
     splitter = Splitter()
     kept = []
     filtered = 0
@@ -309,23 +306,7 @@ def summarise_text(text, token):
         ),
     }]
     try:
-        # call_llm returns parsed JSON, but here we want plain text
-        resp = requests.post(
-            "https://floodgate.g.apple.com/api/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "User-Agent": "anki-george-german/1.0",
-            },
-            json={
-                "model": "aws:anthropic.claude-sonnet-4-20250514-v1:0",
-                "max_tokens": 300,
-                "messages": messages,
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        summary = resp.json()["choices"][0]["message"]["content"].strip()
+        summary = call_llm_text(messages, token, max_tokens=300)
         print(f"  Summary: {summary[:120]}...")
         return summary
     except Exception as e:
@@ -334,74 +315,6 @@ def summarise_text(text, token):
 
 
 # ── Stage 6: LLM enrichment ─────────────────────────────────────────────────
-
-def build_enrichment_prompt(batch, context_summary, source_text=None,
-                            num_sentences=2):
-    """Build the prompt to enrich a batch of words."""
-    words_block = ""
-    for i, (lemma, pos, count) in enumerate(batch, 1):
-        words_block += f"{i}. {lemma} [{pos}] (freq: {count})\n"
-
-    context_section = ""
-    if context_summary:
-        context_section = (
-            f"\nContext: These words come from a German text. "
-            f"Summary: {context_summary}\n"
-            f"Generate example sentences that fit this literary/thematic world "
-            f"without quoting the source verbatim.\n"
-        )
-
-    return f"""\
-You are generating German vocabulary flashcards for an adult learner.
-{context_section}
-For each word below, provide all fields for an Anki flashcard. Return ONLY a JSON \
-array (no markdown, no commentary).
-
-Rules:
-- For nouns: include the article (der/die/das) in the "word" field
-- For reflexive verbs: use "sich" + infinitive (e.g. "sich bemühen", not "bemühen (sich)")
-- "article" is "der", "die", or "das" for nouns, empty string for others
-- "translation" is a concise English translation (British English: colour, mum, favourite)
-- "disambiguation" clarifies meaning if the word has multiple common translations (else empty)
-- Generate exactly {num_sentences} example sentence(s) per word in the "sentences" array
-- Each sentence should show the word in a DIFFERENT grammatical context \
-(different tenses, cases, nominalised forms, etc.)
-- Each sentence entry has its own "pos" ({VALID_POS_STR}) and "cloze_word"
-- "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive). \
-Copy-paste from the sentence — if the sentence has "den Apfel", cloze_word must be "den Apfel" not "Der Apfel". \
-For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
-- For separable verbs: at least one sentence MUST show the prefix separating from the stem \
-(e.g. "Er machte die Tür auf" not only "Er wollte die Tür aufmachen")
-- For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
-(e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
-- For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
-(e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
-- "sentence_translation" is the English translation (British English)
-- Sentences should be 5-15 words, NOT verbatim quotes from the source
-- "domains" is a comma-separated list of relevant topic domains
-- "note" is an optional usage note (empty if not needed)
-
-
-Words:
-{words_block}
-Each element in the JSON array:
-{{
-  "word": "<word with article for nouns, sich + infinitive for reflexive verbs>",
-  "article": "<der|die|das or empty>",
-  "translation": "<English translation>",
-  "disambiguation": "<disambiguation or empty>",
-  "sentences": [
-    {{
-      "sentence": "<German example sentence>",
-      "cloze_word": "<exact form in sentence, ~ for separable verbs>",
-      "sentence_translation": "<English translation of sentence>",
-      "pos": "<{VALID_POS_STR}>"
-    }}
-  ],
-  "domains": "<comma-separated domains>",
-  "note": "<usage note or empty>"
-}}"""
-
 
 def enrich_batch(batch, token, context_summary, source_text=None,
                  num_sentences=2):
@@ -412,244 +325,7 @@ def enrich_batch(batch, token, context_summary, source_text=None,
     prompt = build_enrichment_prompt(batch, context_summary, source_text,
                                      num_sentences)
     messages = [{"role": "user", "content": prompt}]
-
-    for attempt in range(2):
-        try:
-            result = call_llm(messages, token, max_tokens=8192)
-            if not isinstance(result, list):
-                print(f"  Bad response shape (attempt {attempt + 1}): not a list")
-                if attempt == 0:
-                    continue
-                return None
-
-            if len(result) != len(batch):
-                print(f"  Bad response length (attempt {attempt + 1}): "
-                      f"expected {len(batch)}, got {len(result)}")
-                if attempt == 0:
-                    continue
-                return None
-
-            return result
-
-        except json.JSONDecodeError as e:
-            print(f"  JSON parse error (attempt {attempt + 1}): {e}")
-            if attempt == 0:
-                continue
-            return None
-        except requests.HTTPError as e:
-            print(f"  HTTP error (attempt {attempt + 1}): {e}")
-            if hasattr(e, "response") and e.response.status_code == 401:
-                print("  Refreshing OIDC token...")
-                token = get_floodgate_token()
-            if attempt == 0:
-                time.sleep(2)
-                continue
-            return None
-
-    return None
-
-
-# ── Stage 7: Quality validation ──────────────────────────────────────────────
-
-_ARTICLES_RE = re.compile(
-    r'^(der|die|das|den|dem|des|ein|eine|einen|einem|eines|einer|'
-    r'kein|keine|keinen|keinem|keines|keiner|'
-    r'dieser|diese|dieses|diesen|diesem|jeder|jede|jedes|jeden|jedem)\s+',
-    re.IGNORECASE,
-)
-
-
-def _find_noun_chunk(sentence, bare):
-    """Find the spaCy noun chunk containing `bare` in `sentence`.
-
-    Returns the chunk text if a valid noun phrase is found (starts with
-    DET/PRON, contains only one noun), else None.
-    """
-    nlp = _get_nlp()
-    doc = nlp(sentence)
-    best = None
-    for chunk in doc.noun_chunks:
-        if bare not in chunk.text:
-            continue
-        # Only accept chunks headed by a determiner or pronoun
-        if chunk[0].pos_ not in ("DET", "PRON"):
-            continue
-        # Reject chunks containing multiple nouns
-        if sum(1 for t in chunk if t.pos_ in ("NOUN", "PROPN")) > 1:
-            continue
-        if best is None or len(chunk.text) < len(best.text):
-            best = chunk
-    return best.text if best else None
-
-
-def normalise_cloze(card):
-    """Fix common cloze_word issues using spaCy noun chunks.
-
-    Fixes applied:
-    1. Bare noun expansion: if cloze_word is a single bare noun and the
-       sentence has a determiner before it, expand to the full noun phrase
-       (e.g. 'Kind' → 'Jedes Kind')
-    2. Case correction: 'Der Meister' → 'den Meister' if case-insensitive
-       match exists in sentence
-    3. Article form mismatch: if cloze_word has a different article than
-       the sentence, find the correct noun phrase via spaCy
-    4. Strip leading 'NOT:' from disambiguation
-    """
-    sentences = card.get("sentences")
-    if not sentences:
-        return card
-
-    repairs = []
-
-    for sent in sentences:
-        sentence = sent.get("sentence", "")
-        cloze = sent.get("cloze_word", "")
-        if not sentence or not cloze:
-            continue
-
-        parts = [p.strip() for p in cloze.split("~") if p.strip()]
-        new_parts = []
-        for part in parts:
-            # 1. Exact match — but check if bare noun needs expansion
-            if part in sentence:
-                if sent.get("pos") == "noun" and " " not in part:
-                    chunk = _find_noun_chunk(sentence, part)
-                    if chunk and chunk != part and chunk in sentence:
-                        new_parts.append(chunk)
-                        repairs.append(f"noun chunk: '{part}' → '{chunk}'")
-                        continue
-                new_parts.append(part)
-                continue
-
-            # 2. Case-insensitive match
-            idx = sentence.lower().find(part.lower())
-            if idx >= 0:
-                actual = sentence[idx:idx + len(part)]
-                new_parts.append(actual)
-                repairs.append(f"case fix: '{part}' → '{actual}'")
-                continue
-
-            # 3. Article form mismatch — strip article, find bare noun,
-            #    use spaCy to rebuild noun phrase
-            m = _ARTICLES_RE.match(part)
-            if m:
-                bare = part[m.end():]
-                bare_idx = sentence.find(bare)
-                if bare_idx < 0:
-                    bare_idx_ci = sentence.lower().find(bare.lower())
-                    if bare_idx_ci >= 0:
-                        bare = sentence[bare_idx_ci:bare_idx_ci + len(bare)]
-
-                chunk = _find_noun_chunk(sentence, bare)
-                if chunk and chunk in sentence:
-                    new_parts.append(chunk)
-                    repairs.append(f"noun phrase fix: '{part}' → '{chunk}'")
-                    continue
-
-            # Fallback: keep original
-            new_parts.append(part)
-
-        sent["cloze_word"] = "~".join(new_parts)
-
-    # Strip 'NOT: ' from disambiguation
-    disambig = card.get("disambiguation", "")
-    if disambig.startswith("NOT: ") or disambig.startswith("NOT:"):
-        cleaned = disambig.removeprefix("NOT: ").removeprefix("NOT:")
-        repairs.append("stripped 'NOT:' from disambiguation")
-        card["disambiguation"] = cleaned
-
-    if repairs:
-        print(f"  REPAIR {card.get('word', '?')}: {'; '.join(repairs)}")
-
-    return card
-
-
-def validate_card(card, source_text=None):
-    """Validate a single enriched card. Returns (is_valid, errors)."""
-    errors = []
-
-    # Required top-level fields
-    for field in ("word", "translation"):
-        if not card.get(field):
-            errors.append(f"missing '{field}'")
-
-    # Must have sentences array
-    sentences = card.get("sentences")
-    if not sentences or not isinstance(sentences, list):
-        errors.append("missing or empty 'sentences' array")
-        return False, errors
-
-    if errors:
-        return False, errors
-
-    # Validate each sentence entry
-    has_noun = False
-    for i, sent in enumerate(sentences):
-        prefix = f"sentences[{i}]"
-        for field in ("sentence", "cloze_word", "sentence_translation", "pos"):
-            if not sent.get(field):
-                errors.append(f"{prefix}: missing '{field}'")
-
-        if not sent.get("pos"):
-            continue
-
-        # POS validation
-        if sent["pos"] not in VALID_POS:
-            errors.append(f"{prefix}: invalid pos '{sent['pos']}'")
-
-        if sent["pos"] == "noun":
-            has_noun = True
-
-        if not sent.get("sentence") or not sent.get("cloze_word"):
-            continue
-
-        # ClozeWord parts must be substrings of sentence (case-sensitive)
-        # Use ~ as separable verb delimiter
-        parts = [p.strip() for p in sent["cloze_word"].split("~") if p.strip()]
-        for part in parts:
-            if part not in sent["sentence"]:
-                errors.append(f"{prefix}: cloze_word '{part}' not in sentence")
-
-        # Check for verbatim quotes from source (>80% similarity)
-        if source_text:
-            source_sentences = re.split(r'[.!?]+', source_text)
-            for src_sent in source_sentences:
-                src_sent = src_sent.strip()
-                if len(src_sent) < 10:
-                    continue
-                similarity = fuzz.ratio(sent["sentence"], src_sent)
-                if similarity > 80:
-                    errors.append(f"{prefix}: too similar to source ({similarity}%)")
-                    break
-
-    # Article check: require article only when the word is primarily a noun
-    # (all sentences are nouns). Mixed POS (e.g. verb with one nominalised
-    # sentence) doesn't need a top-level article.
-    all_noun = has_noun and all(
-        s.get("pos") == "noun" for s in sentences if s.get("pos")
-    )
-    if all_noun and not card.get("article"):
-        errors.append("noun missing article")
-    if not has_noun and card.get("article"):
-        errors.append(f"non-noun has article '{card['article']}'")
-
-    return len(errors) == 0, errors
-
-
-def validate_batch(cards, source_text=None):
-    """Validate all cards in a batch. Returns (valid_cards, error_count)."""
-    valid = []
-    error_count = 0
-    for card in cards:
-        card = normalise_cloze(card)
-        is_valid, errors = validate_card(card, source_text)
-        if is_valid:
-            valid.append(card)
-        else:
-            word = card.get("word", "?")
-            print(f"  INVALID: {word} — {'; '.join(errors)}")
-            error_count += 1
-    return valid, error_count
+    return call_llm_with_retry(messages, token, expect_len=len(batch))
 
 
 def check_duplicate_translations(cards):
@@ -659,11 +335,9 @@ def check_duplicate_translations(cards):
     Does not block import — just informational.
     """
     # Fetch existing translations from deck
-    note_ids = anki("findNotes", query=f'deck:"{DECK}" "note:{MODEL}"')
-    if not note_ids:
+    existing_notes = fetch_vocab_notes()
+    if not existing_notes:
         return
-
-    existing_notes = anki("notesInfo", notes=note_ids)
     existing_trans = {}  # lower translation -> list of words
     for note in existing_notes:
         word = note["fields"]["Word"]["value"]
@@ -702,8 +376,7 @@ def dedup_gendered_pairs(cards):
 
     for card in cards:
         word = card.get("word", "")
-        bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word,
-                      flags=re.IGNORECASE).strip().lower()
+        bare = strip_article(word)
 
         # Compute the stem that both gendered forms share
         stem = bare
@@ -821,7 +494,7 @@ def import_to_anki(cards, source, domains_override, phase, dry_run=False):
 def write_checkpoint(cards, source, paragraphs, output_dir=None):
     """Save generated cards as a JSON checkpoint for auditability."""
     if output_dir is None:
-        output_dir = PROJECT_ROOT / "data" / "generated"
+        output_dir = DATA_DIR / "generated"
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -838,119 +511,12 @@ def write_checkpoint(cards, source, paragraphs, output_dir=None):
 
 def generate_domain_vocab(brief, count, token, num_sentences=2):
     """Generate vocabulary from a domain brief via LLM."""
-    prompt = f"""\
-You are generating German vocabulary flashcards for an adult learner.
-
-Generate exactly {count} German words relevant to this domain:
-"{brief}"
-
-Return ONLY a JSON array (no markdown, no commentary). Each element:
-{{
-  "word": "<word with article for nouns>",
-  "article": "<der|die|das or empty>",
-  "translation": "<English translation (British English)>",
-  "disambiguation": "<disambiguation or empty>",
-  "sentences": [
-    {{
-      "sentence": "<German example sentence, 5-15 words>",
-      "cloze_word": "<exact form in sentence, ~ for separable verbs>",
-      "sentence_translation": "<English translation of sentence (British English)>",
-      "pos": "<{VALID_POS_STR}>"
-    }}
-  ],
-  "domains": "<comma-separated domains>",
-  "note": "<usage note or empty>"
-}}
-
-Rules:
-- For nouns: include the article (der/die/das) in "word"
-- For reflexive verbs: use "sich" + infinitive (e.g. "sich bemühen", not "bemühen (sich)")
-- Generate exactly {num_sentences} sentence(s) per word in the "sentences" array
-- Each sentence should show the word in a DIFFERENT grammatical context \
-(different tenses, cases, nominalised forms, etc.)
-- Each sentence entry has its own "pos" and "cloze_word"
-- "cloze_word" must be an exact substring of "sentence" (case-sensitive)
-- For separable verbs, use ~ (tilde) between separated parts (e.g. "machte~auf")
-- For separable verbs: at least one sentence MUST show the prefix separating from the stem
-- For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
-(e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
-- For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
-(e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
-- Use British English (colour, mum, favourite)
-- Mix word types: nouns, verbs, adjectives, adverbs, and other parts of speech where relevant
-- Choose words that are practical and commonly used in the domain
-"""
+    prompt = build_domain_prompt(brief, count, num_sentences)
     messages = [{"role": "user", "content": prompt}]
-
-    for attempt in range(2):
-        try:
-            result = call_llm(messages, token, max_tokens=8192)
-            if isinstance(result, list):
-                return result
-            print(f"  Bad response shape (attempt {attempt + 1})")
-        except (json.JSONDecodeError, requests.HTTPError) as e:
-            print(f"  Error (attempt {attempt + 1}): {e}")
-            if hasattr(e, "response") and getattr(e.response, "status_code", 0) == 401:
-                token = get_floodgate_token()
-            time.sleep(2)
-
-    return None
+    return call_llm_with_retry(messages, token)
 
 
 # ── Enrich existing cards with additional sentences ─────────────────────────
-
-def build_enrich_prompt(batch, num_new):
-    """Build prompt to generate additional sentences for existing cards.
-
-    batch: list of dicts with word, translation, article, existing_sentences.
-    num_new: number of NEW sentences to generate per word.
-    """
-    words_block = ""
-    for i, card in enumerate(batch, 1):
-        existing = "; ".join(
-            f'"{s["sentence"]}" (cloze: {s["cloze_word"]}, pos: {s["pos"]})'
-            for s in card["existing_sentences"]
-        )
-        words_block += (
-            f'{i}. {card["word"]} — "{card["translation"]}"\n'
-            f'   Existing: {existing}\n'
-        )
-
-    return f"""\
-You are generating additional German example sentences for vocabulary flashcards.
-
-For each word below, generate exactly {num_new} NEW example sentence(s) that are \
-DIFFERENT from the existing ones. Return ONLY a JSON array (no markdown, no commentary).
-
-Rules:
-- Each new sentence should show the word in a different grammatical context \
-(different tenses, cases, nominalised forms) from the existing sentences
-- Each sentence entry has its own "pos" ({VALID_POS_STR}) and "cloze_word"
-- "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive)
-- For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
-- For separable verbs: at least one sentence MUST show the prefix separating from the stem
-- For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
-(e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
-- For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
-(e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
-- Sentences should be 5-15 words
-- Use British English for translations (colour, mum, favourite)
-
-Words:
-{words_block}
-Each element in the JSON array:
-{{
-  "word": "<the word exactly as given above>",
-  "new_sentences": [
-    {{
-      "sentence": "<German example sentence>",
-      "cloze_word": "<exact form in sentence, ~ for separable verbs>",
-      "sentence_translation": "<English translation>",
-      "pos": "<{VALID_POS_STR}>"
-    }}
-  ]
-}}"""
-
 
 def enrich_existing_batch(batch, token, num_new):
     """Call LLM to generate additional sentences for a batch of existing cards.
@@ -959,73 +525,8 @@ def enrich_existing_batch(batch, token, num_new):
     """
     prompt = build_enrich_prompt(batch, num_new)
     messages = [{"role": "user", "content": prompt}]
+    return call_llm_with_retry(messages, token, expect_len=len(batch))
 
-    for attempt in range(2):
-        try:
-            result = call_llm(messages, token, max_tokens=8192)
-            if not isinstance(result, list):
-                print(f"  Bad response shape (attempt {attempt + 1}): not a list")
-                if attempt == 0:
-                    continue
-                return None
-
-            if len(result) != len(batch):
-                print(f"  Bad response length (attempt {attempt + 1}): "
-                      f"expected {len(batch)}, got {len(result)}")
-                if attempt == 0:
-                    continue
-                return None
-
-            return result
-
-        except json.JSONDecodeError as e:
-            print(f"  JSON parse error (attempt {attempt + 1}): {e}")
-            if attempt == 0:
-                continue
-            return None
-        except requests.HTTPError as e:
-            print(f"  HTTP error (attempt {attempt + 1}): {e}")
-            if hasattr(e, "response") and e.response.status_code == 401:
-                print("  Refreshing OIDC token...")
-                token = get_floodgate_token()
-            if attempt == 0:
-                time.sleep(2)
-                continue
-            return None
-
-    return None
-
-
-def validate_new_sentences(new_sentences):
-    """Validate a list of new sentence entries. Returns (valid, errors)."""
-    errors = []
-    valid = []
-    for i, sent in enumerate(new_sentences):
-        prefix = f"new_sentences[{i}]"
-        for field in ("sentence", "cloze_word", "sentence_translation", "pos"):
-            if not sent.get(field):
-                errors.append(f"{prefix}: missing '{field}'")
-                continue
-
-        if not sent.get("pos") or not sent.get("sentence") or not sent.get("cloze_word"):
-            continue
-
-        if sent["pos"] not in VALID_POS:
-            errors.append(f"{prefix}: invalid pos '{sent['pos']}'")
-            continue
-
-        # ClozeWord parts must be substrings of sentence
-        parts = [p.strip() for p in sent["cloze_word"].split("~") if p.strip()]
-        cloze_ok = True
-        for part in parts:
-            if part not in sent["sentence"]:
-                errors.append(f"{prefix}: cloze_word '{part}' not in sentence")
-                cloze_ok = False
-
-        if cloze_ok:
-            valid.append(sent)
-
-    return valid, errors
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
@@ -1040,16 +541,12 @@ def cmd_text(args):
     print("\n── Stage 2: spaCy extraction ──")
     print("Loading spaCy model...")
     try:
-        nlp = spacy.load("de_dep_news_trf")
+        nlp = _get_nlp()
         print("  Using de_dep_news_trf (transformer)")
     except OSError:
-        try:
-            nlp = spacy.load("de_core_news_sm")
-            print("  Using de_core_news_sm (fallback)")
-        except OSError:
-            print("ERROR: No German spaCy model found. Install with:")
-            print("  uv run python -m spacy download de_dep_news_trf")
-            sys.exit(1)
+        print("ERROR: No German spaCy model found. Install with:")
+        print("  uv run python -m spacy download de_dep_news_trf")
+        sys.exit(1)
     lemmas = extract_lemmas(text, nlp)
 
     if not lemmas:
@@ -1067,17 +564,13 @@ def cmd_text(args):
     # Stage 4: Compound detection
     print("\n── Stage 4: Compound word detection ──")
     # Build known-words set from deck
-    note_ids = anki("findNotes", query=f'"deck:{DECK}" "note:{MODEL}"')
     known_words = set()
-    if note_ids:
-        all_notes = anki("notesInfo", notes=note_ids)
-        for note in all_notes:
-            if "Word" not in note["fields"]:
-                continue
-            word = note["fields"]["Word"]["value"]
-            bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word,
-                          flags=re.IGNORECASE).strip().lower()
-            known_words.add(bare)
+    for note in fetch_vocab_notes():
+        if "Word" not in note["fields"]:
+            continue
+        word = note["fields"]["Word"]["value"]
+        bare = strip_article(word)
+        known_words.add(bare)
     new_lemmas = filter_transparent_compounds(new_lemmas, known_words)
 
     if not new_lemmas:
@@ -1169,13 +662,10 @@ def cmd_enrich(args):
 
     # Find notes by source tag
     print(f"\n── Finding notes with source::{args.source} ──")
-    note_ids = anki("findNotes",
-                    query=f'"deck:{DECK}" "note:{MODEL}" "tag:source::{args.source}"')
-    if not note_ids:
+    all_notes = fetch_vocab_notes(f'"tag:source::{args.source}"')
+    if not all_notes:
         print("No notes found with that source tag.")
         return
-
-    all_notes = anki("notesInfo", notes=note_ids)
     print(f"  Found {len(all_notes)} notes")
 
     # Filter to notes that need more sentences
@@ -1333,25 +823,20 @@ def cmd_domain(args):
     # Stage 3: Check existing deck
     print("\n── Check existing deck ──")
     # Filter out words already in deck
-    note_ids = anki("findNotes", query=f'"deck:{DECK}" "note:{MODEL}"')
     known_words = set()
-    if note_ids:
-        all_notes = anki("notesInfo", notes=note_ids)
-        for note in all_notes:
-            if "Word" not in note["fields"]:
-                continue
-            word = note["fields"]["Word"]["value"]
-            bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word,
-                          flags=re.IGNORECASE).strip().lower()
-            known_words.add(bare)
+    for note in fetch_vocab_notes():
+        if "Word" not in note["fields"]:
+            continue
+        word = note["fields"]["Word"]["value"]
+        bare = strip_article(word)
+        known_words.add(bare)
 
     new_cards = []
     existing_count = 0
     gendered_count = 0
     for card in result:
         word = card.get("word", "")
-        bare = re.sub(r"^(der|die|das|ein|eine)\s+", "", word,
-                      flags=re.IGNORECASE).strip().lower()
+        bare = strip_article(word)
         if bare in known_words:
             existing_count += 1
             # Tag existing

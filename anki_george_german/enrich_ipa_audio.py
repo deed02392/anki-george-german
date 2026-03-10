@@ -21,12 +21,9 @@ import sys
 import tempfile
 import time
 
-# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 import requests
 
-from _anki import anki, DECK, MODEL
+from ._anki import anki, DECK, MODEL, ARTICLES
 
 WIKT_API = "https://de.wiktionary.org/w/api.php"
 
@@ -40,9 +37,10 @@ web.headers["User-Agent"] = "anki-george-german/1.0 (German vocab enrichment scr
 def extract_lookup_word(word_field):
     """Strip articles and determine if a word is a single-word lookup candidate."""
     clean = word_field.strip()
-    for article in ["der ", "die ", "das ", "ein ", "eine "]:
-        if clean.lower().startswith(article):
-            clean = clean[len(article):]
+    for article in ARTICLES:
+        prefix = article + " "
+        if clean.lower().startswith(prefix):
+            clean = clean[len(prefix):]
             break
     clean = clean.strip()
     is_phrase = any(c in clean for c in [" ", "?", "!", "…"]) or "..." in clean
@@ -334,6 +332,16 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
 
 # ── CLI entry point ──────────────────────────────────────────────────────────
 
+def run(args):
+    """Execute with pre-parsed args (called by CLI dispatcher)."""
+    enrich_notes(
+        ipa_only=args.ipa_only,
+        audio_only=args.audio_only,
+        audio_delay=args.audio_delay,
+        dry_run=args.dry_run,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -345,14 +353,7 @@ def main():
                         help="Only download and store audio files")
     parser.add_argument("--audio-delay", type=float, default=5.0,
                         help="Seconds between audio downloads (default: 5)")
-    args = parser.parse_args()
-
-    enrich_notes(
-        ipa_only=args.ipa_only,
-        audio_only=args.audio_only,
-        audio_delay=args.audio_delay,
-        dry_run=args.dry_run,
-    )
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":

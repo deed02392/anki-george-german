@@ -16,16 +16,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _anki import anki, DECK, MODEL
+from _anki import anki, DECK, MODEL, fetch_vocab_notes
 
 
 def migrate(dry_run=False):
-    note_ids = anki("findNotes", query=f'"deck:{DECK}" "note:{MODEL}"')
-    if not note_ids:
+    all_notes = fetch_vocab_notes()
+    if not all_notes:
         print("No notes found.")
         return
-
-    all_notes = anki("notesInfo", notes=note_ids)
     to_update = []
 
     for note in all_notes:

@@ -11,24 +11,9 @@ Usage:
     uv run python tools/fix_noun_cloze_articles.py
 """
 import argparse
-import os
 import re
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from _anki import anki, DECK, MODEL
-
-# German articles — definite, indefinite, negative, demonstrative
-ARTICLES = (
-    # definite
-    "der", "die", "das", "den", "dem", "des",
-    # indefinite
-    "ein", "eine", "einen", "einem", "eines", "einer",
-    # negative
-    "kein", "keine", "keinen", "keinem", "keines", "keiner",
-)
-ARTICLE_SET = set(ARTICLES)
+from ._anki import anki, DECK, MODEL, ARTICLE_SET, fetch_vocab_notes
 
 
 def find_preceding_article(sentence, cloze_word):
@@ -49,7 +34,7 @@ def find_preceding_article(sentence, cloze_word):
     # Strip punctuation from the preceding word
     clean = preceding_word.strip(".,;:!?\"'()[]{}–—")
 
-    if clean.lower() in {a.lower() for a in ARTICLES}:
+    if clean.lower() in ARTICLE_SET:
         # Return the article as it appears in the sentence (preserving case)
         return clean
 
@@ -57,12 +42,10 @@ def find_preceding_article(sentence, cloze_word):
 
 
 def fix_notes(dry_run=False):
-    note_ids = anki("findNotes", query=f'deck:"{DECK}" "note:{MODEL}"')
-    if not note_ids:
+    all_notes = fetch_vocab_notes()
+    if not all_notes:
         print("No notes found.")
         return
-
-    all_notes = anki("notesInfo", notes=note_ids)
     to_update = []
 
     for note in all_notes:
@@ -99,7 +82,7 @@ def fix_notes(dry_run=False):
 
             # Skip if cloze already starts with an article
             first_word = cloze.split()[0] if cloze else ""
-            if first_word.lower() in {a.lower() for a in ARTICLES}:
+            if first_word.lower() in ARTICLE_SET:
                 new_clozes.append(cloze)
                 continue
 
@@ -146,6 +129,11 @@ def fix_notes(dry_run=False):
     print(f"\nUpdated {updated} notes.")
 
 
+def run(args):
+    """Execute with pre-parsed args (called by CLI dispatcher)."""
+    fix_notes(dry_run=args.dry_run)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -153,8 +141,7 @@ def main():
     )
     parser.add_argument("--dry-run", action="store_true",
                         help="Show changes without updating")
-    args = parser.parse_args()
-    fix_notes(dry_run=args.dry_run)
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":

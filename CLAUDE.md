@@ -6,32 +6,60 @@ German vocabulary Anki deck for an adult learner. Vocabulary is generated from G
 ## Repository Structure
 
 ```
-tools/                  Active scripts for deck maintenance and vocab generation
-  generate_vocab.py     Main vocab generation (text extraction + domain briefs)
-  _anki.py              Shared AnkiConnect helper (all tools import from here)
-  _llm.py               Shared Floodgate/LLM helper
-  enrich_ipa_audio.py   IPA + audio enrichment from Wiktionary (importable + CLI)
-  update_templates.py   LIVE SOURCE OF TRUTH for CSS and templates
-  unsuspend_candidates.py  Weekly card unsuspension
-  update_prefix_fields.py  Sync prefix data to Anki
-  query_note.py         Quick note lookup
+anki_george_german/         Installable Python package (CLI: anki-german)
+  __init__.py               PROJECT_ROOT, DATA_DIR constants
+  cli.py                    Unified CLI dispatcher
+  _anki.py                  Shared AnkiConnect helper (all modules import from here)
+  _llm.py                   Shared Floodgate/LLM helper
+  _vocab_prompts.py         LLM prompt templates for vocab generation
+  _vocab_validate.py        Validation and normalisation for generated cards
+  generate_vocab.py         Main vocab generation (text extraction + domain briefs)
+  enrich_ipa_audio.py       IPA + audio enrichment from Wiktionary (importable + CLI)
+  update_templates.py       LIVE SOURCE OF TRUTH for CSS and templates
+  unsuspend_candidates.py   Weekly card unsuspension
+  update_prefix_fields.py   Sync prefix data to Anki
+  fix_disambiguations.py    Fix duplicate translations via LLM
+  fix_missing_ipa.py        Backfill IPA via LLM
+  fix_noun_cloze_articles.py Fix article in cloze words
+  deck_stats.py             Deck analysis and problem cards
+  query_note.py             Quick note lookup
+tests/                      pytest test suite
 data/
-  prefix_data.json      Prefix teaching data (21 entries)
+  prefix_data.json          Prefix teaching data (21 entries)
   clozeword_overrides.json  Manual ClozeWord corrections (legacy)
-  books/                Source texts for vocab extraction
-  generated/            JSON checkpoints from generation runs
+  books/                    Source texts for vocab extraction
+  generated/                JSON checkpoints from generation runs
 pipeline/
-  archive/              Original deck build scripts (01-04, historical)
-img/                    Documentation images
+  archive/                  Original deck build scripts (01-04, historical)
+img/                        Documentation images
 ```
 
-## Vocabulary Generation (`tools/generate_vocab.py`)
+## CLI Command Reference
+
+The project installs as `anki-german` via `uv sync`:
+
+```sh
+anki-german generate text       --file --source [--paragraphs] [--domain] [--phase] [--batch-size] [--sentences] [--dry-run] [--enrich]
+anki-german generate domain     --brief --source [--count] [--domain] [--phase] [--sentences] [--dry-run]
+anki-german generate enrich     --source [--sentences] [--batch-size] [--dry-run]
+anki-german enrich-ipa          [--ipa-only] [--audio-only] [--audio-delay] [--dry-run]
+anki-german fix disambig        [--dry-run]
+anki-german fix ipa             [--dry-run]
+anki-german fix noun-cloze      [--dry-run]
+anki-german unsuspend           [--apply] [--max N]
+anki-german stats
+anki-german templates
+anki-german prefixes
+anki-german query               [WORD]
+```
+
+## Vocabulary Generation
 
 Two modes for generating new vocabulary cards:
 
 ### Text extraction mode
 ```sh
-uv run python tools/generate_vocab.py text \
+anki-german generate text \
     --file data/books/Schachenovelle.txt \
     --source schachnovelle --paragraphs 1-30 \
     --domain literature --phase 4 --dry-run
@@ -51,7 +79,7 @@ Pipeline stages:
 
 ### Domain brief mode
 ```sh
-uv run python tools/generate_vocab.py domain \
+anki-german generate domain \
     --brief "IT security vocabulary" \
     --source it_security --count 30 \
     --domain security,technology --phase 4 --dry-run
@@ -61,13 +89,13 @@ Skips spaCy/compound stages; LLM generates words from the brief directly.
 
 ## Shared Modules
 
-- **`tools/_anki.py`** — `anki(action, **params)`, `ANKI_URL`, `DECK`, `MODEL` constants. All tools import from here.
-- **`tools/_llm.py`** — `get_floodgate_token()`, `call_llm(messages, token)` with JSON parsing and code fence stripping.
-- **`tools/enrich_ipa_audio.py`** — importable `enrich_notes()` function + CLI. `generate_vocab.py` calls it directly after import.
+- **`anki_george_german/_anki.py`** — `anki(action, **params)`, `ANKI_URL`, `DECK`, `MODEL` constants. All modules import from here.
+- **`anki_george_german/_llm.py`** — `get_floodgate_token()`, `call_llm(messages, token)` with JSON parsing and code fence stripping.
+- **`anki_george_german/enrich_ipa_audio.py`** — importable `enrich_notes()` function + CLI. `generate_vocab.py` calls it directly after import.
 
 ## Critical Files
 
-**`tools/update_templates.py`** is the LIVE SOURCE OF TRUTH for all card CSS and template HTML. Always run it after any template/CSS change.
+**`anki_george_german/update_templates.py`** is the LIVE SOURCE OF TRUTH for all card CSS and template HTML. Always run it after any template/CSS change.
 
 ## Timer Implementation
 
@@ -93,7 +121,7 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 
 ### CSS architecture
 
-`tools/update_templates.py` splits CSS into shared base + per-note-type sections:
+`anki_george_german/update_templates.py` splits CSS into shared base + per-note-type sections:
 - `BASE_VARS` — `:root` design tokens, dark/light mode
 - `BASE_LAYOUT` — `.card`, `.kard`, `.card-header`, `.card-type`, `hr.divider`
 - `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, phase badges)
@@ -122,7 +150,8 @@ Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Se
 ### ClozeWord convention
 
 - Stores the exact text to blank in the cloze sentence
-- `|` separates parts for separable verbs: `sprang|auf`
+- `~` separates parts for separable verbs: `machte~auf`
+- `|` separates sentence variants (multi-sentence cards)
 - Set at generation time by the LLM — no backfill step needed
 
 ## Card Layout — Key Decisions
@@ -144,8 +173,8 @@ html, body, #qa { margin: 0; height: 100%; }
 ## Before Touching Templates or CSS
 
 1. Read `NOTES.md`
-2. The authoritative file is `tools/update_templates.py`
-3. After editing, run the script to push to Anki via AnkiConnect
+2. The authoritative file is `anki_george_german/update_templates.py`
+3. After editing, run `anki-german templates` to push to Anki via AnkiConnect
 4. Test in **actual review mode** on mobile, not just Browse→Preview
 5. Never manually edit templates in Anki's UI
 
@@ -153,17 +182,17 @@ html, body, #qa { margin: 0; height: 100%; }
 
 - Requires Anki running with AnkiConnect add-on (2055492159)
 - Default URL: `http://localhost:8765`
-- All tools that call AnkiConnect must run in **tmux pane 4** (sandbox has network access)
+- All commands that call AnkiConnect must run in **tmux pane 4** (sandbox has network access)
 
 ## Wiktionary Enrichment
 
-`tools/enrich_ipa_audio.py` fetches IPA + audio from de.wiktionary.org. Importable as a module (`from tools.enrich_ipa_audio import enrich_notes`) or run as CLI.
+`anki_george_german/enrich_ipa_audio.py` fetches IPA + audio from de.wiktionary.org. Importable as a module (`from anki_george_german.enrich_ipa_audio import enrich_notes`) or run as CLI.
 
 ### Usage
 ```sh
-uv run python tools/enrich_ipa_audio.py --ipa-only     # fast
-uv run python tools/enrich_ipa_audio.py --audio-only    # slow (rate limits)
-uv run python tools/enrich_ipa_audio.py --dry-run
+anki-german enrich-ipa --ipa-only     # fast
+anki-german enrich-ipa --audio-only   # slow (rate limits)
+anki-german enrich-ipa --dry-run
 ```
 
 ## Dependencies

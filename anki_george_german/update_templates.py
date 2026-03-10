@@ -10,13 +10,7 @@ Note types managed:
   2. "German Prefix"          — prefix teaching cards (Prefix→Meaning, Meaning→Prefix)
 """
 
-import os
-import sys
-
-# Ensure tools/ is on sys.path so sibling imports work regardless of CWD
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from _anki import anki
+from ._anki import anki
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -674,36 +668,41 @@ MEANING_PFX_BACK = """\
 # Push to Anki
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Vocab note type ──
-print("Updating George's German Vocab CSS...")
-anki("updateModelStyling", model={"name": "George's German Vocab", "css": VOCAB_CSS})
-print("  Done.")
+def main():
+    # ── Vocab note type ──
+    print("Updating George's German Vocab CSS...")
+    anki("updateModelStyling", model={"name": "George's German Vocab", "css": VOCAB_CSS})
+    print("  Done.")
 
-print("Updating George's German Vocab templates...")
-anki("updateModelTemplates", model={
-    "name": "George's German Vocab",
-    "templates": {
-        "EN → DE":       {"Front": EN_DE_FRONT, "Back": EN_DE_BACK},
-        "DE → EN":       {"Front": DE_EN_FRONT, "Back": DE_EN_BACK},
-        "Sentence Cloze": {"Front": CLOZE_FRONT, "Back": CLOZE_BACK},
-    }
-})
-print("  Done.")
+    print("Updating George's German Vocab templates...")
+    anki("updateModelTemplates", model={
+        "name": "George's German Vocab",
+        "templates": {
+            "EN → DE":       {"Front": EN_DE_FRONT, "Back": EN_DE_BACK},
+            "DE → EN":       {"Front": DE_EN_FRONT, "Back": DE_EN_BACK},
+            "Sentence Cloze": {"Front": CLOZE_FRONT, "Back": CLOZE_BACK},
+        }
+    })
+    print("  Done.")
 
-# ── Prefix note type ──
-print("Updating German Prefix CSS...")
-anki("updateModelStyling", model={"name": "German Prefix", "css": PREFIX_CSS})
-print("  Done.")
+    # ── Prefix note type ──
+    print("Updating German Prefix CSS...")
+    anki("updateModelStyling", model={"name": "German Prefix", "css": PREFIX_CSS})
+    print("  Done.")
 
-print("Updating German Prefix templates...")
-anki("updateModelTemplates", model={
-    "name": "German Prefix",
-    "templates": {
-        "Prefix → Meaning": {"Front": PFX_MEANING_FRONT, "Back": PFX_MEANING_BACK},
-        "Meaning → Prefix": {"Front": MEANING_PFX_FRONT, "Back": MEANING_PFX_BACK},
-    }
-})
-print("  Done.")
+    print("Updating German Prefix templates...")
+    anki("updateModelTemplates", model={
+        "name": "German Prefix",
+        "templates": {
+            "Prefix → Meaning": {"Front": PFX_MEANING_FRONT, "Back": PFX_MEANING_BACK},
+            "Meaning → Prefix": {"Front": MEANING_PFX_FRONT, "Back": MEANING_PFX_BACK},
+        }
+    })
+    print("  Done.")
 
-print()
-print("Templates and CSS pushed to Anki (both note types).")
+    print()
+    print("Templates and CSS pushed to Anki (both note types).")
+
+
+if __name__ == "__main__":
+    main()

@@ -10,20 +10,14 @@ Usage:
     uv run python tools/fix_disambiguations.py
 """
 import argparse
-import json
-import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from _anki import anki, DECK, MODEL
-from _llm import get_floodgate_token, call_llm
+from ._anki import anki, DECK, MODEL, fetch_vocab_notes
+from ._llm import get_floodgate_token, call_llm_with_retry
 
 
 def find_duplicate_translations():
     """Find groups of notes sharing the same translation."""
-    note_ids = anki("findNotes", query=f'deck:"{DECK}" "note:{MODEL}"')
-    notes = anki("notesInfo", notes=note_ids)
+    notes = fetch_vocab_notes()
 
     trans_groups = {}
     for note in notes:
@@ -104,11 +98,7 @@ Return ONLY a JSON array (no markdown). Each element:
 
     token = get_floodgate_token()
     messages = [{"role": "user", "content": prompt}]
-    result = call_llm(messages, token, max_tokens=4096)
-    if not isinstance(result, list):
-        print(f"Bad LLM response: {type(result)}")
-        return None
-    return result
+    return call_llm_with_retry(messages, token, max_tokens=4096)
 
 
 def apply_disambiguations(dupes, llm_result, dry_run=False):
@@ -150,14 +140,8 @@ def apply_disambiguations(dupes, llm_result, dry_run=False):
     print(f"\nUpdated {len(updates)} notes.")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument("--dry-run", action="store_true")
-    args = parser.parse_args()
-
+def run(args):
+    """Execute with pre-parsed args (called by CLI dispatcher)."""
     print("Finding duplicate translations...")
     dupes = find_duplicate_translations()
     if not dupes:
@@ -176,6 +160,15 @@ def main():
         return
 
     apply_disambiguations(dupes, result, dry_run=args.dry_run)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--dry-run", action="store_true")
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":
