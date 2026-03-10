@@ -102,6 +102,15 @@ def ensure_anki():
     return False
 
 
+def hide_anki():
+    """Hide Anki via AppleScript — Anki ignores open -g -j and activates itself."""
+    subprocess.run([
+        "osascript", "-e",
+        'tell application "System Events" to set visible '
+        'of process "Anki" to false',
+    ], capture_output=True)
+
+
 def wait_for_ankiconnect(timeout=ANKICONNECT_TIMEOUT):
     """Poll AnkiConnect until it responds, up to *timeout* seconds."""
     payload = json.dumps({"action": "version", "version": 6}).encode()
@@ -275,6 +284,9 @@ def run(args):
         emit(f"ERROR: AnkiConnect not responding after {ANKICONNECT_TIMEOUT}s")
         log.close()
         raise SystemExit(1)
+
+    if launched:
+        hide_anki()
 
     from .unsuspend_candidates import run as unsuspend_run
     import types

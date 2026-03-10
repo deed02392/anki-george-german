@@ -281,7 +281,7 @@ class TestStatus:
 
 class TestEnsureAnki:
     def test_launches_when_not_running(self, monkeypatch):
-        """Calls 'open -g -a Anki' when pgrep finds no Anki process."""
+        """Calls 'open -g -j -a Anki' when pgrep finds no Anki process."""
         opened = []
         monkeypatch.setattr(subprocess, "run", lambda cmd, **kw:
             types.SimpleNamespace(returncode=1) if cmd[0] == "pgrep"
@@ -294,6 +294,17 @@ class TestEnsureAnki:
         monkeypatch.setattr(subprocess, "run", lambda cmd, **kw:
             types.SimpleNamespace(returncode=0))
         assert sched.ensure_anki() is False
+
+
+class TestHideAnki:
+    def test_calls_osascript(self, monkeypatch):
+        """Hides Anki via System Events AppleScript."""
+        cmds = []
+        monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: cmds.append(cmd))
+        sched.hide_anki()
+        assert len(cmds) == 1
+        assert cmds[0][0] == "osascript"
+        assert "visible" in cmds[0][2]
 
 
 class TestWaitForAnkiConnect:
@@ -368,12 +379,37 @@ class TestRun:
         """_run logs when it had to launch Anki."""
         monkeypatch.setattr(sched, "ensure_anki", lambda: True)
         monkeypatch.setattr(sched, "wait_for_ankiconnect", lambda: True)
+        monkeypatch.setattr(sched, "hide_anki", lambda: None)
         monkeypatch.setattr(
             "anki_george_german.unsuspend_candidates.run", lambda args: None,
         )
         sched.run(types.SimpleNamespace(max=5))
         log = (dirs.state / "unsuspend.log").read_text()
         assert "Launched Anki" in log
+
+    def test_hides_anki_after_launch(self, dirs, monkeypatch):
+        """_run calls hide_anki when it had to launch Anki."""
+        monkeypatch.setattr(sched, "ensure_anki", lambda: True)
+        monkeypatch.setattr(sched, "wait_for_ankiconnect", lambda: True)
+        hidden = []
+        monkeypatch.setattr(sched, "hide_anki", lambda: hidden.append(1))
+        monkeypatch.setattr(
+            "anki_george_german.unsuspend_candidates.run", lambda args: None,
+        )
+        sched.run(types.SimpleNamespace(max=5))
+        assert len(hidden) == 1
+
+    def test_does_not_hide_if_already_running(self, dirs, monkeypatch):
+        """_run skips hide_anki when Anki was already running."""
+        monkeypatch.setattr(sched, "ensure_anki", lambda: False)
+        monkeypatch.setattr(sched, "wait_for_ankiconnect", lambda: True)
+        hidden = []
+        monkeypatch.setattr(sched, "hide_anki", lambda: hidden.append(1))
+        monkeypatch.setattr(
+            "anki_george_german.unsuspend_candidates.run", lambda args: None,
+        )
+        sched.run(types.SimpleNamespace(max=5))
+        assert len(hidden) == 0
 
 
 # -- Resolve UV / Validate --------------------------------------------------
