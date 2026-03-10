@@ -370,6 +370,8 @@ Rules:
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive). \
 Copy-paste from the sentence — if the sentence has "den Apfel", cloze_word must be "den Apfel" not "Der Apfel". \
 For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
+- For separable verbs: at least one sentence MUST show the prefix separating from the stem \
+(e.g. "Er machte die Tür auf" not only "Er wollte die Tür aufmachen")
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
 - For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
@@ -869,6 +871,7 @@ Rules:
 - Each sentence entry has its own "pos" and "cloze_word"
 - "cloze_word" must be an exact substring of "sentence" (case-sensitive)
 - For separable verbs, use ~ (tilde) between separated parts (e.g. "machte~auf")
+- For separable verbs: at least one sentence MUST show the prefix separating from the stem
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
 - For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
@@ -925,6 +928,7 @@ Rules:
 - Each sentence entry has its own "pos" ({VALID_POS_STR}) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive)
 - For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g. "machte~auf")
+- For separable verbs: at least one sentence MUST show the prefix separating from the stem
 - For nouns: include the article in "cloze_word" if one precedes the noun in the sentence \
 (e.g. if sentence is "Ich esse den Apfel", cloze_word is "den Apfel" not just "Apfel")
 - For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
