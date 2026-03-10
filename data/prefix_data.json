@@ -14,8 +14,8 @@
   {
     "prefix": "an",
     "type": "separable",
-    "core_meaning": "on, at, toward",
-    "spatial_sense": "onto a surface, at a point, toward a target",
+    "core_meaning": "onto, into contact",
+    "spatial_sense": "the moment something reaches or touches its target",
     "examples": [
       {"verb": "anziehen", "translation": "put on, dress"},
       {"verb": "anlegen", "translation": "put on, invest"},
