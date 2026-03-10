@@ -97,7 +97,7 @@ def ensure_anki():
     result = subprocess.run(["pgrep", "-x", "Anki"], capture_output=True)
     if result.returncode != 0:
         print("Launching Anki (background)...")
-        subprocess.run(["open", "-g", "-a", "Anki"])
+        subprocess.run(["open", "-g", "-j", "-a", "Anki"])
         return True
     return False
 

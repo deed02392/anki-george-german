@@ -287,7 +287,7 @@ class TestEnsureAnki:
             types.SimpleNamespace(returncode=1) if cmd[0] == "pgrep"
             else opened.append(cmd) or types.SimpleNamespace(returncode=0))
         assert sched.ensure_anki() is True
-        assert opened and opened[0] == ["open", "-g", "-a", "Anki"]
+        assert opened and opened[0] == ["open", "-g", "-j", "-a", "Anki"]
 
     def test_skips_when_already_running(self, monkeypatch):
         """Does not launch Anki when pgrep finds it running."""
