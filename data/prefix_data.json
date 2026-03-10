@@ -3,7 +3,7 @@
     "prefix": "ab",
     "type": "separable",
     "core_meaning": "off, away",
-    "spatial_sense": "off a surface, away from a point",
+    "spatial_sense": "detaching from where something was",
     "examples": [
       {"verb": "absetzen", "translation": "take off, drop off"},
       {"verb": "abbrechen", "translation": "break off, cancel"},
@@ -27,7 +27,7 @@
     "prefix": "auf",
     "type": "separable",
     "core_meaning": "up, open",
-    "spatial_sense": "upward, or opening something closed",
+    "spatial_sense": "rising to an exposed state \u2014 opening is going up",
     "examples": [
       {"verb": "aufstehen", "translation": "stand up, get up"},
       {"verb": "aufmachen", "translation": "open"},
@@ -39,8 +39,8 @@
   {
     "prefix": "aus",
     "type": "separable",
-    "core_meaning": "out, out of",
-    "spatial_sense": "outward from an enclosed space",
+    "core_meaning": "out",
+    "spatial_sense": "emerging from an enclosed space, or fully through to the end",
     "examples": [
       {"verb": "ausziehen", "translation": "take off, move out"},
       {"verb": "ausgehen", "translation": "go out"},
@@ -51,8 +51,8 @@
   {
     "prefix": "ein",
     "type": "separable",
-    "core_meaning": "in, into",
-    "spatial_sense": "inward into an enclosed space",
+    "core_meaning": "into",
+    "spatial_sense": "entering or fitting inside an enclosed space",
     "examples": [
       {"verb": "einsteigen", "translation": "board, get in"},
       {"verb": "einschlafen", "translation": "fall asleep"},
@@ -63,8 +63,8 @@
   {
     "prefix": "zu",
     "type": "separable",
-    "core_meaning": "closed, toward",
-    "spatial_sense": "closing shut, or movement toward a destination",
+    "core_meaning": "shut, toward",
+    "spatial_sense": "converging to a closed or final point",
     "examples": [
       {"verb": "zugehen", "translation": "close, go shut"},
       {"verb": "zulassen", "translation": "allow, admit"},
@@ -75,8 +75,8 @@
   {
     "prefix": "vor",
     "type": "separable",
-    "core_meaning": "forward, in front",
-    "spatial_sense": "to the front, positioned ahead",
+    "core_meaning": "before, ahead",
+    "spatial_sense": "positioned in front \u2014 in space or in time",
     "examples": [
       {"verb": "vorlesen", "translation": "read aloud"},
       {"verb": "vorgehen", "translation": "go ahead, have priority"},
@@ -87,8 +87,8 @@
   {
     "prefix": "mit",
     "type": "separable",
-    "core_meaning": "with, along",
-    "spatial_sense": "alongside, moving together with",
+    "core_meaning": "along, together",
+    "spatial_sense": "moving or acting alongside someone",
     "examples": [
       {"verb": "mitbringen", "translation": "bring along"},
       {"verb": "mitmachen", "translation": "join in, take part"},
@@ -175,8 +175,8 @@
   {
     "prefix": "ver",
     "type": "inseparable",
-    "core_meaning": "away, wrongly, change",
-    "spatial_sense": "transformation, going astray, or carrying through to a changed state",
+    "core_meaning": "through, transformed",
+    "spatial_sense": "something passes through a change and can\u2019t go back",
     "examples": [
       {"verb": "verstecken", "translation": "hide"},
       {"verb": "verlassen", "translation": "leave behind"},
@@ -188,8 +188,8 @@
   {
     "prefix": "be",
     "type": "inseparable",
-    "core_meaning": "upon, onto",
-    "spatial_sense": "directing action onto an object \u2014 often makes intransitive verbs take a direct object",
+    "core_meaning": "upon, all over",
+    "spatial_sense": "directing the action onto an object \u2014 often adds a direct object",
     "examples": [
       {"verb": "bearbeiten", "translation": "work on, revise"},
       {"verb": "begegnen", "translation": "meet, come across"},
@@ -201,8 +201,8 @@
   {
     "prefix": "er",
     "type": "inseparable",
-    "core_meaning": "achieving, completing",
-    "spatial_sense": "reaching a result or end state, often after effort or process",
+    "core_meaning": "to completion",
+    "spatial_sense": "a process reaching its result \u2014 achieved or brought into being",
     "examples": [
       {"verb": "erfahren", "translation": "experience, find out"},
       {"verb": "erwachen", "translation": "wake up"},
@@ -214,8 +214,8 @@
   {
     "prefix": "ent",
     "type": "inseparable",
-    "core_meaning": "away, un-, de-",
-    "spatial_sense": "removal, reversal, or escape from a state",
+    "core_meaning": "un-, removal",
+    "spatial_sense": "stripping away or escaping from a state",
     "examples": [
       {"verb": "entschuldigen", "translation": "excuse, apologize"},
       {"verb": "entziehen", "translation": "take away, remove"},
@@ -239,8 +239,8 @@
   {
     "prefix": "\u00fcber",
     "type": "both",
-    "core_meaning": "over, across, beyond",
-    "spatial_sense": "extent over or across \u2014 separable when spatial, inseparable when abstract",
+    "core_meaning": "over, beyond",
+    "spatial_sense": "spanning above, across, or past a limit \u2014 separable when spatial, inseparable when abstract",
     "examples": [
       {"verb": "\u00fcbernehmen", "translation": "take over"},
       {"verb": "\u00fcbergeben", "translation": "hand over, transfer"},
