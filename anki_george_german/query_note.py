@@ -2,7 +2,7 @@
 """Quick query to show fields for a specific word."""
 import sys
 
-from ._anki import anki
+from ._anki import anki, strip_article
 
 
 def _field(note, name):
@@ -71,7 +71,8 @@ def _print_note(note):
 def run(args):
     """Execute with pre-parsed args (called by CLI dispatcher)."""
     word = args.word
-    ids = anki("findNotes", query=f"deck:\"George's German Vocabulary\" Word:*{word}*")
+    bare = strip_article(word)
+    ids = anki("findNotes", query=f"deck:\"George's German Vocabulary\" Word:*{bare}*")
     notes = anki("notesInfo", notes=ids)
     if not notes:
         print(f"No notes found matching: {word}")
