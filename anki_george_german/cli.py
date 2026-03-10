@@ -34,6 +34,10 @@ def dispatch(args):
     elif args.command == "query":
         from .query_note import run
         run(args)
+    elif args.command == "schedule":
+        from .schedule import install, uninstall, status, run
+        {"install": install, "uninstall": uninstall, "status": status,
+         "_run": run}[args.sched_command](args)
 
 
 def main():
@@ -101,6 +105,24 @@ def main():
     sub.add_parser("prefixes", help="Sync prefix data to Anki")
     query_p = sub.add_parser("query", help="Look up a word")
     query_p.add_argument("word", nargs="?", default="der Saft")
+
+    # -- schedule --------------------------------------------------
+    sched = sub.add_parser("schedule", help="Manage weekly auto-unsuspend")
+    sched_sub = sched.add_subparsers(dest="sched_command", required=True)
+
+    install_p = sched_sub.add_parser("install", help="Install launchd agent")
+    install_p.add_argument("--day", default="MON",
+        help="Day of week: MON-SUN (default: MON)")
+    install_p.add_argument("--hour", type=int, default=9,
+        help="Hour to run, 0-23 (default: 9)")
+    install_p.add_argument("--max", type=int, default=5,
+        help="Max cards per type per run (default: 5)")
+
+    sched_sub.add_parser("uninstall", help="Remove launchd agent")
+    sched_sub.add_parser("status", help="Show agent status and recent runs")
+
+    run_p = sched_sub.add_parser("_run", help=argparse.SUPPRESS)
+    run_p.add_argument("--max", type=int, default=5)
 
     args = parser.parse_args()
     if not args.command:
