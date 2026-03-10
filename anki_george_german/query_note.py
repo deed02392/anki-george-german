@@ -8,7 +8,7 @@ from ._anki import anki
 def run(args):
     """Execute with pre-parsed args (called by CLI dispatcher)."""
     word = args.word
-    ids = anki("findNotes", query=f"deck:\"George's German Vocabulary\" Word:\"{word}\"")
+    ids = anki("findNotes", query=f"deck:\"George's German Vocabulary\" Word:*{word}*")
     notes = anki("notesInfo", notes=ids)
     if not notes:
         print(f"No notes found for Word: {word}")
