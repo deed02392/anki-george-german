@@ -17,6 +17,7 @@ PLIST_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = PLIST_DIR / f"{LABEL}.plist"
 STATE_DIR = Path.home() / ".local" / "share" / "anki-george-german"
 LOG_PATH = STATE_DIR / "unsuspend.log"
+AGENT_BINARY = STATE_DIR / "unsuspend-agent"
 TEMPLATES = Path(__file__).parent / "templates"
 
 WEEKDAY_MAP = {
@@ -39,6 +40,20 @@ def _resolve_uv():
         print("ERROR: 'uv' not found on PATH. Install it first.")
         raise SystemExit(1)
     return uv
+
+
+def _compile_agent():
+    """Compile the Swift unsuspend-agent binary into STATE_DIR."""
+    source = TEMPLATES / "unsuspend_agent.swift"
+    result = subprocess.run(
+        ["swiftc", "-o", str(AGENT_BINARY), str(source)],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        print("ERROR: Failed to compile unsuspend-agent:")
+        print(result.stderr.decode())
+        raise SystemExit(1)
+    AGENT_BINARY.chmod(0o700)
 
 
 def _validate_project(uv):
@@ -90,7 +105,7 @@ def _is_loaded():
     return result.returncode == 0
 
 
-# -- Anki launch / AnkiConnect wait -----------------------------------------
+# -- Anki launch / AnkiConnect wait (used by `schedule _run`) ---------------
 
 def ensure_anki():
     """Launch Anki in the background if it's not already running."""
@@ -100,15 +115,6 @@ def ensure_anki():
         subprocess.run(["open", "-g", "-j", "-a", "Anki"])
         return True
     return False
-
-
-def hide_anki():
-    """Hide Anki via AppleScript — Anki ignores open -g -j and activates itself."""
-    subprocess.run([
-        "osascript", "-e",
-        'tell application "System Events" to set visible '
-        'of process "Anki" to false',
-    ], capture_output=True)
 
 
 def wait_for_ankiconnect(timeout=ANKICONNECT_TIMEOUT):
@@ -146,9 +152,15 @@ def install(args):
     uv = _resolve_uv()
     _validate_project(uv)
 
+    # Create state dir and compile agent binary
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    PLIST_DIR.mkdir(parents=True, exist_ok=True)
+    _compile_agent()
+
     # Read and substitute plist template
     plist_tmpl = Template((TEMPLATES / "unsuspend.plist").read_text())
     plist_text = plist_tmpl.substitute(
+        AGENT_PATH=AGENT_BINARY,
         UV_PATH=uv,
         PROJECT_PATH=PROJECT_ROOT,
         MAX=max_cards,
@@ -158,9 +170,6 @@ def install(args):
     )
 
     # Write plist
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    PLIST_DIR.mkdir(parents=True, exist_ok=True)
-
     PLIST_PATH.write_text(plist_text)
     PLIST_PATH.chmod(0o600)
 
@@ -170,6 +179,7 @@ def install(args):
     print(f"Installed launchd agent: {LABEL}")
     print(f"  Schedule:  {day_key} at {hour:02d}:00")
     print(f"  Max cards: {max_cards} per type")
+    print(f"  Agent:     {AGENT_BINARY}")
     print(f"  Plist:     {PLIST_PATH}")
     print(f"  Log:       {LOG_PATH}")
 
@@ -177,10 +187,19 @@ def install(args):
 def uninstall(_args):
     _launchctl_bootout()
 
-    try:
-        PLIST_PATH.unlink()
-        print(f"Removed: {PLIST_PATH}")
-    except FileNotFoundError:
+    removed = []
+    for path in (PLIST_PATH, AGENT_BINARY):
+        try:
+            path.unlink()
+            removed.append(str(path))
+        except FileNotFoundError:
+            pass
+
+    if removed:
+        print("Removed:")
+        for p in removed:
+            print(f"  {p}")
+    else:
         print("Nothing to remove (already uninstalled).")
 
     if LOG_PATH.exists():
@@ -265,7 +284,7 @@ def status(_args):
 
 
 def run(args):
-    """Called by launchd — launch Anki, wait for AnkiConnect, run unsuspend."""
+    """Manual test: launch Anki, wait for AnkiConnect, run unsuspend."""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     log = open(LOG_PATH, "a")
 
@@ -284,9 +303,6 @@ def run(args):
         emit(f"ERROR: AnkiConnect not responding after {ANKICONNECT_TIMEOUT}s")
         log.close()
         raise SystemExit(1)
-
-    if launched:
-        hide_anki()
 
     from .unsuspend_candidates import run as unsuspend_run
     import types

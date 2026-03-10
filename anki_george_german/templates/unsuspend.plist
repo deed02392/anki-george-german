@@ -7,16 +7,14 @@
     <string>com.anki-george-german.unsuspend</string>
     <key>ProgramArguments</key>
     <array>
+        <string>$AGENT_PATH</string>
+        <string>--uv</string>
         <string>$UV_PATH</string>
-        <string>run</string>
-        <string>anki-german</string>
-        <string>schedule</string>
-        <string>_run</string>
+        <string>--project</string>
+        <string>$PROJECT_PATH</string>
         <string>--max</string>
         <string>$MAX</string>
     </array>
-    <key>WorkingDirectory</key>
-    <string>$PROJECT_PATH</string>
     <key>StartCalendarInterval</key>
     <dict>
         <key>Weekday</key>

@@ -1,11 +1,8 @@
 """Tests for schedule.py — launchd agent install/uninstall/status/_run."""
 
-import json
 import subprocess
 import types
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from threading import Thread
 
 import pytest
 
@@ -24,6 +21,7 @@ def dirs(tmp_path, monkeypatch):
 
     monkeypatch.setattr(sched, "STATE_DIR", state)
     monkeypatch.setattr(sched, "LOG_PATH", state / "unsuspend.log")
+    monkeypatch.setattr(sched, "AGENT_BINARY", state / "unsuspend-agent")
     monkeypatch.setattr(sched, "PLIST_DIR", agents)
     monkeypatch.setattr(sched, "PLIST_PATH", agents / f"{sched.LABEL}.plist")
 
@@ -45,6 +43,12 @@ def no_launchctl(monkeypatch):
     monkeypatch.setattr(sched, "_is_loaded", lambda: False)
 
 
+@pytest.fixture
+def no_compile(monkeypatch):
+    """Stub out Swift compilation."""
+    monkeypatch.setattr(sched, "_compile_agent", lambda: None)
+
+
 def _make_args(**overrides):
     """Build a namespace mimicking argparse output for schedule install."""
     defaults = {"day": "MON", "hour": 9, "max": 5}
@@ -60,6 +64,7 @@ class TestTemplateSubstitution:
         from string import Template
         tmpl = Template((sched.TEMPLATES / "unsuspend.plist").read_text())
         result = tmpl.substitute(
+            AGENT_PATH="/test/unsuspend-agent",
             UV_PATH="/usr/local/bin/uv",
             PROJECT_PATH="/home/user/project",
             MAX=5,
@@ -67,6 +72,7 @@ class TestTemplateSubstitution:
             HOUR=14,
             LOG_PATH="/test/log",
         )
+        assert "<string>/test/unsuspend-agent</string>" in result
         assert "<string>/usr/local/bin/uv</string>" in result
         assert "<string>/home/user/project</string>" in result
         assert "<string>5</string>" in result
@@ -79,96 +85,122 @@ class TestTemplateSubstitution:
         from string import Template
         tmpl = Template((sched.TEMPLATES / "unsuspend.plist").read_text())
         result = tmpl.substitute(
-            UV_PATH="/uv", PROJECT_PATH="/p", MAX=5,
+            AGENT_PATH="/a", UV_PATH="/uv", PROJECT_PATH="/p", MAX=5,
             WEEKDAY=1, HOUR=9, LOG_PATH="/log",
         )
         assert "AssociatedBundleIdentifiers" in result
         assert "net.ankiweb.launcher" in result
 
-    def test_plist_has_working_directory(self):
-        """Plist includes WorkingDirectory pointing to the project."""
+    def test_plist_calls_agent_binary(self):
+        """Plist ProgramArguments starts with the agent binary, not uv or bash."""
         from string import Template
         tmpl = Template((sched.TEMPLATES / "unsuspend.plist").read_text())
         result = tmpl.substitute(
-            UV_PATH="/uv", PROJECT_PATH="/my/project", MAX=5,
-            WEEKDAY=1, HOUR=9, LOG_PATH="/log",
-        )
-        assert "<key>WorkingDirectory</key>" in result
-        assert "<string>/my/project</string>" in result
-
-    def test_plist_invokes_uv_directly(self):
-        """Plist ProgramArguments starts with uv, not /bin/bash."""
-        from string import Template
-        tmpl = Template((sched.TEMPLATES / "unsuspend.plist").read_text())
-        result = tmpl.substitute(
-            UV_PATH="/opt/homebrew/bin/uv", PROJECT_PATH="/p", MAX=5,
-            WEEKDAY=1, HOUR=9, LOG_PATH="/log",
+            AGENT_PATH="/my/unsuspend-agent", UV_PATH="/uv",
+            PROJECT_PATH="/p", MAX=5, WEEKDAY=1, HOUR=9, LOG_PATH="/log",
         )
         assert "/bin/bash" not in result
-        assert "<string>/opt/homebrew/bin/uv</string>" in result
+        # Agent binary is the first ProgramArguments string
+        lines = result.splitlines()
+        prog_idx = next(i for i, l in enumerate(lines) if "ProgramArguments" in l)
+        first_string = lines[prog_idx + 2]  # skip <array>
+        assert "/my/unsuspend-agent" in first_string
 
-    def test_no_bash_wrapper_template(self):
-        """The bash wrapper template no longer exists."""
-        assert not (sched.TEMPLATES / "unsuspend.sh").exists()
+    def test_agent_swift_source_exists(self):
+        """The Swift source for the agent binary exists."""
+        assert (sched.TEMPLATES / "unsuspend_agent.swift").exists()
+
+
+# -- Compile agent -----------------------------------------------------------
+
+class TestCompileAgent:
+    def test_compiles_successfully(self, dirs):
+        """_compile_agent produces a binary from the Swift source."""
+        sched._compile_agent()
+        assert (dirs.state / "unsuspend-agent").exists()
+
+    def test_binary_is_executable(self, dirs):
+        """Compiled binary has mode 0o700."""
+        sched._compile_agent()
+        mode = (dirs.state / "unsuspend-agent").stat().st_mode & 0o777
+        assert mode == 0o700
+
+    def test_compile_failure_exits(self, dirs, monkeypatch):
+        """Exits with code 1 when swiftc fails."""
+        monkeypatch.setattr(
+            subprocess, "run",
+            lambda *a, **kw: types.SimpleNamespace(returncode=1, stderr=b"error"),
+        )
+        with pytest.raises(SystemExit) as exc:
+            sched._compile_agent()
+        assert exc.value.code == 1
 
 
 # -- Install -----------------------------------------------------------------
 
 class TestInstall:
-    def test_creates_plist(self, dirs, fake_uv, no_launchctl):
+    def test_creates_plist(self, dirs, fake_uv, no_launchctl, no_compile):
         """Install writes the plist to the expected location."""
         sched.install(_make_args())
         assert (dirs.agents / f"{sched.LABEL}.plist").exists()
 
-    def test_no_wrapper_created(self, dirs, fake_uv, no_launchctl):
-        """Install does not create a bash wrapper script."""
-        sched.install(_make_args())
-        assert not (dirs.state / "unsuspend.sh").exists()
-
-    def test_plist_permissions(self, dirs, fake_uv, no_launchctl):
+    def test_plist_permissions(self, dirs, fake_uv, no_launchctl, no_compile):
         """Plist is mode 0o600."""
         sched.install(_make_args())
         mode = (dirs.agents / f"{sched.LABEL}.plist").stat().st_mode & 0o777
         assert mode == 0o600
 
-    def test_plist_contains_uv_path(self, dirs, fake_uv, no_launchctl):
-        """Plist embeds the resolved uv path."""
+    def test_plist_contains_agent_path(self, dirs, fake_uv, no_launchctl, no_compile):
+        """Plist embeds the agent binary path."""
+        sched.install(_make_args())
+        plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
+        assert str(dirs.state / "unsuspend-agent") in plist
+
+    def test_plist_contains_uv_path(self, dirs, fake_uv, no_launchctl, no_compile):
+        """Plist passes uv path as an argument."""
         sched.install(_make_args())
         plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
         assert "<string>/usr/local/bin/uv</string>" in plist
 
-    def test_plist_contains_max_arg(self, dirs, fake_uv, no_launchctl):
+    def test_plist_contains_max_arg(self, dirs, fake_uv, no_launchctl, no_compile):
         """Plist embeds the --max argument."""
         sched.install(_make_args(max=10))
         plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
         assert "<string>10</string>" in plist
 
-    def test_plist_weekday_mapping(self, dirs, fake_uv, no_launchctl):
+    def test_plist_weekday_mapping(self, dirs, fake_uv, no_launchctl, no_compile):
         """Plist gets the correct weekday integer for each day."""
         for day, expected in sched.WEEKDAY_MAP.items():
             sched.install(_make_args(day=day))
             plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
             assert f"<integer>{expected}</integer>" in plist
 
-    def test_plist_hour(self, dirs, fake_uv, no_launchctl):
+    def test_plist_hour(self, dirs, fake_uv, no_launchctl, no_compile):
         """Plist embeds the requested hour."""
         sched.install(_make_args(hour=17))
         plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
         assert "<integer>17</integer>" in plist
 
-    def test_invalid_day_exits(self, dirs, fake_uv, no_launchctl):
+    def test_invalid_day_exits(self, dirs, fake_uv, no_launchctl, no_compile):
         """Bad --day value exits with code 1."""
         with pytest.raises(SystemExit) as exc:
             sched.install(_make_args(day="XDAY"))
         assert exc.value.code == 1
 
-    def test_invalid_hour_exits(self, dirs, fake_uv, no_launchctl):
+    def test_invalid_hour_exits(self, dirs, fake_uv, no_launchctl, no_compile):
         """Hour outside 0-23 exits with code 1."""
         with pytest.raises(SystemExit) as exc:
             sched.install(_make_args(hour=25))
         assert exc.value.code == 1
 
-    def test_calls_launchctl_bootstrap(self, dirs, fake_uv, monkeypatch):
+    def test_calls_compile_agent(self, dirs, fake_uv, no_launchctl, monkeypatch):
+        """Install compiles the agent binary."""
+        calls = []
+        monkeypatch.setattr(sched, "_compile_agent", lambda: calls.append(1))
+        sched.install(_make_args())
+        assert len(calls) == 1
+
+    def test_calls_launchctl_bootstrap(self, dirs, fake_uv, no_compile, monkeypatch):
         """Install invokes _launchctl_bootstrap to load the agent."""
         calls = []
         monkeypatch.setattr(sched, "_launchctl_bootstrap", lambda: calls.append(1))
@@ -176,14 +208,14 @@ class TestInstall:
         sched.install(_make_args())
         assert len(calls) == 1
 
-    def test_reinstall_overwrites(self, dirs, fake_uv, no_launchctl):
+    def test_reinstall_overwrites(self, dirs, fake_uv, no_launchctl, no_compile):
         """Running install twice overwrites plist without error."""
         sched.install(_make_args(hour=9))
         sched.install(_make_args(hour=15))
         plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
         assert "<integer>15</integer>" in plist
 
-    def test_day_case_insensitive(self, dirs, fake_uv, no_launchctl):
+    def test_day_case_insensitive(self, dirs, fake_uv, no_launchctl, no_compile):
         """--day accepts lowercase input."""
         sched.install(_make_args(day="wed"))
         plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
@@ -193,13 +225,16 @@ class TestInstall:
 # -- Uninstall ---------------------------------------------------------------
 
 class TestUninstall:
-    def test_removes_plist(self, dirs, fake_uv, no_launchctl):
-        """Uninstall deletes the plist."""
+    def test_removes_plist_and_binary(self, dirs, fake_uv, no_launchctl, no_compile):
+        """Uninstall deletes plist and agent binary."""
         sched.install(_make_args())
+        # Create a fake binary since we stubbed compilation
+        (dirs.state / "unsuspend-agent").write_bytes(b"fake")
         sched.uninstall(None)
         assert not (dirs.agents / f"{sched.LABEL}.plist").exists()
+        assert not (dirs.state / "unsuspend-agent").exists()
 
-    def test_preserves_log(self, dirs, fake_uv, no_launchctl):
+    def test_preserves_log(self, dirs, fake_uv, no_launchctl, no_compile):
         """Uninstall does not delete the log file."""
         sched.install(_make_args())
         log = dirs.state / "unsuspend.log"
@@ -212,7 +247,7 @@ class TestUninstall:
         sched.uninstall(None)  # no files exist
         sched.uninstall(None)  # still no error
 
-    def test_calls_launchctl_bootout(self, dirs, fake_uv, monkeypatch):
+    def test_calls_launchctl_bootout(self, dirs, fake_uv, no_compile, monkeypatch):
         """Uninstall invokes _launchctl_bootout."""
         monkeypatch.setattr(sched, "_launchctl_bootstrap", lambda: None)
         calls = []
@@ -232,7 +267,7 @@ class TestStatus:
         assert "No launchd agent installed" in out
         assert "anki-german schedule install" in out
 
-    def test_installed_shows_schedule(self, dirs, fake_uv, no_launchctl, capsys):
+    def test_installed_shows_schedule(self, dirs, fake_uv, no_launchctl, no_compile, capsys):
         """Status after install shows the schedule day and hour."""
         sched.install(_make_args(day="WED", hour=14))
         sched.status(None)
@@ -240,7 +275,7 @@ class TestStatus:
         assert "WED" in out
         assert "14:00" in out
 
-    def test_shows_last_run_timestamp(self, dirs, fake_uv, no_launchctl, capsys):
+    def test_shows_last_run_timestamp(self, dirs, fake_uv, no_launchctl, no_compile, capsys):
         """Status parses the timestamp from the log."""
         sched.install(_make_args())
         log = dirs.state / "unsuspend.log"
@@ -249,7 +284,7 @@ class TestStatus:
         out = capsys.readouterr().out
         assert "2026-03-10 09:00:00" in out
 
-    def test_shows_unsuspend_result(self, dirs, fake_uv, no_launchctl, capsys):
+    def test_shows_unsuspend_result(self, dirs, fake_uv, no_launchctl, no_compile, capsys):
         """Status shows the unsuspend result from the log."""
         sched.install(_make_args())
         log = dirs.state / "unsuspend.log"
@@ -258,7 +293,7 @@ class TestStatus:
         out = capsys.readouterr().out
         assert "Unsuspended" in out
 
-    def test_shows_error_from_log(self, dirs, fake_uv, no_launchctl, capsys):
+    def test_shows_error_from_log(self, dirs, fake_uv, no_launchctl, no_compile, capsys):
         """Status surfaces ERROR lines from the log."""
         sched.install(_make_args())
         log = dirs.state / "unsuspend.log"
@@ -267,7 +302,7 @@ class TestStatus:
         out = capsys.readouterr().out
         assert "ERROR:" in out
 
-    def test_shows_nothing_to_unsuspend(self, dirs, fake_uv, no_launchctl, capsys):
+    def test_shows_nothing_to_unsuspend(self, dirs, fake_uv, no_launchctl, no_compile, capsys):
         """Status shows 'Nothing to unsuspend' when log reports it."""
         sched.install(_make_args())
         log = dirs.state / "unsuspend.log"
@@ -294,17 +329,6 @@ class TestEnsureAnki:
         monkeypatch.setattr(subprocess, "run", lambda cmd, **kw:
             types.SimpleNamespace(returncode=0))
         assert sched.ensure_anki() is False
-
-
-class TestHideAnki:
-    def test_calls_osascript(self, monkeypatch):
-        """Hides Anki via System Events AppleScript."""
-        cmds = []
-        monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: cmds.append(cmd))
-        sched.hide_anki()
-        assert len(cmds) == 1
-        assert cmds[0][0] == "osascript"
-        assert "visible" in cmds[0][2]
 
 
 class TestWaitForAnkiConnect:
@@ -336,7 +360,7 @@ class TestWaitForAnkiConnect:
         assert len(attempts) == 3
 
 
-# -- _run command ------------------------------------------------------------
+# -- _run command (manual test path) ----------------------------------------
 
 class TestRun:
     def test_calls_unsuspend(self, dirs, monkeypatch):
@@ -379,37 +403,12 @@ class TestRun:
         """_run logs when it had to launch Anki."""
         monkeypatch.setattr(sched, "ensure_anki", lambda: True)
         monkeypatch.setattr(sched, "wait_for_ankiconnect", lambda: True)
-        monkeypatch.setattr(sched, "hide_anki", lambda: None)
         monkeypatch.setattr(
             "anki_george_german.unsuspend_candidates.run", lambda args: None,
         )
         sched.run(types.SimpleNamespace(max=5))
         log = (dirs.state / "unsuspend.log").read_text()
         assert "Launched Anki" in log
-
-    def test_hides_anki_after_launch(self, dirs, monkeypatch):
-        """_run calls hide_anki when it had to launch Anki."""
-        monkeypatch.setattr(sched, "ensure_anki", lambda: True)
-        monkeypatch.setattr(sched, "wait_for_ankiconnect", lambda: True)
-        hidden = []
-        monkeypatch.setattr(sched, "hide_anki", lambda: hidden.append(1))
-        monkeypatch.setattr(
-            "anki_george_german.unsuspend_candidates.run", lambda args: None,
-        )
-        sched.run(types.SimpleNamespace(max=5))
-        assert len(hidden) == 1
-
-    def test_does_not_hide_if_already_running(self, dirs, monkeypatch):
-        """_run skips hide_anki when Anki was already running."""
-        monkeypatch.setattr(sched, "ensure_anki", lambda: False)
-        monkeypatch.setattr(sched, "wait_for_ankiconnect", lambda: True)
-        hidden = []
-        monkeypatch.setattr(sched, "hide_anki", lambda: hidden.append(1))
-        monkeypatch.setattr(
-            "anki_george_german.unsuspend_candidates.run", lambda args: None,
-        )
-        sched.run(types.SimpleNamespace(max=5))
-        assert len(hidden) == 0
 
 
 # -- Resolve UV / Validate --------------------------------------------------
