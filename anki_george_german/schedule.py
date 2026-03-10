@@ -17,7 +17,8 @@ PLIST_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = PLIST_DIR / f"{LABEL}.plist"
 STATE_DIR = Path.home() / ".local" / "share" / "anki-george-german"
 LOG_PATH = STATE_DIR / "unsuspend.log"
-AGENT_BINARY = STATE_DIR / "unsuspend-agent"
+APP_BUNDLE = STATE_DIR / "Anki German Unsuspend.app"
+AGENT_BINARY = APP_BUNDLE / "Contents" / "MacOS" / "unsuspend-agent"
 TEMPLATES = Path(__file__).parent / "templates"
 
 WEEKDAY_MAP = {
@@ -43,7 +44,12 @@ def _resolve_uv():
 
 
 def _compile_agent():
-    """Compile the Swift unsuspend-agent binary into STATE_DIR."""
+    """Compile the Swift unsuspend-agent and package as .app bundle."""
+    # Create .app bundle structure
+    (APP_BUNDLE / "Contents" / "MacOS").mkdir(parents=True, exist_ok=True)
+    (APP_BUNDLE / "Contents" / "Resources").mkdir(parents=True, exist_ok=True)
+
+    # Compile agent binary
     source = TEMPLATES / "unsuspend_agent.swift"
     result = subprocess.run(
         ["swiftc", "-o", str(AGENT_BINARY), str(source)],
@@ -54,6 +60,43 @@ def _compile_agent():
         print(result.stderr.decode())
         raise SystemExit(1)
     AGENT_BINARY.chmod(0o700)
+
+    # Write bundle Info.plist
+    info_tmpl = Template((TEMPLATES / "app_info.plist").read_text())
+    (APP_BUNDLE / "Contents" / "Info.plist").write_text(info_tmpl.substitute(
+        BUNDLE_ID=LABEL,
+    ))
+
+    # Generate app icon (non-fatal if it fails)
+    _generate_app_icon()
+
+
+def _generate_app_icon():
+    """Compile and run the icon generator to create AppIcon.icns."""
+    icon_source = TEMPLATES / "generate_icon.swift"
+    icon_binary = STATE_DIR / "_generate_icon"
+    resources = APP_BUNDLE / "Contents" / "Resources"
+
+    result = subprocess.run(
+        ["swiftc", "-o", str(icon_binary), str(icon_source)],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        print("WARNING: Could not compile icon generator (icon will be generic)")
+        return
+
+    icon_binary.chmod(0o700)
+    result = subprocess.run(
+        [str(icon_binary), str(resources)],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        print("WARNING: Icon generation failed (icon will be generic)")
+
+    try:
+        icon_binary.unlink()
+    except OSError:
+        pass
 
 
 def _validate_project(uv):
@@ -103,6 +146,16 @@ def _is_loaded():
         capture_output=True,
     )
     return result.returncode == 0
+
+
+def _lsregister():
+    """Register the .app bundle with Launch Services for Login Items display."""
+    lsregister = Path(
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/"
+        "Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+    )
+    if lsregister.exists():
+        subprocess.run([str(lsregister), "-f", str(APP_BUNDLE)], capture_output=True)
 
 
 # -- Anki launch / AnkiConnect wait (used by `schedule _run`) ---------------
@@ -173,13 +226,16 @@ def install(args):
     PLIST_PATH.write_text(plist_text)
     PLIST_PATH.chmod(0o600)
 
+    # Register app bundle with Launch Services (for Login Items attribution)
+    _lsregister()
+
     # Load agent
     _launchctl_bootstrap()
 
     print(f"Installed launchd agent: {LABEL}")
     print(f"  Schedule:  {day_key} at {hour:02d}:00")
     print(f"  Max cards: {max_cards} per type")
-    print(f"  Agent:     {AGENT_BINARY}")
+    print(f"  App:       {APP_BUNDLE}")
     print(f"  Plist:     {PLIST_PATH}")
     print(f"  Log:       {LOG_PATH}")
 
@@ -188,9 +244,12 @@ def uninstall(_args):
     _launchctl_bootout()
 
     removed = []
-    for path in (PLIST_PATH, AGENT_BINARY):
+    for path in (PLIST_PATH, APP_BUNDLE):
         try:
-            path.unlink()
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
             removed.append(str(path))
         except FileNotFoundError:
             pass

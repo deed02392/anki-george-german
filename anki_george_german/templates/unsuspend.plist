@@ -30,7 +30,7 @@
     <string>$LOG_PATH</string>
     <key>AssociatedBundleIdentifiers</key>
     <array>
-        <string>net.ankiweb.launcher</string>
+        <string>com.anki-george-german.unsuspend</string>
     </array>
 </dict>
 </plist>

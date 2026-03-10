@@ -19,13 +19,18 @@ def dirs(tmp_path, monkeypatch):
     state.mkdir()
     agents.mkdir()
 
+    app_bundle = state / "Anki German Unsuspend.app"
+
     monkeypatch.setattr(sched, "STATE_DIR", state)
     monkeypatch.setattr(sched, "LOG_PATH", state / "unsuspend.log")
-    monkeypatch.setattr(sched, "AGENT_BINARY", state / "unsuspend-agent")
+    monkeypatch.setattr(sched, "APP_BUNDLE", app_bundle)
+    monkeypatch.setattr(sched, "AGENT_BINARY",
+                        app_bundle / "Contents" / "MacOS" / "unsuspend-agent")
     monkeypatch.setattr(sched, "PLIST_DIR", agents)
     monkeypatch.setattr(sched, "PLIST_PATH", agents / f"{sched.LABEL}.plist")
 
-    return types.SimpleNamespace(state=state, agents=agents)
+    return types.SimpleNamespace(state=state, agents=agents,
+                                 app_bundle=app_bundle)
 
 
 @pytest.fixture
@@ -37,10 +42,11 @@ def fake_uv(monkeypatch):
 
 @pytest.fixture
 def no_launchctl(monkeypatch):
-    """Stub out launchctl calls so tests never talk to the real agent system."""
+    """Stub out launchctl and lsregister calls so tests never talk to the real system."""
     monkeypatch.setattr(sched, "_launchctl_bootstrap", lambda: None)
     monkeypatch.setattr(sched, "_launchctl_bootout", lambda: None)
     monkeypatch.setattr(sched, "_is_loaded", lambda: False)
+    monkeypatch.setattr(sched, "_lsregister", lambda: None)
 
 
 @pytest.fixture
@@ -81,7 +87,7 @@ class TestTemplateSubstitution:
         assert sched.LABEL in result
 
     def test_plist_has_associated_bundle(self):
-        """Plist includes AssociatedBundleIdentifiers for Anki."""
+        """Plist includes AssociatedBundleIdentifiers for our own app bundle."""
         from string import Template
         tmpl = Template((sched.TEMPLATES / "unsuspend.plist").read_text())
         result = tmpl.substitute(
@@ -89,7 +95,7 @@ class TestTemplateSubstitution:
             WEEKDAY=1, HOUR=9, LOG_PATH="/log",
         )
         assert "AssociatedBundleIdentifiers" in result
-        assert "net.ankiweb.launcher" in result
+        assert sched.LABEL in result
 
     def test_plist_calls_agent_binary(self):
         """Plist ProgramArguments starts with the agent binary, not uv or bash."""
@@ -110,20 +116,41 @@ class TestTemplateSubstitution:
         """The Swift source for the agent binary exists."""
         assert (sched.TEMPLATES / "unsuspend_agent.swift").exists()
 
+    def test_icon_generator_swift_source_exists(self):
+        """The Swift source for the icon generator exists."""
+        assert (sched.TEMPLATES / "generate_icon.swift").exists()
+
+    def test_app_info_plist_template_exists(self):
+        """The Info.plist template for the .app bundle exists."""
+        assert (sched.TEMPLATES / "app_info.plist").exists()
+
 
 # -- Compile agent -----------------------------------------------------------
 
 class TestCompileAgent:
     def test_compiles_successfully(self, dirs):
-        """_compile_agent produces a binary from the Swift source."""
+        """_compile_agent produces a binary inside the .app bundle."""
         sched._compile_agent()
-        assert (dirs.state / "unsuspend-agent").exists()
+        assert sched.AGENT_BINARY.exists()
 
     def test_binary_is_executable(self, dirs):
         """Compiled binary has mode 0o700."""
         sched._compile_agent()
-        mode = (dirs.state / "unsuspend-agent").stat().st_mode & 0o777
+        mode = sched.AGENT_BINARY.stat().st_mode & 0o777
         assert mode == 0o700
+
+    def test_creates_app_bundle(self, dirs):
+        """_compile_agent creates a valid .app bundle structure."""
+        sched._compile_agent()
+        assert dirs.app_bundle.exists()
+        assert (dirs.app_bundle / "Contents" / "Info.plist").exists()
+        assert (dirs.app_bundle / "Contents" / "Resources" / "AppIcon.icns").exists()
+
+    def test_info_plist_has_correct_bundle_id(self, dirs):
+        """Info.plist contains the correct bundle identifier."""
+        sched._compile_agent()
+        info = (dirs.app_bundle / "Contents" / "Info.plist").read_text()
+        assert sched.LABEL in info
 
     def test_compile_failure_exits(self, dirs, monkeypatch):
         """Exits with code 1 when swiftc fails."""
@@ -151,10 +178,10 @@ class TestInstall:
         assert mode == 0o600
 
     def test_plist_contains_agent_path(self, dirs, fake_uv, no_launchctl, no_compile):
-        """Plist embeds the agent binary path."""
+        """Plist embeds the agent binary path inside the .app bundle."""
         sched.install(_make_args())
         plist = (dirs.agents / f"{sched.LABEL}.plist").read_text()
-        assert str(dirs.state / "unsuspend-agent") in plist
+        assert str(sched.AGENT_BINARY) in plist
 
     def test_plist_contains_uv_path(self, dirs, fake_uv, no_launchctl, no_compile):
         """Plist passes uv path as an argument."""
@@ -205,6 +232,7 @@ class TestInstall:
         calls = []
         monkeypatch.setattr(sched, "_launchctl_bootstrap", lambda: calls.append(1))
         monkeypatch.setattr(sched, "_launchctl_bootout", lambda: None)
+        monkeypatch.setattr(sched, "_lsregister", lambda: None)
         sched.install(_make_args())
         assert len(calls) == 1
 
@@ -225,14 +253,16 @@ class TestInstall:
 # -- Uninstall ---------------------------------------------------------------
 
 class TestUninstall:
-    def test_removes_plist_and_binary(self, dirs, fake_uv, no_launchctl, no_compile):
-        """Uninstall deletes plist and agent binary."""
+    def test_removes_plist_and_app_bundle(self, dirs, fake_uv, no_launchctl, no_compile):
+        """Uninstall deletes plist and .app bundle."""
         sched.install(_make_args())
-        # Create a fake binary since we stubbed compilation
-        (dirs.state / "unsuspend-agent").write_bytes(b"fake")
+        # Create a fake .app bundle since we stubbed compilation
+        macos = dirs.app_bundle / "Contents" / "MacOS"
+        macos.mkdir(parents=True, exist_ok=True)
+        (macos / "unsuspend-agent").write_bytes(b"fake")
         sched.uninstall(None)
         assert not (dirs.agents / f"{sched.LABEL}.plist").exists()
-        assert not (dirs.state / "unsuspend-agent").exists()
+        assert not dirs.app_bundle.exists()
 
     def test_preserves_log(self, dirs, fake_uv, no_launchctl, no_compile):
         """Uninstall does not delete the log file."""
@@ -250,6 +280,7 @@ class TestUninstall:
     def test_calls_launchctl_bootout(self, dirs, fake_uv, no_compile, monkeypatch):
         """Uninstall invokes _launchctl_bootout."""
         monkeypatch.setattr(sched, "_launchctl_bootstrap", lambda: None)
+        monkeypatch.setattr(sched, "_lsregister", lambda: None)
         calls = []
         monkeypatch.setattr(sched, "_launchctl_bootout", lambda: calls.append(1))
         sched.install(_make_args())

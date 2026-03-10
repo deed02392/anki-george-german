@@ -17,12 +17,16 @@ anki_george_german/         Installable Python package (CLI: anki-german)
   enrich_ipa_audio.py       IPA + audio enrichment from Wiktionary (importable + CLI)
   update_templates.py       LIVE SOURCE OF TRUTH for CSS and templates
   unsuspend_candidates.py   Weekly card unsuspension
+  schedule.py               Manage launchd agent for auto-unsuspend
   update_prefix_fields.py   Sync prefix data to Anki
   fix_disambiguations.py    Fix duplicate translations via LLM
   fix_missing_ipa.py        Backfill IPA via LLM
   fix_noun_cloze_articles.py Fix article in cloze words
   deck_stats.py             Deck analysis and problem cards
   query_note.py             Quick note lookup
+  templates/
+    unsuspend_agent.swift   Swift source for launchd agent binary
+    unsuspend.plist         Plist template for launchd agent
 tests/                      pytest test suite
 data/
   prefix_data.json          Prefix teaching data (21 entries)
@@ -51,6 +55,9 @@ anki-german stats
 anki-german templates
 anki-german prefixes
 anki-german query               [WORD]
+anki-german schedule install    [--day MON] [--hour 9] [--max 5]
+anki-german schedule uninstall
+anki-german schedule status
 ```
 
 ## Vocabulary Generation
