@@ -5,6 +5,7 @@ description = "German vocabulary Anki deck tools"
 requires-python = ">=3.13"
 dependencies = [
     "argcomplete>=3.0",
+    "de-dep-news-trf @ https://github.com/explosion/spacy-models/releases/download/de_dep_news_trf-3.8.0/de_dep_news_trf-3.8.0.tar.gz",
     "rapidfuzz>=3.14.3",
     "requests>=2.32.5",
     "spacy[transformers]>=3.7",
