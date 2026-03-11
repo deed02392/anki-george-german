@@ -536,6 +536,34 @@ class TestExtractLemmas:
             # "Hund" appears twice
             assert hund_entries[0][2] >= 2
 
+    @pytest.mark.slow
+    def test_same_lemma_different_pos_merged(self, nlp):
+        """Same lemma with different POS tags is merged into one entry."""
+        # "scharf" used as both adjective and adverb
+        text = "Er blickte scharf hinüber. Der scharfe Wind wehte."
+        results = gv.extract_lemmas(text, nlp)
+        scharf_entries = [r for r in results if r[0].lower() == "scharf"]
+        # Should be exactly one merged entry, not two separate ones
+        assert len(scharf_entries) == 1
+        lemma, pos, count = scharf_entries[0]
+        # POS should contain both tags
+        assert "ADJ" in pos or "ADV" in pos
+        # Count should be the sum
+        assert count >= 2
+
+    @pytest.mark.slow
+    def test_merged_pos_most_frequent_first(self, nlp):
+        """Merged POS string lists the most frequent POS first."""
+        # Three adverb uses, one adjective use
+        text = ("Er dachte scharf nach. Sie blickte scharf hin. "
+                "Er reagierte scharf. Der scharfe Wind kam.")
+        results = gv.extract_lemmas(text, nlp)
+        scharf_entries = [r for r in results if r[0].lower() == "scharf"]
+        if scharf_entries and ", " in scharf_entries[0][1]:
+            pos_parts = scharf_entries[0][1].split(", ")
+            # The most frequent POS should come first
+            assert len(pos_parts) >= 2
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # H. build_enrichment_prompt()

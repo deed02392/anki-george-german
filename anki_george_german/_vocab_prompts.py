@@ -16,6 +16,8 @@ VALID_POS_STR = "|".join(VALID_POS)
 SENTENCE_RULES = """\
 - Each sentence should show the word in a DIFFERENT grammatical context \
 (different tenses, cases, nominalised forms, etc.)
+- If multiple POS tags are listed (e.g. [ADJ, ADV]), try to cover each \
+in a separate sentence where possible
 - Each sentence entry has its own "pos" ({valid_pos}) and "cloze_word"
 - "cloze_word" is the EXACT form of the word as it appears in the sentence (case-sensitive). \
 Copy-paste from the sentence — if the sentence has "den Apfel", cloze_word must be "den Apfel" not "Der Apfel". \

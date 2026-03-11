@@ -130,6 +130,10 @@ def ingest_text(filepath, paragraphs=None):
 def extract_lemmas(text, nlp):
     """Extract content-word lemmas with frequency counts.
 
+    Same-lemma entries with different POS tags are merged, with all
+    observed POS listed (most frequent first) and counts summed.
+    e.g. scharf used 3x as ADV and 1x as ADJ → ("scharf", "ADV, ADJ", 4)
+
     Returns:
         List of (lemma, pos, count) sorted by frequency descending.
     """
@@ -148,7 +152,19 @@ def extract_lemmas(text, nlp):
         key = (lemma, token.pos_)
         freq[key] = freq.get(key, 0) + 1
 
-    results = [(lemma, pos, count) for (lemma, pos), count in freq.items()]
+    # Merge entries with the same lemma but different POS tags
+    by_lemma = {}  # lemma -> {pos: count, ...}
+    for (lemma, pos), count in freq.items():
+        by_lemma.setdefault(lemma, {})[pos] = count
+
+    results = []
+    for lemma, pos_counts in by_lemma.items():
+        total = sum(pos_counts.values())
+        # Sort POS by frequency (most common first)
+        sorted_pos = sorted(pos_counts, key=lambda p: -pos_counts[p])
+        pos_str = ", ".join(sorted_pos)
+        results.append((lemma, pos_str, total))
+
     results.sort(key=lambda x: -x[2])
     print(f"Extracted {len(results)} unique lemmas")
     return results
@@ -274,7 +290,7 @@ def filter_transparent_compounds(lemmas, known_words):
     filtered = 0
 
     for lemma, pos, count in lemmas:
-        if pos != "NOUN":
+        if "NOUN" not in pos:
             kept.append((lemma, pos, count))
             continue
 
