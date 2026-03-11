@@ -42,7 +42,7 @@ from ._vocab_prompts import (
 )
 from ._vocab_validate import (
     normalise_cloze, validate_card, validate_batch, validate_new_sentences,
-    _find_noun_chunk,
+    strip_orphan_disambiguations, _find_noun_chunk,
 )
 from . import _vocab_validate
 from .enrich_ipa_audio import enrich_notes
@@ -621,6 +621,9 @@ def cmd_text(args):
         print("No valid cards generated.")
         return
 
+    # Strip disambiguations that have no sibling in the batch
+    strip_orphan_disambiguations(all_cards)
+
     # Check for duplicate translations against existing deck
     check_duplicate_translations(all_cards)
 
@@ -869,6 +872,9 @@ def cmd_domain(args):
     if not valid:
         print("No valid cards after validation.")
         return
+
+    # Strip disambiguations that have no sibling in the batch
+    strip_orphan_disambiguations(valid)
 
     # Check for duplicate translations against existing deck
     check_duplicate_translations(valid)

@@ -161,6 +161,25 @@ Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Se
 - `|` separates sentence variants (multi-sentence cards)
 - Set at generation time by the LLM — no backfill step needed
 
+### WordTranslationDisambiguate — IMPORTANT
+
+This field exists **only** to distinguish between cards that share the **exact same English translation**. It is shown on EN→DE and DE→EN cards as `NOT: <text>`.
+
+**When it's needed:** `essen` and `fressen` both translate to "to eat". The disambig on `essen` says "animals eating" (shown as "NOT: animals eating"), telling the learner this card is NOT about the animal-eating verb.
+
+**When it's NOT needed:**
+- Cards with unique translations (no other card has the same English text)
+- German homographs with different translations (der Tor = "fool" vs das Tor = "gate" — different English, no confusion possible)
+- Definitions or glosses restating the word's own meaning
+
+**Rules:**
+- Never include German words — naming the sibling gives away the answer by elimination
+- 3-8 words describing what the card is NOT (the sibling's meaning)
+- The template adds the "NOT:" prefix — store the raw text without it
+- `fix_disambiguations.py` finds all duplicate-translation groups and generates/updates disambig via LLM
+- `strip_orphan_disambiguations()` in `_vocab_validate.py` clears disambig on cards whose translation is unique within a generation batch
+- Never clear a disambiguation without checking if siblings exist
+
 ## Card Layout — Key Decisions
 
 ### What's live (desktop + AnkiMobile)

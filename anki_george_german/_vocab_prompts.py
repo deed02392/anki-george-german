@@ -69,8 +69,10 @@ def build_enrichment_prompt(batch, context_summary, source_text=None,
         '- "article" is "der", "die", or "das" for nouns, empty string for others\n'
         '- "translation" is a concise English translation '
         "(British English: colour, mum, favourite)\n"
-        '- "disambiguation" clarifies meaning if the word has multiple '
-        "common translations (else empty)\n"
+        '- "disambiguation" is ONLY for when two words in this batch share '
+        "the exact same English translation. It describes the OTHER word's "
+        "meaning (what this card is NOT). Leave empty for all other cases — "
+        "never use it for definitions, glosses, or general context.\n"
         f"- Generate exactly {num_sentences} example sentence(s) per word "
         'in the "sentences" array\n'
         "- NOT verbatim quotes from the source\n"
@@ -116,7 +118,10 @@ def build_domain_prompt(brief, count, num_sentences=2):
         'in the "sentences" array\n'
         "- Mix word types: nouns, verbs, adjectives, adverbs, "
         "and other parts of speech where relevant\n"
-        "- Choose words that are practical and commonly used in the domain"
+        "- Choose words that are practical and commonly used in the domain\n"
+        '- "disambiguation" is ONLY for when two words in this batch share '
+        "the exact same English translation. It describes the OTHER word's "
+        "meaning (what this card is NOT). Leave empty for all other cases."
     )
     rules = _format_rules(extra)
     schema = SENTENCE_SCHEMA.format(valid_pos=VALID_POS_STR)

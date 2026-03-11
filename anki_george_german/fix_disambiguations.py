@@ -65,7 +65,7 @@ without naming them.
 
 Rules:
 - Keep it very short (3-8 words)
-- Use ONLY English — absolutely NO German words
+- Use ONLY English — never include German words (naming the sibling gives away the answer)
 - NEVER name the other German word(s) — only describe meanings
 - Describe the semantic context, register, or usage that this word is NOT
 - For gendered pairs (Lehrer/Lehrerin), use "male" or "female"

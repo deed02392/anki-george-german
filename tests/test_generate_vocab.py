@@ -580,3 +580,81 @@ class TestBuildEnrichmentPrompt:
         batch = [("aufmachen", "VERB", 1)]
         prompt = gv.build_enrichment_prompt(batch, "")
         assert "at least one sentence MUST" in prompt
+
+    def test_disambiguation_rule_present(self):
+        """Prompt explains disambiguation is only for shared translations."""
+        batch = [("lachen", "VERB", 3)]
+        prompt = gv.build_enrichment_prompt(batch, "")
+        assert "same English translation" in prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# I. strip_orphan_disambiguations()
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestStripOrphanDisambiguations:
+
+    def test_unique_translation_cleared(self):
+        """Disambiguation is cleared when no other card shares the translation."""
+        cards = [
+            {"word": "scharf", "translation": "sharply",
+             "disambiguation": "in a sharp manner"},
+        ]
+        result = gv.strip_orphan_disambiguations(cards)
+        assert result[0]["disambiguation"] == ""
+
+    def test_shared_translation_kept(self):
+        """Disambiguation is kept when two cards share the same translation."""
+        cards = [
+            {"word": "essen", "translation": "to eat",
+             "disambiguation": "animals eating"},
+            {"word": "fressen", "translation": "to eat",
+             "disambiguation": "humans eating"},
+        ]
+        result = gv.strip_orphan_disambiguations(cards)
+        assert result[0]["disambiguation"] == "animals eating"
+        assert result[1]["disambiguation"] == "humans eating"
+
+    def test_empty_disambiguation_unchanged(self):
+        """Cards with no disambiguation are unaffected."""
+        cards = [
+            {"word": "der Hund", "translation": "dog", "disambiguation": ""},
+        ]
+        result = gv.strip_orphan_disambiguations(cards)
+        assert result[0]["disambiguation"] == ""
+
+    def test_case_insensitive_matching(self):
+        """Translation matching is case-insensitive."""
+        cards = [
+            {"word": "essen", "translation": "To Eat",
+             "disambiguation": "animals eating"},
+            {"word": "fressen", "translation": "to eat",
+             "disambiguation": "humans eating"},
+        ]
+        result = gv.strip_orphan_disambiguations(cards)
+        assert result[0]["disambiguation"] == "animals eating"
+        assert result[1]["disambiguation"] == "humans eating"
+
+    def test_mixed_batch(self):
+        """Only orphan disambiguations are cleared; siblings are kept."""
+        cards = [
+            {"word": "essen", "translation": "to eat",
+             "disambiguation": "animals eating"},
+            {"word": "fressen", "translation": "to eat",
+             "disambiguation": "humans eating"},
+            {"word": "scharf", "translation": "sharply",
+             "disambiguation": "in a sharp manner"},
+        ]
+        result = gv.strip_orphan_disambiguations(cards)
+        assert result[0]["disambiguation"] == "animals eating"
+        assert result[1]["disambiguation"] == "humans eating"
+        assert result[2]["disambiguation"] == ""
+
+    def test_no_disambiguation_key(self):
+        """Cards without a disambiguation key don't error."""
+        cards = [
+            {"word": "der Hund", "translation": "dog"},
+        ]
+        result = gv.strip_orphan_disambiguations(cards)
+        assert result[0].get("disambiguation", "") == ""

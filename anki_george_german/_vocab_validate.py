@@ -224,6 +224,42 @@ def validate_batch(cards, source_text=None):
     return valid, error_count
 
 
+def strip_orphan_disambiguations(cards):
+    """Clear disambiguation on cards whose translation is unique in the batch.
+
+    Disambiguation is only meaningful when two or more cards share the same
+    English translation.  If a card's translation appears only once in the
+    batch, any disambiguation text is noise (likely a definition or gloss
+    the LLM generated) and is cleared.
+
+    Mutates cards in place and returns them.
+    """
+    # Count translations
+    trans_counts = {}
+    for card in cards:
+        t = card.get("translation", "").strip().lower()
+        if t:
+            trans_counts[t] = trans_counts.get(t, 0) + 1
+
+    stripped = 0
+    for card in cards:
+        disambig = card.get("disambiguation", "")
+        if not disambig:
+            continue
+        t = card.get("translation", "").strip().lower()
+        if trans_counts.get(t, 0) < 2:
+            word = card.get("word", "?")
+            print(f"  STRIP disambig: {word} — no sibling in batch with "
+                  f"translation \"{card.get('translation', '')}\"")
+            card["disambiguation"] = ""
+            stripped += 1
+
+    if stripped:
+        print(f"  Stripped {stripped} orphan disambiguation(s)")
+
+    return cards
+
+
 def validate_new_sentences(new_sentences):
     """Validate a list of new sentence entries. Returns (valid, errors)."""
     errors = []
