@@ -2,12 +2,15 @@
 import argparse
 import sys
 
+import argcomplete
+
 
 def dispatch(args):
     """Lazy-import the target module and run the command."""
     if args.command == "generate":
-        from .generate_vocab import cmd_text, cmd_domain, cmd_enrich
-        {"text": cmd_text, "domain": cmd_domain, "enrich": cmd_enrich}[args.gen_command](args)
+        from .generate_vocab import cmd_text, cmd_domain, cmd_enrich, cmd_scan
+        {"text": cmd_text, "domain": cmd_domain, "enrich": cmd_enrich,
+         "scan": cmd_scan}[args.gen_command](args)
     elif args.command == "enrich-ipa":
         from .enrich_ipa_audio import run
         run(args)
@@ -54,13 +57,28 @@ def main():
     text_p = gen_sub.add_parser("text", help="Extract vocab from a German text")
     text_p.add_argument("--file", required=True)
     text_p.add_argument("--source", required=True)
-    text_p.add_argument("--paragraphs")
+    text_p.add_argument("--select",
+                        help="Section(s) to process (e.g. '3', '1-5', '1,3,5')")
+    text_p.add_argument("--chapters-file",
+                        help="JSON file with manual chapter definitions")
+    text_p.add_argument("--chunk-minutes", type=int,
+                        help="Force word-count chunking at N minutes")
+    text_p.add_argument("--reading-speed", type=int, default=100,
+                        help="Reading speed in wpm for chunking (default: 100)")
+    text_p.add_argument("--paragraphs",
+                        help="(Legacy) Paragraph range — bypasses chapter detection")
     text_p.add_argument("--domain", default="")
     text_p.add_argument("--phase", type=int, default=4)
     text_p.add_argument("--batch-size", type=int, default=10)
     text_p.add_argument("--sentences", type=int, default=2)
     text_p.add_argument("--dry-run", action="store_true")
     text_p.add_argument("--enrich", action="store_true")
+
+    scan_p = gen_sub.add_parser("scan",
+                                help="Preview book structure (chapters/chunks)")
+    scan_p.add_argument("--file", required=True)
+    scan_p.add_argument("--chunk-minutes", type=int)
+    scan_p.add_argument("--reading-speed", type=int, default=100)
 
     domain_p = gen_sub.add_parser("domain", help="Generate vocab from a topic brief")
     domain_p.add_argument("--brief", required=True)
@@ -124,6 +142,7 @@ def main():
     run_p = sched_sub.add_parser("_run", help=argparse.SUPPRESS)
     run_p.add_argument("--max", type=int, default=5)
 
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
     if not args.command:
         parser.print_help()

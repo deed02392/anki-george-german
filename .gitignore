@@ -3,3 +3,5 @@
 *.apkg
 __pycache__/
 *.pyc
+.envrc
+.anki-german-completion.zsh

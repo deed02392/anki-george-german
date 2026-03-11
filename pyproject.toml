@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "German vocabulary Anki deck tools"
 requires-python = ">=3.13"
 dependencies = [
+    "argcomplete>=3.0",
     "rapidfuzz>=3.14.3",
     "requests>=2.32.5",
     "spacy[transformers]>=3.7",

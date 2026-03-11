@@ -45,6 +45,7 @@ from ._vocab_validate import (
     strip_orphan_disambiguations, _find_noun_chunk,
 )
 from . import _vocab_validate
+from .chapters import parse_lines, resolve_chapters, parse_chapter_selection
 from .enrich_ipa_audio import enrich_notes
 
 _nlp_model = None
@@ -157,17 +158,76 @@ def extract_lemmas(text, nlp):
     for (lemma, pos), count in freq.items():
         by_lemma.setdefault(lemma, {})[pos] = count
 
+    # POS priority: prefer citation-form POS when frequencies are close.
+    # In German, ADJ is the dictionary form for words used as both ADJ and ADV
+    # (e.g. "scharf" → "sharp" not "sharply").
+    _POS_CITATION_RANK = {"ADJ": 0, "NOUN": 1, "VERB": 2, "ADV": 3}
+
     results = []
     for lemma, pos_counts in by_lemma.items():
         total = sum(pos_counts.values())
-        # Sort POS by frequency (most common first)
-        sorted_pos = sorted(pos_counts, key=lambda p: -pos_counts[p])
+        # Sort POS: by frequency descending, then by citation-form rank
+        sorted_pos = sorted(
+            pos_counts,
+            key=lambda p: (-pos_counts[p], _POS_CITATION_RANK.get(p, 9)),
+        )
         pos_str = ", ".join(sorted_pos)
         results.append((lemma, pos_str, total))
 
     results.sort(key=lambda x: -x[2])
     print(f"Extracted {len(results)} unique lemmas")
     return results
+
+
+def extract_lemmas_by_chapter(chapters, nlp):
+    """Extract content-word lemmas from each chapter, tracking chapter membership.
+
+    Runs spaCy on each chapter separately so we know exactly which chapters
+    each word appears in.
+
+    Returns:
+        (lemmas, chapter_map) where:
+        - lemmas: list of (lemma, pos_str, count) sorted by frequency
+        - chapter_map: dict of {lemma_lower: set of tag strings}
+          e.g. {"scharf": {"chapter::Kapitel 1", "chapter::Kapitel 3"}}
+    """
+    by_lemma = {}  # lemma -> {"pos_counts": {}, "tags": set()}
+
+    for chapter in chapters:
+        doc = nlp(chapter.text)
+        for token in doc:
+            if token.pos_ in FILTER_POS or not token.is_alpha:
+                continue
+            lemma = token.lemma_
+            if lemma.lower() in STOP_WORDS:
+                continue
+            if token.pos_ not in ("NOUN", "VERB", "ADJ", "ADV"):
+                continue
+
+            if lemma not in by_lemma:
+                by_lemma[lemma] = {"pos_counts": {}, "tags": set()}
+            by_lemma[lemma]["pos_counts"][token.pos_] = \
+                by_lemma[lemma]["pos_counts"].get(token.pos_, 0) + 1
+            by_lemma[lemma]["tags"].add(chapter.tag)
+
+    _POS_CITATION_RANK = {"ADJ": 0, "NOUN": 1, "VERB": 2, "ADV": 3}
+
+    results = []
+    chapter_map = {}
+    for lemma, info in by_lemma.items():
+        total = sum(info["pos_counts"].values())
+        sorted_pos = sorted(
+            info["pos_counts"],
+            key=lambda p: (-info["pos_counts"][p], _POS_CITATION_RANK.get(p, 9)),
+        )
+        pos_str = ", ".join(sorted_pos)
+        results.append((lemma, pos_str, total))
+        chapter_map[lemma.lower()] = info["tags"]
+
+    results.sort(key=lambda x: -x[2])
+    print(f"Extracted {len(results)} unique lemmas across "
+          f"{len(chapters)} {chapters[0].kind}(s)")
+    return results, chapter_map
 
 
 # ── Stage 3: Check existing deck ─────────────────────────────────────────────
@@ -191,10 +251,11 @@ def _gendered_counterpart(bare):
     return None
 
 
-def check_existing_deck(lemmas, source):
+def check_existing_deck(lemmas, source, paragraphs=None, chapter_map=None):
     """Check which lemmas already exist in the deck.
 
-    For existing notes: tags them with source::{source}.
+    For existing notes: tags them with source::{source} and chapter/paragraph
+    tags as appropriate.
     Returns: list of new lemmas (not in deck).
     """
     all_notes = fetch_vocab_notes()
@@ -225,16 +286,35 @@ def check_existing_deck(lemmas, source):
             else:
                 new.append((lemma, pos, count))
 
-    # Tag existing notes with source
+    # Tag existing notes with source and chapter/paragraph tags
     if existing and source:
-        tag = f"source::{source}"
-        existing_ids = [nid for _, nid in existing]
-        # Tag in batches of 50
-        for i in range(0, len(existing_ids), 50):
-            batch = existing_ids[i:i + 50]
-            notes_str = " ".join(str(nid) for nid in batch)
-            anki("addTags", notes=batch, tags=tag)
-        print(f"  Tagged {len(existing)} existing notes with '{tag}'")
+        if chapter_map:
+            # Group by tag set for efficient batching
+            by_tags = {}  # frozenset -> list of note IDs
+            for lemma, nid in existing:
+                tags = [f"source::{source}"]
+                tags.extend(sorted(chapter_map.get(lemma.lower(), set())))
+                key = frozenset(tags)
+                by_tags.setdefault(key, []).append(nid)
+
+            tagged = 0
+            for tags, nids in by_tags.items():
+                tag_str = " ".join(sorted(tags))
+                for i in range(0, len(nids), 50):
+                    batch = nids[i:i + 50]
+                    anki("addTags", notes=batch, tags=tag_str)
+                tagged += len(nids)
+            print(f"  Tagged {tagged} existing notes with source + chapter/chunk tags")
+        else:
+            tags = [f"source::{source}"]
+            if paragraphs:
+                tags.append(f"paragraphs::{paragraphs}")
+            tag_str = " ".join(tags)
+            existing_ids = [nid for _, nid in existing]
+            for i in range(0, len(existing_ids), 50):
+                batch = existing_ids[i:i + 50]
+                anki("addTags", notes=batch, tags=tag_str)
+            print(f"  Tagged {len(existing)} existing notes with '{tag_str}'")
 
     if gendered_skipped:
         print(f"  Skipped {len(gendered_skipped)} gendered duplicates:")
@@ -423,7 +503,8 @@ def dedup_gendered_pairs(cards):
 
 # ── Stage 8: Import to Anki ──────────────────────────────────────────────────
 
-def import_to_anki(cards, source, domains_override, phase, dry_run=False):
+def import_to_anki(cards, source, domains_override, phase, dry_run=False,
+                   paragraphs=None, chapter_map=None):
     """Import validated cards to Anki via addNotes.
 
     Returns list of (note_id, word) for successfully imported notes.
@@ -432,6 +513,12 @@ def import_to_anki(cards, source, domains_override, phase, dry_run=False):
     for card in cards:
         domains = domains_override or card.get("domains", "")
         tags = [f"source::{source}", f"phase::{phase}"]
+        if paragraphs:
+            tags.append(f"paragraphs::{paragraphs}")
+        if chapter_map:
+            bare = strip_article(card["word"]).lower()
+            for tag in sorted(chapter_map.get(bare, set())):
+                tags.append(tag)
         domain_list = [d.strip() for d in domains.split(",") if d.strip()]
         for d in domain_list:
             tags.append(f"domain::{d}")
@@ -549,6 +636,173 @@ def enrich_existing_batch(batch, token, num_new):
 
 def cmd_text(args):
     """Handle the 'text' subcommand."""
+
+    # Legacy --paragraphs mode: bypass chapter detection
+    if args.paragraphs:
+        return _cmd_text_legacy(args)
+
+    # Stage 1: Load book and detect chapters
+    print("\n── Stage 1: Load book and detect chapters ──")
+    lines = parse_lines(args.file)
+    if not lines:
+        print("ERROR: file is empty or not found.", file=sys.stderr)
+        sys.exit(1)
+
+    chapters = resolve_chapters(
+        lines,
+        chapters_file=getattr(args, "chapters_file", None),
+        chunk_minutes=getattr(args, "chunk_minutes", None),
+        reading_speed=getattr(args, "reading_speed", 100),
+    )
+    kind = chapters[0].kind
+    kind_label = "chapter" if kind == "chapter" else "chunk"
+    print(f"  Found {len(chapters)} {kind_label}(s):")
+    for ch in chapters:
+        est_min = ch.word_count // 100
+        print(f"    {kind_label.title()} {ch.name}: paras {ch.start_para}–{ch.end_para} "
+              f"({ch.word_count} words, ~{est_min} min)")
+
+    # Filter to requested sections
+    if getattr(args, "select", None):
+        selected = parse_chapter_selection(args.select)
+        chapters = [ch for ch in chapters if ch.name in selected]
+        if not chapters:
+            print(f"No sections matching '{args.select}' found.")
+            return
+        print(f"  Processing: {kind_label}(s) "
+              f"{', '.join(ch.name for ch in chapters)}")
+
+    # Stage 2: spaCy extraction (per chapter)
+    print("\n── Stage 2: spaCy extraction ──")
+    print("Loading spaCy model...")
+    try:
+        nlp = _get_nlp()
+        print("  Using de_dep_news_trf (transformer)")
+    except OSError:
+        print("ERROR: No German spaCy model found. Install with:")
+        print("  uv run python -m spacy download de_dep_news_trf")
+        sys.exit(1)
+    lemmas, chapter_map = extract_lemmas_by_chapter(chapters, nlp)
+
+    if not lemmas:
+        print("No content words extracted. Check your text/chapter selection.")
+        return
+
+    # Stage 3: Check existing deck
+    print("\n── Stage 3: Check existing deck ──")
+    new_lemmas = check_existing_deck(
+        lemmas, args.source, chapter_map=chapter_map)
+
+    if not new_lemmas:
+        print("All extracted words already in deck. Nothing to generate.")
+        return
+
+    # Stage 4: Compound detection
+    print("\n── Stage 4: Compound word detection ──")
+    known_words = set()
+    for note in fetch_vocab_notes():
+        if "Word" not in note["fields"]:
+            continue
+        word = note["fields"]["Word"]["value"]
+        bare = strip_article(word)
+        known_words.add(bare)
+    new_lemmas = filter_transparent_compounds(new_lemmas, known_words)
+
+    if not new_lemmas:
+        print("All remaining words are transparent compounds. Nothing to generate.")
+        return
+
+    if args.dry_run and not args.enrich:
+        print(f"\n[dry-run] {len(new_lemmas)} words to generate")
+
+    # Authenticate for LLM
+    print("\n── Authenticating ──")
+    token = get_floodgate_token()
+    print("OK")
+
+    # Stage 5: Summarise text
+    print("\n── Stage 5: Summarise text ──")
+    combined_text = "\n\n".join(ch.text for ch in chapters)
+    summary = summarise_text(combined_text, token)
+
+    # Stage 6 + 7: LLM enrichment + validation
+    print("\n── Stage 6-7: LLM enrichment + validation ──")
+    batch_size = args.batch_size
+    all_cards = []
+    total_errors = 0
+
+    for i in range(0, len(new_lemmas), batch_size):
+        batch = new_lemmas[i:i + batch_size]
+        batch_num = i // batch_size + 1
+        total_batches = (len(new_lemmas) + batch_size - 1) // batch_size
+        words_str = ", ".join(l for l, _, _ in batch)
+        print(f"\n  Batch {batch_num}/{total_batches}: {words_str}")
+
+        result = enrich_batch(batch, token, summary, combined_text,
+                              args.sentences)
+        if result is None:
+            print(f"  FAILED batch {batch_num}")
+            total_errors += len(batch)
+            continue
+
+        valid, errs = validate_batch(result, combined_text)
+        total_errors += errs
+        all_cards.extend(valid)
+
+        if i + batch_size < len(new_lemmas):
+            time.sleep(1)
+
+    print(f"\n  Generated {len(all_cards)} valid cards, {total_errors} errors")
+
+    if not all_cards:
+        print("No valid cards generated.")
+        return
+
+    # Strip disambiguations that have no sibling in the batch
+    strip_orphan_disambiguations(all_cards)
+
+    # Check for duplicate translations against existing deck
+    check_duplicate_translations(all_cards)
+
+    # Dedup gendered pairs within batch
+    all_cards = dedup_gendered_pairs(all_cards)
+
+    # Stage 8: Import to Anki
+    print("\n── Stage 8: Import to Anki ──")
+    imported = import_to_anki(
+        all_cards, args.source, args.domain, args.phase, dry_run=args.dry_run,
+        chapter_map=chapter_map
+    )
+
+    # Stage 9: IPA enrichment
+    if imported and not args.dry_run:
+        print("\n── Stage 9: IPA enrichment ──")
+        note_ids_to_enrich = [nid for nid, _ in imported]
+        enrich_notes(note_ids_to_enrich, ipa_only=True)
+
+    # Stage 10: Checkpoint
+    print("\n── Stage 10: Checkpoint ──")
+    chapter_suffix = None
+    if getattr(args, "select", None):
+        chapter_suffix = f"ch{args.select}"
+    write_checkpoint(all_cards, args.source, chapter_suffix)
+
+    # Summary
+    section_names = ", ".join(ch.name for ch in chapters)
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    print(f"  Source:     {args.source}")
+    print(f"  {kind_label.title()}s:  {section_names}")
+    print(f"  Extracted:  {len(lemmas)} lemmas")
+    print(f"  New:        {len(new_lemmas)} after filtering")
+    print(f"  Generated:  {len(all_cards)} cards")
+    print(f"  Imported:   {len(imported)}")
+    print(f"  Errors:     {total_errors}")
+
+
+def _cmd_text_legacy(args):
+    """Legacy --paragraphs mode for backward compatibility."""
     # Stage 1: Ingest
     print("\n── Stage 1: Ingest text ──")
     text = ingest_text(args.file, args.paragraphs)
@@ -571,7 +825,7 @@ def cmd_text(args):
 
     # Stage 3: Check existing deck
     print("\n── Stage 3: Check existing deck ──")
-    new_lemmas = check_existing_deck(lemmas, args.source)
+    new_lemmas = check_existing_deck(lemmas, args.source, paragraphs=args.paragraphs)
 
     if not new_lemmas:
         print("All extracted words already in deck. Nothing to generate.")
@@ -579,7 +833,6 @@ def cmd_text(args):
 
     # Stage 4: Compound detection
     print("\n── Stage 4: Compound word detection ──")
-    # Build known-words set from deck
     known_words = set()
     for note in fetch_vocab_notes():
         if "Word" not in note["fields"]:
@@ -637,19 +890,15 @@ def cmd_text(args):
         print("No valid cards generated.")
         return
 
-    # Strip disambiguations that have no sibling in the batch
     strip_orphan_disambiguations(all_cards)
-
-    # Check for duplicate translations against existing deck
     check_duplicate_translations(all_cards)
-
-    # Dedup gendered pairs within batch
     all_cards = dedup_gendered_pairs(all_cards)
 
     # Stage 8: Import to Anki
     print("\n── Stage 8: Import to Anki ──")
     imported = import_to_anki(
-        all_cards, args.source, args.domain, args.phase, dry_run=args.dry_run
+        all_cards, args.source, args.domain, args.phase, dry_run=args.dry_run,
+        paragraphs=args.paragraphs
     )
 
     # Stage 9: IPA enrichment
@@ -673,6 +922,59 @@ def cmd_text(args):
     print(f"  Generated:  {len(all_cards)} cards")
     print(f"  Imported:   {len(imported)}")
     print(f"  Errors:     {total_errors}")
+
+
+def cmd_scan(args):
+    """Preview book structure: detected chapters and/or word-count chunks."""
+    lines = parse_lines(args.file)
+    if not lines:
+        print("ERROR: file is empty or not found.", file=sys.stderr)
+        sys.exit(1)
+
+    total_words = sum(len(l.split()) for l in lines)
+    print(f"File: {args.file}")
+    print(f"  {len(lines)} paragraphs, {total_words} words")
+    print(f"  Estimated reading time: ~{total_words // args.reading_speed} min "
+          f"(at {args.reading_speed} wpm)\n")
+
+    from .chapters import detect_chapters as _detect, chunk_by_word_count
+
+    # Always show auto-detection result
+    detected = _detect(lines)
+    if detected:
+        print(f"Auto-detected {len(detected)} chapter(s):")
+        for ch in detected:
+            est = ch.word_count // args.reading_speed
+            print(f"  {ch.tag:<30} paras {ch.start_para:>3}–{ch.end_para:<3}  "
+                  f"{ch.word_count:>5} words  ~{est} min")
+    else:
+        print("No chapter markers detected.")
+
+    # Always show word-count chunking (either requested or as alternative)
+    chunk_min = args.chunk_minutes or 20
+    target = chunk_min * args.reading_speed
+    chunks = chunk_by_word_count(lines, target)
+    print(f"\nWord-count chunks ({chunk_min} min × {args.reading_speed} wpm "
+          f"= {target} words/chunk):")
+    print(f"  {len(chunks)} chunk(s):")
+    for ch in chunks:
+        est = ch.word_count // args.reading_speed
+        print(f"  {ch.tag:<30} paras {ch.start_para:>3}–{ch.end_para:<3}  "
+              f"{ch.word_count:>5} words  ~{est} min")
+
+    # Recommendation
+    if detected:
+        max_ch = max(ch.word_count for ch in detected)
+        max_min = max_ch // args.reading_speed
+        print(f"\nLargest chapter: {max_ch} words (~{max_min} min).")
+        if max_min > 30:
+            print(f"Consider --chunk-minutes {chunk_min} for manageable "
+                  f"reading sessions.")
+        else:
+            print("Chapters are a reasonable size for reading sessions.")
+    else:
+        print(f"\nUse --chunk-minutes {chunk_min} to split into "
+              f"reading-sized sections.")
 
 
 def cmd_enrich(args):
@@ -939,8 +1241,16 @@ def main():
                         help="Path to German text file")
     text_p.add_argument("--source", required=True,
                         help="Source tag (e.g. 'schachnovelle')")
+    text_p.add_argument("--select",
+                        help="Section(s) to process (e.g. '3', '1-5', '1,3,5')")
+    text_p.add_argument("--chapters-file",
+                        help="JSON file with manual chapter definitions")
+    text_p.add_argument("--chunk-minutes", type=int,
+                        help="Force word-count chunking at N minutes (default: auto-detect chapters, fall back to 20 min)")
+    text_p.add_argument("--reading-speed", type=int, default=100,
+                        help="Reading speed in wpm for chunking (default: 100)")
     text_p.add_argument("--paragraphs",
-                        help="Paragraph range (e.g. '1-30')")
+                        help="(Legacy) Paragraph range — bypasses chapter detection")
     text_p.add_argument("--domain", default="",
                         help="Override domain tags (comma-separated)")
     text_p.add_argument("--phase", type=int, default=4,
@@ -971,6 +1281,16 @@ def main():
     domain_p.add_argument("--dry-run", action="store_true",
                           help="Preview without importing")
 
+    # ── scan subcommand ──
+    scan_p = sub.add_parser("scan",
+                            help="Preview book structure (chapters/chunks)")
+    scan_p.add_argument("--file", required=True,
+                        help="Path to German text file")
+    scan_p.add_argument("--chunk-minutes", type=int,
+                        help="Show chunks at N minutes (default: 20)")
+    scan_p.add_argument("--reading-speed", type=int, default=100,
+                        help="Reading speed in wpm (default: 100)")
+
     # ── enrich subcommand ──
     enrich_p = sub.add_parser("enrich",
                               help="Add sentences to existing cards")
@@ -987,6 +1307,8 @@ def main():
 
     if args.command == "text":
         cmd_text(args)
+    elif args.command == "scan":
+        cmd_scan(args)
     elif args.command == "domain":
         cmd_domain(args)
     elif args.command == "enrich":
