@@ -576,7 +576,20 @@ def import_to_anki(cards, source, phase, dry_run=False,
     imported = []
     for i in range(0, len(anki_notes), 50):
         batch = anki_notes[i:i + 50]
-        result = anki("addNotes", notes=batch)
+        try:
+            result = anki("addNotes", notes=batch)
+        except RuntimeError as e:
+            if "duplicate" in str(e).lower():
+                # Batch failed due to duplicates — fall back to one-at-a-time
+                result = []
+                for note in batch:
+                    try:
+                        r = anki("addNotes", notes=[note])
+                        result.append(r[0])
+                    except RuntimeError:
+                        result.append(None)
+            else:
+                raise
         for j, note_id in enumerate(result):
             word = batch[j]["fields"]["Word"]
             if note_id is None:
@@ -591,20 +604,35 @@ def import_to_anki(cards, source, phase, dry_run=False,
 
 # ── Stage 10: Write checkpoint ────────────────────────────────────────────────
 
-def write_checkpoint(cards, source, paragraphs, output_dir=None):
-    """Save generated cards as a JSON checkpoint for auditability."""
+def _checkpoint_path(source, suffix, output_dir=None):
+    """Return the checkpoint file path for a given source + suffix."""
     if output_dir is None:
         output_dir = DATA_DIR / "generated"
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    sfx = f"_{suffix}" if suffix else ""
+    return output_dir / f"{source}{sfx}.json"
 
-    para_suffix = f"_p{paragraphs}" if paragraphs else ""
-    filename = f"{source}{para_suffix}.json"
-    path = output_dir / filename
 
+def write_checkpoint(cards, source, suffix, output_dir=None):
+    """Save generated cards as a JSON checkpoint."""
+    path = _checkpoint_path(source, suffix, output_dir)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cards, f, indent=2, ensure_ascii=False)
-    print(f"Checkpoint saved: {path}")
+    print(f"  Checkpoint saved: {path} ({len(cards)} cards)")
+
+
+def load_checkpoint(source, suffix, output_dir=None):
+    """Load cards from a checkpoint file, if it exists.
+
+    Returns list of card dicts, or None if no checkpoint found.
+    """
+    path = _checkpoint_path(source, suffix, output_dir)
+    if not path.exists():
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        cards = json.load(f)
+    return cards
 
 
 # ── Domain brief mode ────────────────────────────────────────────────────────
@@ -711,45 +739,56 @@ def cmd_text(args):
 
     if args.dry_run and not args.enrich:
         print(f"\n[dry-run] {len(new_lemmas)} words to generate")
+        return
 
-    # Authenticate for LLM
-    print("\n── Authenticating ──")
-    token = get_floodgate_token()
-    print("OK")
+    # Check for existing checkpoint
+    chapter_suffix = f"{kind}_{args.select}" if getattr(args, "select", None) else None
+    cached = load_checkpoint(args.source, chapter_suffix)
+    if cached is not None:
+        print(f"\n── Resuming from checkpoint ({len(cached)} cards) ──")
+        all_cards = cached
+    else:
+        # Authenticate for LLM
+        print("\n── Authenticating ──")
+        token = get_floodgate_token()
+        print("OK")
 
-    # Stage 5: Summarise text
-    print("\n── Stage 5: Summarise text ──")
-    combined_text = "\n\n".join(ch.text for ch in chapters)
-    summary = summarise_text(combined_text, token)
+        # Stage 5: Summarise text
+        print("\n── Stage 5: Summarise text ──")
+        combined_text = "\n\n".join(ch.text for ch in chapters)
+        summary = summarise_text(combined_text, token)
 
-    # Stage 6 + 7: LLM enrichment + validation
-    print("\n── Stage 6-7: LLM enrichment + validation ──")
-    batch_size = args.batch_size
-    all_cards = []
-    total_errors = 0
+        # Stage 6 + 7: LLM enrichment + validation
+        print("\n── Stage 6-7: LLM enrichment + validation ──")
+        batch_size = args.batch_size
+        all_cards = []
+        total_errors = 0
 
-    for i in range(0, len(new_lemmas), batch_size):
-        batch = new_lemmas[i:i + batch_size]
-        batch_num = i // batch_size + 1
-        total_batches = (len(new_lemmas) + batch_size - 1) // batch_size
-        words_str = ", ".join(l for l, _, _ in batch)
-        print(f"\n  Batch {batch_num}/{total_batches}: {words_str}")
+        for i in range(0, len(new_lemmas), batch_size):
+            batch = new_lemmas[i:i + batch_size]
+            batch_num = i // batch_size + 1
+            total_batches = (len(new_lemmas) + batch_size - 1) // batch_size
+            words_str = ", ".join(l for l, _, _ in batch)
+            print(f"\n  Batch {batch_num}/{total_batches}: {words_str}")
 
-        result = enrich_batch(batch, token, summary, combined_text,
-                              args.sentences)
-        if result is None:
-            print(f"  FAILED batch {batch_num}")
-            total_errors += len(batch)
-            continue
+            result = enrich_batch(batch, token, summary, combined_text,
+                                  args.sentences)
+            if result is None:
+                print(f"  FAILED batch {batch_num}")
+                total_errors += len(batch)
+                continue
 
-        valid, errs = validate_batch(result, combined_text)
-        total_errors += errs
-        all_cards.extend(valid)
+            valid, errs = validate_batch(result, combined_text)
+            total_errors += errs
+            all_cards.extend(valid)
 
-        if i + batch_size < len(new_lemmas):
-            time.sleep(1)
+            # Incremental checkpoint after each batch
+            write_checkpoint(all_cards, args.source, chapter_suffix)
 
-    print(f"\n  Generated {len(all_cards)} valid cards, {total_errors} errors")
+            if i + batch_size < len(new_lemmas):
+                time.sleep(1)
+
+        print(f"\n  Generated {len(all_cards)} valid cards, {total_errors} errors")
 
     if not all_cards:
         print("No valid cards generated.")
@@ -777,12 +816,7 @@ def cmd_text(args):
         note_ids_to_enrich = [nid for nid, _ in imported]
         enrich_notes(note_ids_to_enrich, ipa_only=True)
 
-    # Stage 10: Checkpoint
-    print("\n── Stage 10: Checkpoint ──")
-    chapter_suffix = None
-    if getattr(args, "select", None):
-        chapter_suffix = f"ch{args.select}"
-    write_checkpoint(all_cards, args.source, chapter_suffix)
+    # Summary
 
     # Summary
     section_names = ", ".join(ch.name for ch in chapters)
@@ -845,43 +879,54 @@ def _cmd_text_legacy(args):
 
     if args.dry_run and not args.enrich:
         print(f"\n[dry-run] {len(new_lemmas)} words to generate")
+        return
 
-    # Authenticate for LLM
-    print("\n── Authenticating ──")
-    token = get_floodgate_token()
-    print("OK")
+    # Check for existing checkpoint
+    para_suffix = f"p{args.paragraphs}" if args.paragraphs else None
+    cached = load_checkpoint(args.source, para_suffix)
+    if cached is not None:
+        print(f"\n── Resuming from checkpoint ({len(cached)} cards) ──")
+        all_cards = cached
+    else:
+        # Authenticate for LLM
+        print("\n── Authenticating ──")
+        token = get_floodgate_token()
+        print("OK")
 
-    # Stage 5: Summarise text
-    print("\n── Stage 5: Summarise text ──")
-    summary = summarise_text(text, token)
+        # Stage 5: Summarise text
+        print("\n── Stage 5: Summarise text ──")
+        summary = summarise_text(text, token)
 
-    # Stage 6 + 7: LLM enrichment + validation
-    print("\n── Stage 6-7: LLM enrichment + validation ──")
-    batch_size = args.batch_size
-    all_cards = []
-    total_errors = 0
+        # Stage 6 + 7: LLM enrichment + validation
+        print("\n── Stage 6-7: LLM enrichment + validation ──")
+        batch_size = args.batch_size
+        all_cards = []
+        total_errors = 0
 
-    for i in range(0, len(new_lemmas), batch_size):
-        batch = new_lemmas[i:i + batch_size]
-        batch_num = i // batch_size + 1
-        total_batches = (len(new_lemmas) + batch_size - 1) // batch_size
-        words_str = ", ".join(l for l, _, _ in batch)
-        print(f"\n  Batch {batch_num}/{total_batches}: {words_str}")
+        for i in range(0, len(new_lemmas), batch_size):
+            batch = new_lemmas[i:i + batch_size]
+            batch_num = i // batch_size + 1
+            total_batches = (len(new_lemmas) + batch_size - 1) // batch_size
+            words_str = ", ".join(l for l, _, _ in batch)
+            print(f"\n  Batch {batch_num}/{total_batches}: {words_str}")
 
-        result = enrich_batch(batch, token, summary, text, args.sentences)
-        if result is None:
-            print(f"  FAILED batch {batch_num}")
-            total_errors += len(batch)
-            continue
+            result = enrich_batch(batch, token, summary, text, args.sentences)
+            if result is None:
+                print(f"  FAILED batch {batch_num}")
+                total_errors += len(batch)
+                continue
 
-        valid, errs = validate_batch(result, text)
-        total_errors += errs
-        all_cards.extend(valid)
+            valid, errs = validate_batch(result, text)
+            total_errors += errs
+            all_cards.extend(valid)
 
-        if i + batch_size < len(new_lemmas):
-            time.sleep(1)
+            # Incremental checkpoint after each batch
+            write_checkpoint(all_cards, args.source, para_suffix)
 
-    print(f"\n  Generated {len(all_cards)} valid cards, {total_errors} errors")
+            if i + batch_size < len(new_lemmas):
+                time.sleep(1)
+
+        print(f"\n  Generated {len(all_cards)} valid cards, {total_errors} errors")
 
     if not all_cards:
         print("No valid cards generated.")
@@ -904,9 +949,7 @@ def _cmd_text_legacy(args):
         note_ids_to_enrich = [nid for nid, _ in imported]
         enrich_notes(note_ids_to_enrich, ipa_only=True)
 
-    # Stage 10: Checkpoint
-    print("\n── Stage 10: Checkpoint ──")
-    write_checkpoint(all_cards, args.source, args.paragraphs)
+    print(f"\nDone. Imported {len(imported)} cards from {args.source}.")
 
     # Summary
     print("\n" + "=" * 60)
@@ -1197,6 +1240,9 @@ def cmd_domain(args):
     # Dedup gendered pairs within batch
     valid = dedup_gendered_pairs(valid)
 
+    # Checkpoint before import
+    write_checkpoint(valid, args.source, None)
+
     # Stage 8: Import
     print("\n── Import to Anki ──")
     imported = import_to_anki(
@@ -1208,10 +1254,6 @@ def cmd_domain(args):
         print("\n── IPA enrichment ──")
         note_ids_to_enrich = [nid for nid, _ in imported]
         enrich_notes(note_ids_to_enrich, ipa_only=True)
-
-    # Stage 10: Checkpoint
-    print("\n── Checkpoint ──")
-    write_checkpoint(valid, args.source, None)
 
     # Summary
     print("\n" + "=" * 60)
