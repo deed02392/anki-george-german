@@ -81,7 +81,6 @@ def build_enrichment_prompt(batch, context_summary, source_text=None,
         f"- Generate exactly {num_sentences} example sentence(s) per word "
         'in the "sentences" array\n'
         "- NOT verbatim quotes from the source\n"
-        '- "domains" is a comma-separated list of relevant topic domains\n'
         '- "note" is an optional usage note (empty if not needed)'
     )
     rules = _format_rules(extra)
@@ -108,7 +107,6 @@ Each element in the JSON array:
   "sentences": [
 {schema}
   ],
-  "domains": "<comma-separated domains>",
   "note": "<usage note or empty>"
 }}"""
 
@@ -146,7 +144,6 @@ Return ONLY a JSON array (no markdown, no commentary). Each element:
   "sentences": [
 {schema}
   ],
-  "domains": "<comma-separated domains>",
   "note": "<usage note or empty>"
 }}
 

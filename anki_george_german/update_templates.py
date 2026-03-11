@@ -255,24 +255,6 @@ VOCAB_CLASSES = """
   background: var(--note-bg);
   border-radius: 0 4px 4px 0;
 }
-
-/* ── Domain chips ── */
-.domains {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.domain-chip {
-  font-size: 0.67rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: var(--chip-bg);
-  color: var(--subtext);
-  border-radius: 10px;
-  padding: 2px 9px;
-}
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -382,24 +364,6 @@ def source_badge_js(elem_id):
   }} else {{
     el.style.display = "none";
   }}
-}})();
-</script>"""
-
-
-def domains_js(elem_id):
-    return f"""
-<div class="domains" id="{elem_id}"></div>
-<script>
-(function(){{
-  var raw = "{{{{Domains}}}}";
-  var el = document.getElementById("{elem_id}");
-  if (!el || !raw.trim()) return;
-  raw.split(",").forEach(function(d){{
-    var chip = document.createElement("span");
-    chip.className = "domain-chip";
-    chip.textContent = d.trim();
-    el.appendChild(chip);
-  }});
 }})();
 </script>"""
 
@@ -548,7 +512,7 @@ EN_DE_BACK = """\
   {{/WordTranslationDisambiguate}}
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
-""" + domains_js("dom-en-de") + "\n</div>" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
+""" + "\n</div>" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
 
 DE_EN_FRONT = """\
 <div class="kard">
@@ -585,7 +549,7 @@ DE_EN_BACK = """\
   {{/WordTranslationDisambiguate}}
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
-""" + domains_js("dom-de-en") + "\n</div>" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
+""" + "\n</div>" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
 
 CLOZE_FRONT = """\
 <div class="kard">
@@ -616,7 +580,7 @@ CLOZE_BACK = """\
   <div class="word-en">{{WordTranslation}}</div>
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
-""" + domains_js("dom-cloze") + """
+""" + """
 </div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos")
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -505,7 +505,7 @@ def dedup_gendered_pairs(cards):
 
 # ── Stage 8: Import to Anki ──────────────────────────────────────────────────
 
-def import_to_anki(cards, source, domains_override, phase, dry_run=False,
+def import_to_anki(cards, source, phase, dry_run=False,
                    paragraphs=None, chapter_map=None):
     """Import validated cards to Anki via addNotes.
 
@@ -513,16 +513,12 @@ def import_to_anki(cards, source, domains_override, phase, dry_run=False,
     """
     anki_notes = []
     for card in cards:
-        domains = domains_override or card.get("domains", "")
-        tags = [f"source::{source}", f"phase::{phase}"]
+        tags = [f"source::{source}"]
         if paragraphs:
             tags.append(f"paragraphs::{paragraphs}")
         if chapter_map:
             bare = strip_article(card["word"]).lower()
             tags.extend(sorted(chapter_map.get(bare, set())))
-        domain_list = [d.strip() for d in domains.split(",") if d.strip()]
-        for d in domain_list:
-            tags.append(f"domain::{d}")
 
         sentences = card["sentences"]
 
@@ -542,7 +538,7 @@ def import_to_anki(cards, source, domains_override, phase, dry_run=False,
                 "SentenceTranslation": "|".join(
                     s["sentence_translation"] for s in sentences
                 ),
-                "Domains": ",".join(domain_list),
+                "Domains": "",
                 "Phase": str(phase),
                 "Note": card.get("note", ""),
             },
@@ -771,7 +767,7 @@ def cmd_text(args):
     # Stage 8: Import to Anki
     print("\n── Stage 8: Import to Anki ──")
     imported = import_to_anki(
-        all_cards, args.source, args.domain, args.phase, dry_run=args.dry_run,
+        all_cards, args.source, args.phase, dry_run=args.dry_run,
         chapter_map=chapter_map
     )
 
@@ -898,7 +894,7 @@ def _cmd_text_legacy(args):
     # Stage 8: Import to Anki
     print("\n── Stage 8: Import to Anki ──")
     imported = import_to_anki(
-        all_cards, args.source, args.domain, args.phase, dry_run=args.dry_run,
+        all_cards, args.source, args.phase, dry_run=args.dry_run,
         paragraphs=args.paragraphs
     )
 
@@ -1204,7 +1200,7 @@ def cmd_domain(args):
     # Stage 8: Import
     print("\n── Import to Anki ──")
     imported = import_to_anki(
-        valid, args.source, args.domain, args.phase, dry_run=args.dry_run
+        valid, args.source, args.phase, dry_run=args.dry_run
     )
 
     # Stage 9: IPA enrichment
@@ -1252,8 +1248,6 @@ def main():
                         help="Reading speed in wpm for chunking (default: 100)")
     text_p.add_argument("--paragraphs",
                         help="(Legacy) Paragraph range — bypasses chapter detection")
-    text_p.add_argument("--domain", default="",
-                        help="Override domain tags (comma-separated)")
     text_p.add_argument("--phase", type=int, default=4,
                         help="Phase number (default: 4)")
     text_p.add_argument("--batch-size", type=int, default=10,
@@ -1273,8 +1267,6 @@ def main():
                           help="Source tag (e.g. 'it_security')")
     domain_p.add_argument("--count", type=int, default=30,
                           help="Number of words to generate (default: 30)")
-    domain_p.add_argument("--domain", default="",
-                          help="Override domain tags (comma-separated)")
     domain_p.add_argument("--phase", type=int, default=4,
                           help="Phase number (default: 4)")
     domain_p.add_argument("--sentences", type=int, default=2,
