@@ -148,4 +148,8 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    dispatch(args)
+    try:
+        dispatch(args)
+    except KeyboardInterrupt:
+        print("\nInterrupted.")
+        sys.exit(130)

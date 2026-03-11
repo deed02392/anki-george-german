@@ -179,17 +179,18 @@ def extract_lemmas(text, nlp):
     return results
 
 
-def extract_lemmas_by_chapter(chapters, nlp):
+def extract_lemmas_by_chapter(chapters, nlp, source):
     """Extract content-word lemmas from each chapter, tracking chapter membership.
 
     Runs spaCy on each chapter separately so we know exactly which chapters
-    each word appears in.
+    each word appears in. Tags are namespaced under the source, e.g.
+    ``source::schachnovelle::chunk::1``.
 
     Returns:
         (lemmas, chapter_map) where:
         - lemmas: list of (lemma, pos_str, count) sorted by frequency
         - chapter_map: dict of {lemma_lower: set of tag strings}
-          e.g. {"scharf": {"chapter::Kapitel 1", "chapter::Kapitel 3"}}
+          e.g. {"scharf": {"source::book::chapter::Kapitel 1", ...}}
     """
     by_lemma = {}  # lemma -> {"pos_counts": {}, "tags": set()}
 
@@ -208,7 +209,7 @@ def extract_lemmas_by_chapter(chapters, nlp):
                 by_lemma[lemma] = {"pos_counts": {}, "tags": set()}
             by_lemma[lemma]["pos_counts"][token.pos_] = \
                 by_lemma[lemma]["pos_counts"].get(token.pos_, 0) + 1
-            by_lemma[lemma]["tags"].add(chapter.tag)
+            by_lemma[lemma]["tags"].add(f"source::{source}::{chapter.tag}")
 
     _POS_CITATION_RANK = {"ADJ": 0, "NOUN": 1, "VERB": 2, "ADV": 3}
 
@@ -289,11 +290,12 @@ def check_existing_deck(lemmas, source, paragraphs=None, chapter_map=None):
     # Tag existing notes with source and chapter/paragraph tags
     if existing and source:
         if chapter_map:
-            # Group by tag set for efficient batching
+            # chapter_map tags are already namespaced: source::book::chunk::1
+            # Also add the bare source:: tag for easy filtering
             by_tags = {}  # frozenset -> list of note IDs
             for lemma, nid in existing:
-                tags = [f"source::{source}"]
-                tags.extend(sorted(chapter_map.get(lemma.lower(), set())))
+                tags = {f"source::{source}"}
+                tags.update(chapter_map.get(lemma.lower(), set()))
                 key = frozenset(tags)
                 by_tags.setdefault(key, []).append(nid)
 
@@ -517,8 +519,7 @@ def import_to_anki(cards, source, domains_override, phase, dry_run=False,
             tags.append(f"paragraphs::{paragraphs}")
         if chapter_map:
             bare = strip_article(card["word"]).lower()
-            for tag in sorted(chapter_map.get(bare, set())):
-                tags.append(tag)
+            tags.extend(sorted(chapter_map.get(bare, set())))
         domain_list = [d.strip() for d in domains.split(",") if d.strip()]
         for d in domain_list:
             tags.append(f"domain::{d}")
@@ -682,7 +683,7 @@ def cmd_text(args):
         print("ERROR: No German spaCy model found. Install with:")
         print("  uv run python -m spacy download de_dep_news_trf")
         sys.exit(1)
-    lemmas, chapter_map = extract_lemmas_by_chapter(chapters, nlp)
+    lemmas, chapter_map = extract_lemmas_by_chapter(chapters, nlp, args.source)
 
     if not lemmas:
         print("No content words extracted. Check your text/chapter selection.")

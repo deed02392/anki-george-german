@@ -131,7 +131,7 @@ def normalise_cloze(card):
         card["disambiguation"] = cleaned
 
     if repairs:
-        print(f"  REPAIR {card.get('word', '?')}: {'; '.join(repairs)}")
+        print(f"  ADJUST {card.get('word', '?')}: {'; '.join(repairs)}")
 
     return card
 
