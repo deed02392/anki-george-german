@@ -78,8 +78,8 @@
     "core_meaning": "before, ahead",
     "spatial_sense": "positioned in front \u2014 in space or in time",
     "examples": [
-      {"verb": "vorlesen", "translation": "read aloud"},
       {"verb": "vorgehen", "translation": "go ahead, have priority"},
+      {"verb": "vorlesen", "translation": "read aloud"},
       {"verb": "vorschreiben", "translation": "prescribe, dictate"},
       {"verb": "vorangehen", "translation": "go ahead, make progress"}
     ]
