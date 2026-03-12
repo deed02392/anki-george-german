@@ -429,8 +429,8 @@ def enrich_batch(batch, token, context_summary, source_text=None,
 def check_duplicate_translations(cards):
     """Warn about cards whose translation already exists in the deck.
 
-    For any match, prints a warning so the user can add disambiguation.
-    Does not block import — just informational.
+    Only warns when a DIFFERENT word shares the same translation.
+    Same-word duplicates (e.g. re-generating der Zug) are ignored.
     """
     # Fetch existing translations from deck
     existing_notes = fetch_vocab_notes()
@@ -448,9 +448,11 @@ def check_duplicate_translations(cards):
     for card in cards:
         trans = card.get("translation", "").strip().lower()
         if trans in existing_trans:
-            existing_words = existing_trans[trans]
-            if not card.get("disambiguation"):
-                warnings.append((card["word"], card["translation"], existing_words))
+            # Filter out the same word
+            other_words = [w for w in existing_trans[trans]
+                           if strip_article(w) != strip_article(card["word"])]
+            if other_words and not card.get("disambiguation"):
+                warnings.append((card["word"], card["translation"], other_words))
 
     if warnings:
         print(f"\n  WARNING: {len(warnings)} cards share a translation with "
