@@ -71,9 +71,12 @@ def build_enrichment_prompt(batch, context_summary, source_text=None,
         '- "article" is "der", "die", or "das" for nouns, empty string for others\n'
         '- "translation" is a concise English translation in the BASE DICTIONARY FORM '
         "(British English: colour, mum, favourite). "
-        "Use the adjective form not the adverb (\"sharp\" not \"sharply\"), "
-        "the infinitive not the participle (\"to decide\" not \"decided\"). "
-        "The individual sentences already show varied grammatical forms.\n"
+        "IMPORTANT: Always use the adjective form, not the adverb "
+        '("explicit" not "explicitly", "sharp" not "sharply", '
+        '"occasional" not "occasionally"). '
+        "Use the infinitive not the participle (\"to decide\" not \"decided\"). "
+        "The POS tags are from the source text and may say ADV, but the "
+        "translation should still use the base adjective form when one exists.\n"
         '- "disambiguation" is ONLY for when two words in this batch share '
         "the exact same English translation. It describes the OTHER word's "
         "meaning (what this card is NOT). Leave empty for all other cases — "
