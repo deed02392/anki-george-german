@@ -151,3 +151,10 @@ def main():
     except KeyboardInterrupt:
         print("\nInterrupted.")
         sys.exit(130)
+    except Exception as e:
+        if "ConnectionError" in type(e).__name__ or "connection" in str(e).lower():
+            print(f"\nConnection error: cannot reach remote service. Check VPN/network.",
+                  file=sys.stderr)
+        else:
+            print(f"\nError: {e}", file=sys.stderr)
+        sys.exit(1)

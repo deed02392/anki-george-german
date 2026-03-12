@@ -162,5 +162,12 @@ def call_llm_with_retry(messages, token, *, max_tokens=8192,
                 time.sleep(2)
                 continue
             return None
+        except requests.ConnectionError as e:
+            print(f"  Connection error (attempt {attempt + 1}): "
+                  f"cannot reach Floodgate. Check VPN/network.")
+            if attempt == 0:
+                time.sleep(5)
+                continue
+            return None
 
     return None
