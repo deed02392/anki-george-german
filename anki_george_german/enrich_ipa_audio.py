@@ -293,8 +293,8 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     mode = "IPA" if ipa_only else ("audio" if audio_only else "IPA + audio")
     print(f"Enrichment mode: {mode} ({len(notes)} notes)")
 
-    stats = {"ipa_added": 0, "audio_added": 0, "skipped_phrase": 0,
-             "not_found": 0, "already_ok": 0, "ipa_llm": 0}
+    stats = {"ipa_added": 0, "ipa_miss": 0, "audio_added": 0, "audio_miss": 0,
+             "skipped_phrase": 0, "no_page": 0, "already_ok": 0, "ipa_llm": 0}
     ipa_misses = []  # (note_id, word_field) for LLM fallback
 
     for note in notes:
@@ -320,7 +320,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         wikitext = fetch_wikitext(lookup)
         if not wikitext:
             print(f"  MISS: {word_field} -> no Wiktionary page for '{lookup}'")
-            stats["not_found"] += 1
+            stats["no_page"] += 1
             if needs_ipa:
                 ipa_misses.append((nid, word_field))
             continue
@@ -330,6 +330,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         if needs_ipa:
             ipa = extract_ipa(wikitext)
             if not ipa:
+                stats["ipa_miss"] += 1
                 ipa_misses.append((nid, word_field))
 
         # Extract and download audio
@@ -337,7 +338,9 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         audio_data = None
         if needs_audio:
             audio_filename = extract_audio_filename(wikitext)
-            if audio_filename and not dry_run:
+            if not audio_filename:
+                stats["audio_miss"] += 1
+            elif not dry_run:
                 url = commons_url_from_filename(audio_filename)
                 audio_data = download_audio(url)
 
@@ -405,10 +408,14 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         llm_ipa = stats["ipa_llm"]
         detail = f" ({wikt_ipa} Wiktionary + {llm_ipa} LLM)" if llm_ipa else ""
         print(f"  IPA added:        {stats['ipa_added']}{detail}")
+        if stats["ipa_miss"]:
+            print(f"  IPA not on page:  {stats['ipa_miss']}")
     if do_audio:
         print(f"  Audio added:      {stats['audio_added']}")
+        if stats["audio_miss"]:
+            print(f"  Audio not on page:{stats['audio_miss']}")
     print(f"  Skipped (phrase): {stats['skipped_phrase']}")
-    print(f"  Not found:        {stats['not_found']}")
+    print(f"  No Wiktionary page: {stats['no_page']}")
     if stats["already_ok"]:
         print(f"  Already complete: {stats['already_ok']}")
 
