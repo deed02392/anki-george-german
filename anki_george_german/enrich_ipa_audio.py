@@ -24,6 +24,7 @@ import time
 import requests
 
 from ._anki import anki, DECK, MODEL, ARTICLES
+from ._llm import get_floodgate_token, call_llm_with_retry
 
 WIKT_API = "https://de.wiktionary.org/w/api.php"
 
@@ -173,10 +174,79 @@ def store_audio_in_anki(filename, data):
     return mp3_name
 
 
+# ── LLM fallback for IPA ────────────────────────────────────────────────────
+
+def _llm_ipa_fallback(missing_words, dry_run=False):
+    """Ask the LLM to generate IPA for words Wiktionary couldn't provide.
+
+    Args:
+        missing_words: list of (note_id, word_field) tuples.
+        dry_run: Preview without applying.
+
+    Returns:
+        Number of notes updated.
+    """
+    if not missing_words:
+        return 0
+
+    words_block = "\n".join(
+        f"{i}. {w}" for i, (_, w) in enumerate(missing_words, 1)
+    )
+    prompt = f"""\
+Provide the IPA (International Phonetic Alphabet) pronunciation for each \
+German word below. Use standard High German (Hochdeutsch) pronunciation.
+
+Return ONLY a JSON array (no markdown). Each element:
+{{
+  "word": "<the word as given>",
+  "ipa": "<IPA transcription without brackets>"
+}}
+
+Rules:
+- Use standard IPA symbols for German
+- Do NOT include square brackets — just the transcription
+- For nouns with articles (der/die/das): only transcribe the NOUN, not the article
+- For compound words, provide the full compound pronunciation
+- For phrases, provide the pronunciation of the key words
+- If unsure, provide the most standard/common pronunciation
+
+Words:
+{words_block}"""
+
+    print(f"\n  LLM fallback for {len(missing_words)} words...")
+    token = get_floodgate_token()
+    result = call_llm_with_retry(
+        [{"role": "user", "content": prompt}], token, max_tokens=4096,
+    )
+    if not result:
+        print("  LLM IPA generation failed.")
+        return 0
+
+    ipa_by_word = {}
+    for item in result:
+        word = item.get("word", "")
+        ipa = item.get("ipa", "").strip()
+        if word and ipa:
+            ipa_by_word[word] = ipa
+
+    updated = 0
+    for nid, word in missing_words:
+        ipa = ipa_by_word.get(word, "")
+        if not ipa:
+            continue
+        prefix = "[dry-run] " if dry_run else "  "
+        print(f"{prefix}{word:<30} IPA={ipa} (LLM)")
+        if not dry_run:
+            anki("updateNoteFields", note={"id": nid, "fields": {"IPA": ipa}})
+        updated += 1
+
+    return updated
+
+
 # ── Core enrichment function (importable) ────────────────────────────────────
 
 def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
-                 audio_delay=5.0, dry_run=False):
+                 audio_delay=5.0, dry_run=False, llm_fallback=True):
     """Enrich notes with IPA and/or audio from Wiktionary.
 
     Args:
@@ -186,6 +256,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         audio_only: Only fetch audio (skip IPA).
         audio_delay: Seconds between audio downloads.
         dry_run: Preview without applying changes.
+        llm_fallback: Use LLM to generate IPA for Wiktionary misses.
 
     Returns:
         Dict with counts: ipa_added, audio_added, skipped_phrase, not_found.
@@ -223,7 +294,8 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     print(f"Enrichment mode: {mode} ({len(notes)} notes)")
 
     stats = {"ipa_added": 0, "audio_added": 0, "skipped_phrase": 0,
-             "not_found": 0, "already_ok": 0}
+             "not_found": 0, "already_ok": 0, "ipa_llm": 0}
+    ipa_misses = []  # (note_id, word_field) for LLM fallback
 
     for note in notes:
         nid = note["noteId"]
@@ -249,12 +321,16 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         if not wikitext:
             print(f"  MISS: {word_field} -> no Wiktionary page for '{lookup}'")
             stats["not_found"] += 1
+            if needs_ipa:
+                ipa_misses.append((nid, word_field))
             continue
 
         # Extract IPA
         ipa = None
         if needs_ipa:
             ipa = extract_ipa(wikitext)
+            if not ipa:
+                ipa_misses.append((nid, word_field))
 
         # Extract and download audio
         audio_filename = None
@@ -315,11 +391,20 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         else:
             time.sleep(0.5)
 
+    # LLM fallback for IPA misses
+    if llm_fallback and ipa_misses and do_ipa:
+        llm_count = _llm_ipa_fallback(ipa_misses, dry_run=dry_run)
+        stats["ipa_llm"] = llm_count
+        stats["ipa_added"] += llm_count
+
     # Summary
     prefix = "[dry-run] " if dry_run else ""
     print(f"\n{prefix}Enrichment summary:")
     if do_ipa:
-        print(f"  IPA added:        {stats['ipa_added']}")
+        wikt_ipa = stats["ipa_added"] - stats["ipa_llm"]
+        llm_ipa = stats["ipa_llm"]
+        detail = f" ({wikt_ipa} Wiktionary + {llm_ipa} LLM)" if llm_ipa else ""
+        print(f"  IPA added:        {stats['ipa_added']}{detail}")
     if do_audio:
         print(f"  Audio added:      {stats['audio_added']}")
     print(f"  Skipped (phrase): {stats['skipped_phrase']}")
@@ -339,6 +424,7 @@ def run(args):
         audio_only=args.audio_only,
         audio_delay=args.audio_delay,
         dry_run=args.dry_run,
+        llm_fallback=not args.no_llm,
     )
 
 
@@ -353,6 +439,8 @@ def main():
                         help="Only download and store audio files")
     parser.add_argument("--audio-delay", type=float, default=5.0,
                         help="Seconds between audio downloads (default: 5)")
+    parser.add_argument("--no-llm", action="store_true",
+                        help="Skip LLM fallback for Wiktionary misses")
     run(parser.parse_args())
 
 

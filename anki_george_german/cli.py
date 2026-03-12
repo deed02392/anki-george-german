@@ -8,20 +8,22 @@ import argcomplete
 def dispatch(args):
     """Lazy-import the target module and run the command."""
     if args.command == "generate":
-        from .generate_vocab import cmd_text, cmd_domain, cmd_enrich, cmd_scan
-        {"text": cmd_text, "domain": cmd_domain, "enrich": cmd_enrich,
+        from .generate_vocab import cmd_text, cmd_domain, cmd_scan
+        {"text": cmd_text, "domain": cmd_domain,
          "scan": cmd_scan}[args.gen_command](args)
-    elif args.command == "enrich-ipa":
-        from .enrich_ipa_audio import run
-        run(args)
-    elif args.command == "fix":
-        if args.fix_command == "disambig":
+    elif args.command == "enrich":
+        if args.enrich_command == "sentences":
+            from .generate_vocab import cmd_enrich
+            cmd_enrich(args)
+        elif args.enrich_command == "ipa":
+            from .enrich_ipa_audio import run
+            run(args)
+        elif args.enrich_command == "disambig":
             from .fix_disambiguations import run
-        elif args.fix_command == "ipa":
-            from .fix_missing_ipa import run
-        elif args.fix_command == "noun-cloze":
+            run(args)
+        elif args.enrich_command == "noun-cloze":
             from .fix_noun_cloze_articles import run
-        run(args)
+            run(args)
     elif args.command == "unsuspend":
         from .unsuspend_candidates import run
         run(args)
@@ -87,27 +89,31 @@ def main():
     domain_p.add_argument("--sentences", type=int, default=2)
     domain_p.add_argument("--dry-run", action="store_true")
 
-    enrich_p = gen_sub.add_parser("enrich", help="Add sentences to existing cards")
-    enrich_p.add_argument("--source", required=True)
-    enrich_p.add_argument("--sentences", type=int, default=3)
-    enrich_p.add_argument("--batch-size", type=int, default=10)
-    enrich_p.add_argument("--dry-run", action="store_true")
+    # -- enrich --------------------------------------------------------
+    enrich = sub.add_parser("enrich", help="Improve existing cards")
+    enrich_sub = enrich.add_subparsers(dest="enrich_command", required=True)
 
-    # -- enrich-ipa ----------------------------------------------------
-    ipa_p = sub.add_parser("enrich-ipa", help="IPA/audio from Wiktionary")
+    sent_p = enrich_sub.add_parser("sentences",
+                                   help="Add example sentences to existing cards")
+    sent_p.add_argument("--source", required=True)
+    sent_p.add_argument("--sentences", type=int, default=3)
+    sent_p.add_argument("--batch-size", type=int, default=10)
+    sent_p.add_argument("--dry-run", action="store_true")
+
+    ipa_p = enrich_sub.add_parser("ipa", help="IPA/audio from Wiktionary + LLM")
     ipa_p.add_argument("--dry-run", action="store_true")
     ipa_p.add_argument("--ipa-only", action="store_true")
     ipa_p.add_argument("--audio-only", action="store_true")
     ipa_p.add_argument("--audio-delay", type=float, default=5.0)
+    ipa_p.add_argument("--no-llm", action="store_true",
+                       help="Skip LLM fallback for Wiktionary misses")
 
-    # -- fix -----------------------------------------------------------
-    fix = sub.add_parser("fix", help="Fix existing card data")
-    fix_sub = fix.add_subparsers(dest="fix_command", required=True)
-    disambig_p = fix_sub.add_parser("disambig", help="Disambiguate shared translations")
+    disambig_p = enrich_sub.add_parser("disambig",
+                                       help="Disambiguate shared translations")
     disambig_p.add_argument("--dry-run", action="store_true")
-    fix_ipa_p = fix_sub.add_parser("ipa", help="Backfill IPA via LLM")
-    fix_ipa_p.add_argument("--dry-run", action="store_true")
-    noun_cloze_p = fix_sub.add_parser("noun-cloze", help="Fix article in cloze words")
+
+    noun_cloze_p = enrich_sub.add_parser("noun-cloze",
+                                         help="Fix article in cloze words")
     noun_cloze_p.add_argument("--dry-run", action="store_true")
 
     # -- unsuspend -----------------------------------------------------

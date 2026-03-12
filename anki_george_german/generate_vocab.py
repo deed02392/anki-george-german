@@ -1141,16 +1141,24 @@ def cmd_enrich(args):
                     print(f"        ClozeWord: {s['cloze_word']}  "
                           f"POS: {s['pos']}")
             else:
-                anki("updateNoteFields", note={
-                    "id": card["note_id"],
-                    "fields": {
-                        "Sentence": new_sentence,
-                        "ClozeWord": new_cloze,
-                        "SentenceTranslation": new_trans,
-                        "POS": new_pos,
-                    },
-                })
-                updated += 1
+                try:
+                    anki("updateNoteFields", note={
+                        "id": card["note_id"],
+                        "fields": {
+                            "Sentence": new_sentence,
+                            "ClozeWord": new_cloze,
+                            "SentenceTranslation": new_trans,
+                            "POS": new_pos,
+                        },
+                    })
+                    updated += 1
+                except RuntimeError as e:
+                    if "not found" in str(e).lower():
+                        print(f"    SKIP {card['word']}: note {card['note_id']} "
+                              f"no longer exists")
+                    else:
+                        print(f"    ERROR {card['word']}: {e}")
+                    errors += 1
 
         if i + batch_size < len(to_enrich):
             time.sleep(1)

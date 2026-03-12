@@ -14,13 +14,12 @@ anki_george_german/         Installable Python package (CLI: anki-german)
   _vocab_prompts.py         LLM prompt templates for vocab generation
   _vocab_validate.py        Validation and normalisation for generated cards
   generate_vocab.py         Main vocab generation (text extraction + domain briefs)
-  enrich_ipa_audio.py       IPA + audio enrichment from Wiktionary (importable + CLI)
+  enrich_ipa_audio.py       IPA + audio enrichment from Wiktionary + LLM fallback
   update_templates.py       LIVE SOURCE OF TRUTH for CSS and templates
   unsuspend_candidates.py   Weekly card unsuspension
   schedule.py               Manage launchd agent for auto-unsuspend
   update_prefix_fields.py   Sync prefix data to Anki
   fix_disambiguations.py    Fix duplicate translations via LLM
-  fix_missing_ipa.py        Backfill IPA via LLM
   fix_noun_cloze_articles.py Fix article in cloze words
   deck_stats.py             Deck analysis and problem cards
   query_note.py             Quick note lookup
@@ -43,13 +42,13 @@ img/                        Documentation images
 The project installs as `anki-german` via `uv sync`:
 
 ```sh
-anki-german generate text       --file --source [--paragraphs] [--domain] [--phase] [--batch-size] [--sentences] [--dry-run] [--enrich]
-anki-german generate domain     --brief --source [--count] [--domain] [--phase] [--sentences] [--dry-run]
-anki-german generate enrich     --source [--sentences] [--batch-size] [--dry-run]
-anki-german enrich-ipa          [--ipa-only] [--audio-only] [--audio-delay] [--dry-run]
-anki-german fix disambig        [--dry-run]
-anki-german fix ipa             [--dry-run]
-anki-german fix noun-cloze      [--dry-run]
+anki-german generate text       --file --source [--select] [--paragraphs] [--phase] [--batch-size] [--sentences] [--dry-run] [--enrich]
+anki-german generate domain     --brief --source [--count] [--phase] [--sentences] [--dry-run]
+anki-german generate scan       --file [--chunk-minutes] [--reading-speed]
+anki-german enrich sentences    --source [--sentences] [--batch-size] [--dry-run]
+anki-german enrich ipa          [--ipa-only] [--audio-only] [--audio-delay] [--no-llm] [--dry-run]
+anki-german enrich disambig     [--dry-run]
+anki-german enrich noun-cloze   [--dry-run]
 anki-german unsuspend           [--apply] [--max N]
 anki-german stats
 anki-german templates
@@ -212,13 +211,14 @@ html, body, #qa { margin: 0; height: 100%; }
 
 ## Wiktionary Enrichment
 
-`anki_george_german/enrich_ipa_audio.py` fetches IPA + audio from de.wiktionary.org. Importable as a module (`from anki_george_german.enrich_ipa_audio import enrich_notes`) or run as CLI.
+`anki_george_german/enrich_ipa_audio.py` fetches IPA + audio from de.wiktionary.org, with automatic LLM fallback for words Wiktionary doesn't have. Importable as a module (`from anki_george_german.enrich_ipa_audio import enrich_notes`) or run as CLI.
 
 ### Usage
 ```sh
-anki-german enrich-ipa --ipa-only     # fast
-anki-german enrich-ipa --audio-only   # slow (rate limits)
-anki-german enrich-ipa --dry-run
+anki-german enrich ipa --ipa-only     # fast
+anki-german enrich ipa --audio-only   # slow (rate limits)
+anki-german enrich ipa --no-llm       # skip LLM fallback
+anki-german enrich ipa --dry-run
 ```
 
 ## Dependencies
