@@ -101,6 +101,8 @@ def main():
     sent_p.add_argument("--dry-run", action="store_true")
 
     ipa_p = enrich_sub.add_parser("ipa", help="IPA/audio from Wiktionary + LLM")
+    ipa_p.add_argument("words", nargs="*",
+                       help="Specific words to enrich (default: all missing)")
     ipa_p.add_argument("--dry-run", action="store_true")
     ipa_p.add_argument("--ipa-only", action="store_true")
     ipa_p.add_argument("--audio-only", action="store_true")

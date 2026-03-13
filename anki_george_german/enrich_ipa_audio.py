@@ -174,6 +174,33 @@ def store_audio_in_anki(filename, data):
     return mp3_name
 
 
+def store_pcm_audio_in_anki(mp3_name, pcm_data):
+    """Convert raw PCM (s16le, 24kHz, mono) to mp3 and store in Anki.
+
+    Returns the stored filename (*.mp3).
+    """
+    with tempfile.NamedTemporaryFile(suffix=".pcm", delete=False) as tmp_pcm:
+        tmp_pcm.write(pcm_data)
+        tmp_pcm_path = tmp_pcm.name
+    tmp_mp3_path = tmp_pcm_path.rsplit(".", 1)[0] + ".mp3"
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-f", "s16le", "-ar", "24000", "-ac", "1",
+             "-i", tmp_pcm_path, "-codec:a", "libmp3lame",
+             "-q:a", "2", tmp_mp3_path, "-y"],
+            capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg PCM→mp3 failed for {mp3_name}")
+        with open(tmp_mp3_path, "rb") as f:
+            mp3_b64 = base64.b64encode(f.read()).decode("ascii")
+        anki("storeMediaFile", filename=mp3_name, data=mp3_b64)
+    finally:
+        for p in (tmp_pcm_path, tmp_mp3_path):
+            if os.path.exists(p):
+                os.unlink(p)
+    return mp3_name
+
+
 # ── LLM fallback for IPA ────────────────────────────────────────────────────
 
 def _llm_ipa_fallback(missing_words, dry_run=False):
@@ -243,6 +270,108 @@ Words:
     return updated
 
 
+# ── Gemini TTS fallback for audio ─────────────────────────────────────────────
+
+GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts"
+GEMINI_TTS_VOICE = "Iapetus"
+GEMINI_API_URL = (
+    f"https://generativelanguage.googleapis.com/v1beta/models"
+    f"/{GEMINI_TTS_MODEL}:generateContent"
+)
+
+
+def _gemini_tts_single(word, api_key):
+    """Generate TTS audio for a single word via Gemini API.
+
+    Returns raw PCM bytes (s16le, 24kHz, mono) or None on failure.
+    """
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text":
+            "Say in clear, standard German (Hochdeutsch) pronunciation, "
+            f"as a dictionary recording: {word}"
+        }]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {"voiceName": GEMINI_TTS_VOICE}
+                },
+            },
+        },
+    }
+    try:
+        resp = requests.post(
+            GEMINI_API_URL, params={"key": api_key},
+            json=payload, timeout=30,
+        )
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("Retry-After", 30))
+            print(f"    (TTS rate limited, waiting {wait}s...)")
+            time.sleep(wait)
+            resp = requests.post(
+                GEMINI_API_URL, params={"key": api_key},
+                json=payload, timeout=30,
+            )
+        resp.raise_for_status()
+        data = resp.json()
+        audio_b64 = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
+        return base64.b64decode(audio_b64)
+    except (requests.RequestException, KeyError, IndexError) as e:
+        print(f"    TTS error for '{word}': {e}")
+        return None
+
+
+def _gemini_tts_fallback(audio_misses, dry_run=False):
+    """Generate TTS audio via Gemini for words missing Wiktionary audio.
+
+    Args:
+        audio_misses: list of (note_id, word_field) tuples.
+        dry_run: Preview without applying.
+
+    Returns:
+        Number of notes updated.
+    """
+    if not audio_misses:
+        return 0
+
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        print("\n  Skipping TTS fallback (GEMINI_API_KEY not set)")
+        return 0
+
+    print(f"\n  TTS fallback for {len(audio_misses)} words...")
+    updated = 0
+
+    for nid, word_field in audio_misses:
+        lookup, _ = extract_lookup_word(word_field)
+        prefix = "[dry-run] " if dry_run else "  "
+
+        if dry_run:
+            print(f"{prefix}{word_field:<30} audio=TTS (would generate)")
+            updated += 1
+            continue
+
+        # Send the full word field (e.g. "das Boot") so the article
+        # provides German context for the TTS model.  For non-nouns
+        # the bare word is unambiguously German.
+        pcm_data = _gemini_tts_single(word_field, api_key)
+        if not pcm_data:
+            print(f"  {word_field:<30} audio=TTS fail")
+            continue
+
+        mp3_name = f"tts_{lookup}.mp3"
+        store_pcm_audio_in_anki(mp3_name, pcm_data)
+        anki("updateNoteFields", note={
+            "id": nid,
+            "fields": {"Audio": f"[sound:{mp3_name}]"},
+        })
+        print(f"  {word_field:<30} audio=TTS ok")
+        updated += 1
+        time.sleep(1)  # gentle rate limiting
+
+    return updated
+
+
 # ── Core enrichment function (importable) ────────────────────────────────────
 
 def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
@@ -294,8 +423,10 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     print(f"Enrichment mode: {mode} ({len(notes)} notes)")
 
     stats = {"ipa_added": 0, "ipa_miss": 0, "audio_added": 0, "audio_miss": 0,
-             "skipped_phrase": 0, "no_page": 0, "already_ok": 0, "ipa_llm": 0}
-    ipa_misses = []  # (note_id, word_field) for LLM fallback
+             "skipped_phrase": 0, "no_page": 0, "already_ok": 0,
+             "ipa_llm": 0, "audio_tts": 0}
+    ipa_misses = []    # (note_id, word_field) for LLM fallback
+    audio_misses = []  # (note_id, word_field) for TTS fallback
 
     for note in notes:
         nid = note["noteId"]
@@ -323,6 +454,8 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             stats["no_page"] += 1
             if needs_ipa:
                 ipa_misses.append((nid, word_field))
+            if needs_audio:
+                audio_misses.append((nid, word_field))
             continue
 
         # Extract IPA
@@ -340,6 +473,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             audio_filename = extract_audio_filename(wikitext)
             if not audio_filename:
                 stats["audio_miss"] += 1
+                audio_misses.append((nid, word_field))
             elif not dry_run:
                 url = commons_url_from_filename(audio_filename)
                 audio_data = download_audio(url)
@@ -400,6 +534,13 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         stats["ipa_llm"] = llm_count
         stats["ipa_added"] += llm_count
 
+    # TTS fallback for audio misses (only for targeted enrichment —
+    # free-tier Gemini TTS quota is ~10 requests/day)
+    if audio_misses and do_audio and note_ids is not None:
+        tts_count = _gemini_tts_fallback(audio_misses, dry_run=dry_run)
+        stats["audio_tts"] = tts_count
+        stats["audio_added"] += tts_count
+
     # Summary
     prefix = "[dry-run] " if dry_run else ""
     print(f"\n{prefix}Enrichment summary:")
@@ -411,7 +552,10 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         if stats["ipa_miss"]:
             print(f"  IPA not on page:  {stats['ipa_miss']}")
     if do_audio:
-        print(f"  Audio added:      {stats['audio_added']}")
+        wikt_audio = stats["audio_added"] - stats["audio_tts"]
+        tts_audio = stats["audio_tts"]
+        detail = f" ({wikt_audio} Wiktionary + {tts_audio} TTS)" if tts_audio else ""
+        print(f"  Audio added:      {stats['audio_added']}{detail}")
         if stats["audio_miss"]:
             print(f"  Audio not on page:{stats['audio_miss']}")
     print(f"  Skipped (phrase): {stats['skipped_phrase']}")
@@ -426,7 +570,27 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
 
 def run(args):
     """Execute with pre-parsed args (called by CLI dispatcher)."""
+    note_ids = None
+    words = getattr(args, "words", None)
+    if words:
+        from ._anki import DECK
+        note_ids = []
+        for word in words:
+            if " " in word:
+                q = f'"deck:{DECK}" "Word:{word}"'
+            else:
+                q = f'"deck:{DECK}" Word:*{word}*'
+            ids = anki("findNotes", query=q)
+            if not ids:
+                print(f"  No note found for: {word}")
+            else:
+                note_ids.extend(ids)
+        if not note_ids:
+            print("No matching notes found.")
+            return
+
     enrich_notes(
+        note_ids=note_ids,
         ipa_only=args.ipa_only,
         audio_only=args.audio_only,
         audio_delay=args.audio_delay,
