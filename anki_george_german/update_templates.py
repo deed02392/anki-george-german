@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Update card CSS and templates for BOTH note types via AnkiConnect.
+Update card CSS and templates for ALL note types via AnkiConnect.
 
 This is the LIVE SOURCE OF TRUTH for all card styling and template HTML.
 Run this script after any template/CSS change to push to Anki.
 
 Note types managed:
-  1. "George's German Vocab"  — vocabulary cards (EN→DE, DE→EN, Cloze)
-  2. "German Prefix"          — prefix teaching cards (Prefix→Meaning, Meaning→Prefix)
+  1. "George's German Vocab"    — vocabulary cards (EN→DE, DE→EN, Cloze)
+  2. "German Prefix"            — prefix teaching cards (Prefix→Meaning, Meaning→Prefix)
+  3. "German Grammar Term"      — grammar term cards (Term→Definition, Example→Term)
 """
 
 from ._anki import anki
@@ -255,6 +256,48 @@ VOCAB_CLASSES = """
   background: var(--note-bg);
   border-radius: 0 4px 4px 0;
 }
+
+/* ── Cloze hint tooltip ── */
+.cloze-hint-trigger {
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cloze-hint-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--subtext);
+  font-variant: small-caps;
+  text-transform: lowercase;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.cloze-hint-tooltip.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+/* Caret arrow */
+.cloze-hint-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--chip-bg);
+}
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -335,10 +378,106 @@ PREFIX_CLASSES = """
 .core-meaning.timed { animation: urgency-pfx 10s linear forwards; }
 """
 
+# ══════════════════════════════════════════════════════════════════════════════
+# CSS — grammar-specific classes
+# ══════════════════════════════════════════════════════════════════════════════
+
+GRAMMAR_CLASSES = """
+/* ── Grammar accent ── */
+:root {
+  --accent-gram: #5bbfb5;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --accent-gram: #2a8a7e;
+  }
+}
+
+/* ── Grammar hero term ── */
+.gram-hero {
+  font-size: clamp(2.2rem, 8vw, 3.2rem);
+  font-weight: 800;
+  color: var(--accent-gram);
+  text-align: center;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+/* ── Category badge ── */
+.gram-category {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--subtext);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* ── Definition ── */
+.gram-definition {
+  font-size: clamp(1.2rem, 4.5vw, 1.7rem);
+  font-weight: 600;
+  color: var(--accent-gram);
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+/* ── Formation hint ── */
+.gram-formation {
+  font-size: 0.88rem;
+  color: var(--subtext);
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* ── Example sentences ── */
+.gram-example {
+  font-size: 0.92rem;
+  line-height: 1.8;
+  color: var(--text-de);
+}
+.gram-example-item {
+  margin-bottom: 6px;
+}
+.gram-example-item:last-child {
+  margin-bottom: 0;
+}
+.gram-example .gram {
+  color: var(--accent-gram);
+  font-weight: 700;
+}
+
+/* ── Optional note ── */
+.gram-note {
+  font-size: 0.80rem;
+  color: var(--note-fg);
+  margin-top: 8px;
+  padding: 5px 10px;
+  border-left: 3px solid var(--note-fg);
+  background: var(--note-bg);
+  border-radius: 0 4px 4px 0;
+}
+
+/* ── Urgency animation for grammar ── */
+@keyframes urgency-gram {
+  0%   { color: var(--accent-gram); }
+  60%  { color: var(--accent-gram); }
+  70%  { color: #d4a040; }
+  90%  { color: #d4a040; }
+  100% { color: #c06040; }
+}
+.gram-hero.timed { animation: urgency-gram 10s linear forwards; }
+.gram-example.timed { animation: urgency-gram 10s linear forwards; }
+"""
+
 # ── Composed CSS for each note type ──────────────────────────────────────────
 
 VOCAB_CSS = BASE_VARS + BASE_LAYOUT + VOCAB_CLASSES
 PREFIX_CSS = BASE_VARS + BASE_LAYOUT + PREFIX_CLASSES
+GRAMMAR_CSS = BASE_VARS + BASE_LAYOUT + GRAMMAR_CLASSES
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Vocab template snippets
@@ -581,7 +720,48 @@ CLOZE_BACK = """\
 
   {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
 """ + """
-</div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos")
+</div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos") + """
+<script>
+(function(){
+  var hints = "{{ClozeHint}}".split("|");
+  var clozeWords = "{{ClozeWord}}".split("|");
+  var idx;
+  try { idx = parseInt(sessionStorage.getItem("v_" + "{{Word}}")); } catch(e) {}
+  if (isNaN(idx) || idx < 0 || idx >= clozeWords.length) idx = 0;
+  var hint = (hints[idx] || "").trim();
+  if (!hint) return;
+  var spans = document.querySelectorAll("#cloze-a .cloze-answer");
+  if (!spans.length) return;
+  /* Wrap the first cloze-answer span with a trigger and add tooltip */
+  var span = spans[0];
+  var wrapper = document.createElement("span");
+  wrapper.className = "cloze-hint-trigger";
+  span.parentNode.insertBefore(wrapper, span);
+  wrapper.appendChild(span);
+  var tip = document.createElement("span");
+  tip.className = "cloze-hint-tooltip";
+  tip.textContent = hint;
+  wrapper.appendChild(tip);
+  /* Desktop: hover */
+  wrapper.addEventListener("mouseenter", function(){ tip.classList.add("visible"); });
+  wrapper.addEventListener("mouseleave", function(){ tip.classList.remove("visible"); });
+  /* Mobile: tap toggle, dismiss on outside tap */
+  var isTouch = false;
+  wrapper.addEventListener("touchstart", function(e){
+    isTouch = true;
+    e.preventDefault();
+    var show = !tip.classList.contains("visible");
+    /* Hide any other open tooltips first */
+    document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){ t.classList.remove("visible"); });
+    if (show) tip.classList.add("visible");
+  });
+  document.addEventListener("touchstart", function(e){
+    if (!wrapper.contains(e.target)) tip.classList.remove("visible");
+  });
+  /* Prevent hover from firing after touch */
+  wrapper.addEventListener("click", function(e){ if (isTouch) e.preventDefault(); });
+})();
+</script>"""
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Prefix templates
@@ -629,6 +809,71 @@ MEANING_PFX_BACK = """\
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Grammar templates
+# ══════════════════════════════════════════════════════════════════════════════
+
+GRAM_TERM_FRONT = """\
+<div class="kard">
+  <div class="card-header">
+    <div class="card-type">Grammar</div>
+  </div>
+  <div class="gram-category">{{Category}}</div>
+  <div class="gram-hero timed">{{Term}}</div>
+</div>"""
+
+GRAM_TERM_BACK = """\
+<div class="kard">
+  <div class="card-header">
+    <div class="card-type">Grammar</div>
+  </div>
+  <div class="gram-category">{{Category}}</div>
+  <div class="gram-hero">{{Term}}</div>
+  <hr class="divider">
+  <div class="gram-definition">{{Definition}}</div>
+  {{#Formation}}
+  <div class="gram-formation">{{Formation}}</div>
+  {{/Formation}}
+  {{#Example}}
+  <hr class="divider">
+  <div class="gram-example">{{Example}}</div>
+  {{/Example}}
+  {{#Note}}<div class="gram-note">{{Note}}</div>{{/Note}}
+</div>"""
+
+GRAM_EXAMPLE_FRONT = """\
+<div class="kard">
+  <div class="card-header">
+    <div class="card-type">Grammar &middot; Example</div>
+  </div>
+  <div class="gram-example timed" id="gram-ex-front">{{Example}}</div>
+</div>
+<script>
+(function(){
+  var el = document.getElementById("gram-ex-front");
+  if (!el) return;
+  var items = el.querySelectorAll(".gram-example-item");
+  if (items.length < 2) return;
+  var idx = Math.floor(Math.random() * items.length);
+  items.forEach(function(item, i){ if (i !== idx) item.style.display = "none"; });
+})();
+</script>"""
+
+GRAM_EXAMPLE_BACK = """\
+<div class="kard">
+  <div class="card-header">
+    <div class="card-type">Grammar &middot; Example</div>
+  </div>
+  <div class="gram-hero">{{Term}}</div>
+  <div class="gram-category">{{Category}}</div>
+  <hr class="divider">
+  <div class="gram-definition">{{Definition}}</div>
+  {{#Formation}}
+  <div class="gram-formation">{{Formation}}</div>
+  {{/Formation}}
+</div>"""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Push to Anki
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -664,8 +909,23 @@ def main():
     })
     print("  Done.")
 
+    # ── Grammar note type ──
+    print("Updating German Grammar Term CSS...")
+    anki("updateModelStyling", model={"name": "German Grammar Term", "css": GRAMMAR_CSS})
+    print("  Done.")
+
+    print("Updating German Grammar Term templates...")
+    anki("updateModelTemplates", model={
+        "name": "German Grammar Term",
+        "templates": {
+            "Term → Definition":  {"Front": GRAM_TERM_FRONT, "Back": GRAM_TERM_BACK},
+            "Example → Term":     {"Front": GRAM_EXAMPLE_FRONT, "Back": GRAM_EXAMPLE_BACK},
+        }
+    })
+    print("  Done.")
+
     print()
-    print("Templates and CSS pushed to Anki (both note types).")
+    print("Templates and CSS pushed to Anki (all note types).")
 
 
 if __name__ == "__main__":

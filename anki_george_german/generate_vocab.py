@@ -537,6 +537,9 @@ def import_to_anki(cards, source, phase, dry_run=False,
                 "Audio": "",
                 "Sentence": "|".join(s["sentence"] for s in sentences),
                 "ClozeWord": "|".join(s["cloze_word"] for s in sentences),
+                "ClozeHint": "|".join(
+                    s.get("cloze_hint", "") for s in sentences
+                ),
                 "SentenceTranslation": "|".join(
                     s["sentence_translation"] for s in sentences
                 ),
@@ -1129,6 +1132,7 @@ def cmd_enrich(args):
 
             new_sentence = "|".join(s["sentence"] for s in all_sents)
             new_cloze = "|".join(s["cloze_word"] for s in all_sents)
+            new_hint = "|".join(s.get("cloze_hint", "") for s in all_sents)
             new_trans = "|".join(s["sentence_translation"] for s in all_sents)
             new_pos = "|".join(s["pos"] for s in all_sents)
 
@@ -1147,6 +1151,7 @@ def cmd_enrich(args):
                         "fields": {
                             "Sentence": new_sentence,
                             "ClozeWord": new_cloze,
+                            "ClozeHint": new_hint,
                             "SentenceTranslation": new_trans,
                             "POS": new_pos,
                         },

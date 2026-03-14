@@ -36,6 +36,9 @@ def dispatch(args):
     elif args.command == "prefixes":
         from .update_prefix_fields import main as run
         run()
+    elif args.command == "grammar":
+        from .update_grammar_fields import main as run
+        run(args)
     elif args.command == "query":
         from .query_note import run
         run(args)
@@ -127,6 +130,8 @@ def main():
     sub.add_parser("stats", help="Deck analysis and problem cards")
     sub.add_parser("templates", help="Push CSS/templates to Anki")
     sub.add_parser("prefixes", help="Sync prefix data to Anki")
+    grammar_p = sub.add_parser("grammar", help="Sync grammar term data to Anki")
+    grammar_p.add_argument("--dry-run", action="store_true")
     query_p = sub.add_parser("query", help="Look up a word")
     query_p.add_argument("word", nargs="?", default="der Saft")
 

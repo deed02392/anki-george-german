@@ -29,12 +29,19 @@ For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g
 - For reflexive verbs: include the reflexive pronoun in "cloze_word" using ~ \
 (e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
 - Sentences should be 5-15 words
-- Use British English for translations (colour, mum, favourite)"""
+- Use British English for translations (colour, mum, favourite)
+- "cloze_hint" is a SHORT (2-5 word) grammatical annotation explaining the inflected \
+form of the cloze word using German grammar terms and middle dot (·) as separator. Examples: \
+Verb → "Präteritum · er/sie/es", "Konjunktiv II · ich", "Präsens · 3. Person Plural"; \
+Noun with article → "Akkusativ · maskulin", "Dativ · Plural"; \
+Adjective → "Komparativ · Dativ · Plural". \
+If the cloze word is already the dictionary/base form, use "Grundform"."""
 
 SENTENCE_SCHEMA = """\
     {{
       "sentence": "<German example sentence>",
       "cloze_word": "<exact form in sentence, ~ for separable verbs>",
+      "cloze_hint": "<short grammatical annotation for the inflected cloze form>",
       "sentence_translation": "<English translation of sentence>",
       "pos": "<{valid_pos}>"
     }}"""
