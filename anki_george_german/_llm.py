@@ -12,7 +12,7 @@ import time
 import requests
 
 FLOODGATE_URL = "https://floodgate.g.apple.com/api/openai/v1/chat/completions"
-FLOODGATE_MODEL = "aws:anthropic.claude-sonnet-4-20250514-v1:0"
+FLOODGATE_MODEL = "aws:anthropic.claude-opus-4-6-v1"
 
 
 def get_floodgate_token():

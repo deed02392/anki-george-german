@@ -24,6 +24,9 @@ def dispatch(args):
         elif args.enrich_command == "noun-cloze":
             from .fix_noun_cloze_articles import run
             run(args)
+        elif args.enrich_command == "hints":
+            from .enrich_hints import run
+            run(args)
     elif args.command == "unsuspend":
         from .unsuspend_candidates import run
         run(args)
@@ -120,6 +123,11 @@ def main():
     noun_cloze_p = enrich_sub.add_parser("noun-cloze",
                                          help="Fix article in cloze words")
     noun_cloze_p.add_argument("--dry-run", action="store_true")
+
+    hints_p = enrich_sub.add_parser("hints",
+                                     help="Backfill ClozeHint grammar annotations")
+    hints_p.add_argument("--batch-size", type=int, default=10)
+    hints_p.add_argument("--dry-run", action="store_true")
 
     # -- unsuspend -----------------------------------------------------
     unsuspend_p = sub.add_parser("unsuspend", help="Unsuspend mature cards")
