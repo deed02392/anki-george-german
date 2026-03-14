@@ -204,7 +204,7 @@ hr.divider {
   100% { color: #c05040; }
 }
 
-@keyframes urgency-blank {
+@keyframes urgency-cloze {
   0%   { border-bottom-color: var(--accent-de); background-color: transparent; }
   60%  { border-bottom-color: var(--accent-de); background-color: transparent; }
   70%  { border-bottom-color: #d4a040; background-color: rgba(212, 160, 64, 0.06); }
@@ -303,7 +303,7 @@ VOCAB_CLASSES = """
   margin: 0 2px;
   color: transparent;
   user-select: none;
-  animation: urgency-blank 10s linear forwards;
+  animation: urgency-cloze 10s linear forwards;
 }
 .cloze-answer {
   color: var(--accent-de);
