@@ -112,30 +112,82 @@ hr.divider {
   border-top: 1px solid var(--border);
   margin: 16px 0;
 }
-"""
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CSS — vocab-specific classes
-# ══════════════════════════════════════════════════════════════════════════════
+/* ── Shared hero display ── */
+.hero {
+  font-size: clamp(2.2rem, 8vw, 3.2rem);
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
 
-VOCAB_CLASSES = """
-/* ── Source badge ── */
-.source-badge {
-  display: inline-block;
+/* ── Shared sub-hero (meaning / definition) ── */
+.sub-hero {
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+/* ── Shared type tag (separability / category) ── */
+.type-tag {
   font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
-  border-radius: 4px;
-  padding: 2px 8px;
-  color: #fff;
+  color: var(--subtext);
+  text-align: center;
+  margin-bottom: 4px;
 }
-.source-1 { background: var(--p1); }
-.source-2 { background: var(--p2); }
-.source-3 { background: var(--p3); }
-.source-4 { background: var(--p4); }
 
-/* ── Focal urgency ── */
+/* ── Shared hint text (spatial sense / formation) ── */
+.hint-text {
+  font-size: 0.88rem;
+  color: var(--subtext);
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* ── Shared examples block ── */
+.examples {
+  font-size: 0.92rem;
+  line-height: 1.8;
+  color: var(--text-de);
+}
+.examples .hl {
+  font-weight: 700;
+}
+.example-item {
+  margin-bottom: 6px;
+}
+.example-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Shared callout (disambig / note) ── */
+.callout {
+  font-size: 0.80rem;
+  margin-top: 8px;
+  padding: 5px 10px;
+  border-left: 3px solid;
+  border-radius: 0 4px 4px 0;
+}
+.callout-disambig {
+  font-size: 0.83rem;
+  margin-top: 10px;
+  color: var(--disambig-fg);
+  border-left-color: var(--disambig-fg);
+  background: var(--disambig-bg);
+}
+.callout-note {
+  color: var(--note-fg);
+  border-left-color: var(--note-fg);
+  background: var(--note-bg);
+}
+
+/* ── Focal urgency keyframes ── */
 @keyframes urgency-de {
   0%   { color: var(--accent-de); }
   60%  { color: var(--accent-de); }
@@ -159,6 +211,28 @@ VOCAB_CLASSES = """
   90%  { border-bottom-color: #d4a040; background-color: rgba(212, 160, 64, 0.06); }
   100% { border-bottom-color: #c06040; background-color: rgba(192, 96, 64, 0.10); }
 }
+"""
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CSS — vocab-specific classes
+# ══════════════════════════════════════════════════════════════════════════════
+
+VOCAB_CLASSES = """
+/* ── Source badge ── */
+.source-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: #fff;
+}
+.source-1 { background: var(--p1); }
+.source-2 { background: var(--p2); }
+.source-3 { background: var(--p3); }
+.source-4 { background: var(--p4); }
 
 .word-de.timed { animation: urgency-de 10s linear forwards; }
 .word-en.timed { animation: urgency-en 10s linear forwards; }
@@ -237,26 +311,6 @@ VOCAB_CLASSES = """
   border-bottom: 2px solid var(--accent-de);
 }
 
-/* ── Notes / disambig ── */
-.disambig {
-  font-size: 0.83rem;
-  color: var(--disambig-fg);
-  margin-top: 10px;
-  padding: 5px 10px;
-  border-left: 3px solid var(--disambig-fg);
-  background: var(--disambig-bg);
-  border-radius: 0 4px 4px 0;
-}
-.usage-note {
-  font-size: 0.80rem;
-  color: var(--note-fg);
-  margin-top: 8px;
-  padding: 5px 10px;
-  border-left: 3px solid var(--note-fg);
-  background: var(--note-bg);
-  border-radius: 0 4px 4px 0;
-}
-
 /* ── Cloze hint tooltip ── */
 .cloze-hint-trigger {
   position: relative;
@@ -315,56 +369,9 @@ PREFIX_CLASSES = """
   }
 }
 
-/* ── Prefix hero display ── */
-.prefix-hero {
-  font-size: clamp(2.2rem, 8vw, 3.2rem);
-  font-weight: 800;
-  color: var(--accent-pfx);
-  text-align: center;
-  line-height: 1.1;
-  margin-bottom: 2px;
-}
-
-/* ── Core meaning ── */
-.core-meaning {
-  font-size: clamp(1.4rem, 5vw, 2rem);
-  font-weight: 600;
-  color: var(--accent-pfx);
-  text-align: center;
-  line-height: 1.2;
-  margin-bottom: 6px;
-}
-
-/* ── Spatial sense ── */
-.spatial-sense {
-  font-size: 0.88rem;
-  color: var(--subtext);
-  font-style: italic;
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-/* ── Separability tag ── */
-.pfx-type-tag {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--subtext);
-  text-align: center;
-  margin-bottom: 4px;
-}
-
-/* ── Example verbs ── */
-.pfx-examples {
-  font-size: 0.92rem;
-  line-height: 1.8;
-  color: var(--text-de);
-}
-.pfx-examples .pfx {
-  color: var(--accent-pfx);
-  font-weight: 700;
-}
+.hero.pfx       { color: var(--accent-pfx); }
+.sub-hero.pfx   { color: var(--accent-pfx); font-size: clamp(1.4rem, 5vw, 2rem); }
+.examples .hl.pfx { color: var(--accent-pfx); }
 
 /* ── Urgency animation for prefix ── */
 @keyframes urgency-pfx {
@@ -374,8 +381,8 @@ PREFIX_CLASSES = """
   90%  { color: #d4a040; }
   100% { color: #c06040; }
 }
-.prefix-hero.timed { animation: urgency-pfx 10s linear forwards; }
-.core-meaning.timed { animation: urgency-pfx 10s linear forwards; }
+.hero.pfx.timed     { animation: urgency-pfx 10s linear forwards; }
+.sub-hero.pfx.timed { animation: urgency-pfx 10s linear forwards; }
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -393,73 +400,9 @@ GRAMMAR_CLASSES = """
   }
 }
 
-/* ── Grammar hero term ── */
-.gram-hero {
-  font-size: clamp(2.2rem, 8vw, 3.2rem);
-  font-weight: 800;
-  color: var(--accent-gram);
-  text-align: center;
-  line-height: 1.1;
-  margin-bottom: 2px;
-}
-
-/* ── Category badge ── */
-.gram-category {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--subtext);
-  text-align: center;
-  margin-bottom: 4px;
-}
-
-/* ── Definition ── */
-.gram-definition {
-  font-size: clamp(1.2rem, 4.5vw, 1.7rem);
-  font-weight: 600;
-  color: var(--accent-gram);
-  text-align: center;
-  line-height: 1.2;
-  margin-bottom: 6px;
-}
-
-/* ── Formation hint ── */
-.gram-formation {
-  font-size: 0.88rem;
-  color: var(--subtext);
-  font-style: italic;
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-/* ── Example sentences ── */
-.gram-example {
-  font-size: 0.92rem;
-  line-height: 1.8;
-  color: var(--text-de);
-}
-.gram-example-item {
-  margin-bottom: 6px;
-}
-.gram-example-item:last-child {
-  margin-bottom: 0;
-}
-.gram-example .gram {
-  color: var(--accent-gram);
-  font-weight: 700;
-}
-
-/* ── Optional note ── */
-.gram-note {
-  font-size: 0.80rem;
-  color: var(--note-fg);
-  margin-top: 8px;
-  padding: 5px 10px;
-  border-left: 3px solid var(--note-fg);
-  background: var(--note-bg);
-  border-radius: 0 4px 4px 0;
-}
+.hero.gram       { color: var(--accent-gram); }
+.sub-hero.gram   { color: var(--accent-gram); font-size: clamp(1.2rem, 4.5vw, 1.7rem); }
+.examples .hl.gram { color: var(--accent-gram); }
 
 /* ── Urgency animation for grammar ── */
 @keyframes urgency-gram {
@@ -469,8 +412,8 @@ GRAMMAR_CLASSES = """
   90%  { color: #d4a040; }
   100% { color: #c06040; }
 }
-.gram-hero.timed { animation: urgency-gram 10s linear forwards; }
-.gram-example.timed { animation: urgency-gram 10s linear forwards; }
+.hero.gram.timed     { animation: urgency-gram 10s linear forwards; }
+.examples.gram.timed { animation: urgency-gram 10s linear forwards; }
 """
 
 # ── Composed CSS for each note type ──────────────────────────────────────────
@@ -623,7 +566,7 @@ EN_DE_FRONT = """\
   {{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
-  <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  <div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
   {{/WordTranslationDisambiguate}}
 </div>""" + variant_picker_js("ende-s-front", "ende-tr-front", is_front=True)
 
@@ -647,10 +590,10 @@ EN_DE_BACK = """\
   {{#SentenceTranslation}}<div class="sentence-en quoted" id="ende-tr-back"></div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
-  <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  <div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
   {{/WordTranslationDisambiguate}}
 
-  {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
+  {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 """ + "\n</div>" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
 
 DE_EN_FRONT = """\
@@ -684,10 +627,10 @@ DE_EN_BACK = """\
   {{#SentenceTranslation}}<div class="sentence-en quoted" id="deen-tr-back"></div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
-  <div class="disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  <div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
   {{/WordTranslationDisambiguate}}
 
-  {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
+  {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 """ + "\n</div>" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
 
 CLOZE_FRONT = """\
@@ -718,7 +661,7 @@ CLOZE_BACK = """\
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
   <div class="word-en">{{WordTranslation}}</div>
 
-  {{#Note}}<div class="usage-note">{{Note}}</div>{{/Note}}
+  {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 """ + """
 </div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos") + """
 <script>
@@ -772,8 +715,8 @@ PFX_MEANING_FRONT = """\
   <div class="card-header">
     <div class="card-type">Prefix</div>
   </div>
-  <div class="prefix-hero timed">{{Prefix}}-</div>
-  <div class="pfx-type-tag">{{PrefixType}}</div>
+  <div class="hero pfx timed">{{Prefix}}-</div>
+  <div class="type-tag">{{PrefixType}}</div>
 </div>"""
 
 PFX_MEANING_BACK = """\
@@ -781,10 +724,10 @@ PFX_MEANING_BACK = """\
   <div class="card-header">
     <div class="card-type">Prefix</div>
   </div>
-  <div class="core-meaning">{{CoreMeaning}}</div>
-  <div class="spatial-sense">{{SpatialSense}}</div>
+  <div class="sub-hero pfx">{{CoreMeaning}}</div>
+  <div class="hint-text">{{SpatialSense}}</div>
   <hr class="divider">
-  <div class="pfx-examples">{{Examples}}</div>
+  <div class="examples">{{Examples}}</div>
 </div>"""
 
 MEANING_PFX_FRONT = """\
@@ -792,8 +735,8 @@ MEANING_PFX_FRONT = """\
   <div class="card-header">
     <div class="card-type">Prefix</div>
   </div>
-  <div class="core-meaning timed">{{CoreMeaning}}</div>
-  <div class="spatial-sense">{{SpatialSense}}</div>
+  <div class="sub-hero pfx timed">{{CoreMeaning}}</div>
+  <div class="hint-text">{{SpatialSense}}</div>
 </div>"""
 
 MEANING_PFX_BACK = """\
@@ -801,10 +744,10 @@ MEANING_PFX_BACK = """\
   <div class="card-header">
     <div class="card-type">Prefix</div>
   </div>
-  <div class="prefix-hero">{{Prefix}}-</div>
-  <div class="pfx-type-tag">{{PrefixType}}</div>
+  <div class="hero pfx">{{Prefix}}-</div>
+  <div class="type-tag">{{PrefixType}}</div>
   <hr class="divider">
-  <div class="pfx-examples">{{Examples}}</div>
+  <div class="examples">{{Examples}}</div>
 </div>"""
 
 
@@ -817,8 +760,8 @@ GRAM_TERM_FRONT = """\
   <div class="card-header">
     <div class="card-type">Grammar</div>
   </div>
-  <div class="gram-category">{{Category}}</div>
-  <div class="gram-hero timed">{{Term}}</div>
+  <div class="type-tag">{{Category}}</div>
+  <div class="hero gram timed">{{Term}}</div>
 </div>"""
 
 GRAM_TERM_BACK = """\
@@ -826,18 +769,18 @@ GRAM_TERM_BACK = """\
   <div class="card-header">
     <div class="card-type">Grammar</div>
   </div>
-  <div class="gram-category">{{Category}}</div>
-  <div class="gram-hero">{{Term}}</div>
+  <div class="type-tag">{{Category}}</div>
+  <div class="hero gram">{{Term}}</div>
   <hr class="divider">
-  <div class="gram-definition">{{Definition}}</div>
+  <div class="sub-hero gram">{{Definition}}</div>
   {{#Formation}}
-  <div class="gram-formation">{{Formation}}</div>
+  <div class="hint-text">{{Formation}}</div>
   {{/Formation}}
   {{#Example}}
   <hr class="divider">
-  <div class="gram-example">{{Example}}</div>
+  <div class="examples">{{Example}}</div>
   {{/Example}}
-  {{#Note}}<div class="gram-note">{{Note}}</div>{{/Note}}
+  {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 </div>"""
 
 GRAM_EXAMPLE_FRONT = """\
@@ -845,13 +788,13 @@ GRAM_EXAMPLE_FRONT = """\
   <div class="card-header">
     <div class="card-type">Grammar &middot; Example</div>
   </div>
-  <div class="gram-example timed" id="gram-ex-front">{{Example}}</div>
+  <div class="examples gram timed" id="gram-ex-front">{{Example}}</div>
 </div>
 <script>
 (function(){
   var el = document.getElementById("gram-ex-front");
   if (!el) return;
-  var items = el.querySelectorAll(".gram-example-item");
+  var items = el.querySelectorAll(".example-item");
   if (items.length < 2) return;
   var idx = Math.floor(Math.random() * items.length);
   items.forEach(function(item, i){ if (i !== idx) item.style.display = "none"; });
@@ -863,12 +806,12 @@ GRAM_EXAMPLE_BACK = """\
   <div class="card-header">
     <div class="card-type">Grammar &middot; Example</div>
   </div>
-  <div class="gram-hero">{{Term}}</div>
-  <div class="gram-category">{{Category}}</div>
+  <div class="hero gram">{{Term}}</div>
+  <div class="type-tag">{{Category}}</div>
   <hr class="divider">
-  <div class="gram-definition">{{Definition}}</div>
+  <div class="sub-hero gram">{{Definition}}</div>
   {{#Formation}}
-  <div class="gram-formation">{{Formation}}</div>
+  <div class="hint-text">{{Formation}}</div>
   {{/Formation}}
 </div>"""
 

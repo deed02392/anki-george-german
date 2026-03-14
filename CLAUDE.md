@@ -130,8 +130,10 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 `anki_george_german/update_templates.py` splits CSS into shared base + per-note-type sections:
 - `BASE_VARS` — `:root` design tokens, dark/light mode
 - `BASE_LAYOUT` — `.card`, `.kard`, `.card-header`, `.card-type`, `hr.divider`
-- `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, phase badges)
-- `PREFIX_CLASSES` — prefix-specific (`.prefix-hero`, `.core-meaning`, `.pfx-examples`)
+- `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, source badges)
+- `PREFIX_CLASSES` — prefix-specific (accent colour, `.hero.pfx`, `.sub-hero.pfx`)
+- `GRAMMAR_CLASSES` — grammar-specific (accent colour, `.hero.gram`, `.sub-hero.gram`)
+- Shared components in `BASE_LAYOUT`: `.hero`, `.sub-hero`, `.type-tag`, `.hint-text`, `.examples`/`.hl`, `.callout`
 
 ## Phase Badges
 

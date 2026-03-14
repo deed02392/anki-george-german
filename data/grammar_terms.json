@@ -4,7 +4,7 @@
     "category": "Tempus",
     "definition": "Present tense. Describes what is happening now or general truths.",
     "formation": "verb stem + personal endings (-e, -st, -t, -en, -t, -en)",
-    "example": "<div class=\"gram-example-item\">Er <span class=\"gram\">öffnet</span> das Fenster. (← öffnen)</div><div class=\"gram-example-item\">Sie <span class=\"gram\">spielt</span> Klavier. (← spielen)</div><div class=\"gram-example-item\">Das Kind <span class=\"gram\">trinkt</span> Milch. (← trinken)</div>",
+    "example": "<div class=\"example-item\">Er <span class=\"hl gram\">öffnet</span> das Fenster. (← öffnen)</div><div class=\"example-item\">Sie <span class=\"hl gram\">spielt</span> Klavier. (← spielen)</div><div class=\"example-item\">Das Kind <span class=\"hl gram\">trinkt</span> Milch. (← trinken)</div>",
     "note": "Also used for near-future events: Morgen fliege ich nach Berlin."
   },
   {
@@ -12,7 +12,7 @@
     "category": "Tempus",
     "definition": "Simple past / narrative past. The standard past tense in written German and storytelling.",
     "formation": "weak verbs: stem + -te + endings; strong verbs: vowel change + endings",
-    "example": "<div class=\"gram-example-item\">Sie <span class=\"gram\">öffnete</span> die Tür. (← öffnen)</div><div class=\"gram-example-item\">Er <span class=\"gram\">ging</span> nach Hause. (← gehen)</div><div class=\"gram-example-item\">Das Kind <span class=\"gram\">schlief</span> sofort ein. (← einschlafen)</div>",
+    "example": "<div class=\"example-item\">Sie <span class=\"hl gram\">öffnete</span> die Tür. (← öffnen)</div><div class=\"example-item\">Er <span class=\"hl gram\">ging</span> nach Hause. (← gehen)</div><div class=\"example-item\">Das Kind <span class=\"hl gram\">schlief</span> sofort ein. (← einschlafen)</div>",
     "note": "Preferred in writing. In speech, most verbs use Perfekt instead — except haben, sein, and modals."
   },
   {
@@ -20,7 +20,7 @@
     "category": "Tempus",
     "definition": "Conversational past. The go-to past tense in spoken German.",
     "formation": "haben/sein (conjugated) + Partizip II",
-    "example": "<div class=\"gram-example-item\">Ich <span class=\"gram\">habe</span> das Buch <span class=\"gram\">gelesen</span>. (← lesen)</div><div class=\"gram-example-item\">Sie <span class=\"gram\">ist</span> nach Berlin <span class=\"gram\">gefahren</span>. (← fahren)</div><div class=\"gram-example-item\">Wir <span class=\"gram\">haben</span> lange <span class=\"gram\">gewartet</span>. (← warten)</div>",
+    "example": "<div class=\"example-item\">Ich <span class=\"hl gram\">habe</span> das Buch <span class=\"hl gram\">gelesen</span>. (← lesen)</div><div class=\"example-item\">Sie <span class=\"hl gram\">ist</span> nach Berlin <span class=\"hl gram\">gefahren</span>. (← fahren)</div><div class=\"example-item\">Wir <span class=\"hl gram\">haben</span> lange <span class=\"hl gram\">gewartet</span>. (← warten)</div>",
     "note": "Use sein with movement/change-of-state verbs: Ich bin gegangen."
   },
   {
@@ -28,7 +28,7 @@
     "category": "Tempus",
     "definition": "Past perfect. Describes an action completed before another past action.",
     "formation": "hatte/war (Präteritum of haben/sein) + Partizip II",
-    "example": "<div class=\"gram-example-item\">Er <span class=\"gram\">hatte</span> schon <span class=\"gram\">gegessen</span>, als ich kam. (← essen)</div><div class=\"gram-example-item\">Sie <span class=\"gram\">war</span> bereits <span class=\"gram\">angekommen</span>. (← ankommen)</div><div class=\"gram-example-item\">Wir <span class=\"gram\">hatten</span> das Buch <span class=\"gram\">vergessen</span>. (← vergessen)</div>",
+    "example": "<div class=\"example-item\">Er <span class=\"hl gram\">hatte</span> schon <span class=\"hl gram\">gegessen</span>, als ich kam. (← essen)</div><div class=\"example-item\">Sie <span class=\"hl gram\">war</span> bereits <span class=\"hl gram\">angekommen</span>. (← ankommen)</div><div class=\"example-item\">Wir <span class=\"hl gram\">hatten</span> das Buch <span class=\"hl gram\">vergessen</span>. (← vergessen)</div>",
     "note": ""
   },
   {
@@ -36,7 +36,7 @@
     "category": "Tempus",
     "definition": "Future tense. Expresses future actions or present-tense assumptions.",
     "formation": "werden (conjugated) + Infinitiv",
-    "example": "<div class=\"gram-example-item\">Wir <span class=\"gram\">werden</span> morgen <span class=\"gram\">ankommen</span>. (← ankommen)</div><div class=\"gram-example-item\">Ich <span class=\"gram\">werde</span> das Buch <span class=\"gram\">lesen</span>. (← lesen)</div><div class=\"gram-example-item\">Er <span class=\"gram\">wird</span> uns <span class=\"gram\">helfen</span>. (← helfen)</div>",
+    "example": "<div class=\"example-item\">Wir <span class=\"hl gram\">werden</span> morgen <span class=\"hl gram\">ankommen</span>. (← ankommen)</div><div class=\"example-item\">Ich <span class=\"hl gram\">werde</span> das Buch <span class=\"hl gram\">lesen</span>. (← lesen)</div><div class=\"example-item\">Er <span class=\"hl gram\">wird</span> uns <span class=\"hl gram\">helfen</span>. (← helfen)</div>",
     "note": "Often implies speculation: Er wird wohl krank sein (He's probably ill)."
   },
   {
@@ -44,7 +44,7 @@
     "category": "Kasus",
     "definition": "Nominative case. Marks the subject — who or what performs the action.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Der Hund</span> schläft. (← der Hund)</div><div class=\"gram-example-item\"><span class=\"gram\">Die Katze</span> trinkt Milch. (← die Katze)</div><div class=\"gram-example-item\"><span class=\"gram\">Das Kind</span> lacht laut. (← das Kind)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Der Hund</span> schläft. (← der Hund)</div><div class=\"example-item\"><span class=\"hl gram\">Die Katze</span> trinkt Milch. (← die Katze)</div><div class=\"example-item\"><span class=\"hl gram\">Das Kind</span> lacht laut. (← das Kind)</div>",
     "note": "Also used after sein, werden, bleiben: Das ist ein guter Mann."
   },
   {
@@ -52,7 +52,7 @@
     "category": "Kasus",
     "definition": "Accusative case. Marks the direct object — who or what is directly affected.",
     "formation": "masculine articles change: der → den, ein → einen",
-    "example": "<div class=\"gram-example-item\">Ich sehe <span class=\"gram\">den Mann</span>. (← der Mann)</div><div class=\"gram-example-item\">Sie kauft <span class=\"gram\">einen Tisch</span>. (← ein Tisch)</div><div class=\"gram-example-item\">Er liest <span class=\"gram\">das Buch</span>. (← das Buch)</div>",
+    "example": "<div class=\"example-item\">Ich sehe <span class=\"hl gram\">den Mann</span>. (← der Mann)</div><div class=\"example-item\">Sie kauft <span class=\"hl gram\">einen Tisch</span>. (← ein Tisch)</div><div class=\"example-item\">Er liest <span class=\"hl gram\">das Buch</span>. (← das Buch)</div>",
     "note": "Required after durch, für, gegen, ohne, um."
   },
   {
@@ -60,7 +60,7 @@
     "category": "Kasus",
     "definition": "Dative case. Marks the indirect object — the recipient or beneficiary.",
     "formation": "der → dem, die → der, das → dem; plural adds -n to noun",
-    "example": "<div class=\"gram-example-item\">Ich gebe <span class=\"gram\">dem Kind</span> ein Buch. (← das Kind)</div><div class=\"gram-example-item\">Er hilft <span class=\"gram\">der Frau</span>. (← die Frau)</div><div class=\"gram-example-item\">Sie schreibt <span class=\"gram\">dem Lehrer</span> einen Brief. (← der Lehrer)</div>",
+    "example": "<div class=\"example-item\">Ich gebe <span class=\"hl gram\">dem Kind</span> ein Buch. (← das Kind)</div><div class=\"example-item\">Er hilft <span class=\"hl gram\">der Frau</span>. (← die Frau)</div><div class=\"example-item\">Sie schreibt <span class=\"hl gram\">dem Lehrer</span> einen Brief. (← der Lehrer)</div>",
     "note": "Required after aus, bei, mit, nach, seit, von, zu."
   },
   {
@@ -68,7 +68,7 @@
     "category": "Kasus",
     "definition": "Genitive case. Shows possession or close relationship between nouns.",
     "formation": "der → des, die → der, das → des; masc/neuter nouns add -(e)s",
-    "example": "<div class=\"gram-example-item\">Das Auto <span class=\"gram\">des Mannes</span> ist rot. (← der Mann)</div><div class=\"gram-example-item\">Die Farbe <span class=\"gram\">des Hauses</span> ist blau. (← das Haus)</div><div class=\"gram-example-item\">Der Name <span class=\"gram\">der Straße</span> ist lang. (← die Straße)</div>",
+    "example": "<div class=\"example-item\">Das Auto <span class=\"hl gram\">des Mannes</span> ist rot. (← der Mann)</div><div class=\"example-item\">Die Farbe <span class=\"hl gram\">des Hauses</span> ist blau. (← das Haus)</div><div class=\"example-item\">Der Name <span class=\"hl gram\">der Straße</span> ist lang. (← die Straße)</div>",
     "note": "Increasingly replaced by von + Dativ in speech, but essential in writing."
   },
   {
@@ -76,7 +76,7 @@
     "category": "Modus",
     "definition": "Indicative mood. States facts and real events — the default mood.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\">Er <span class=\"gram\">spricht</span> Deutsch. (← sprechen)</div><div class=\"gram-example-item\">Wir <span class=\"gram\">wohnen</span> in Berlin. (← wohnen)</div><div class=\"gram-example-item\">Sie <span class=\"gram\">arbeitet</span> jeden Tag. (← arbeiten)</div>",
+    "example": "<div class=\"example-item\">Er <span class=\"hl gram\">spricht</span> Deutsch. (← sprechen)</div><div class=\"example-item\">Wir <span class=\"hl gram\">wohnen</span> in Berlin. (← wohnen)</div><div class=\"example-item\">Sie <span class=\"hl gram\">arbeitet</span> jeden Tag. (← arbeiten)</div>",
     "note": ""
   },
   {
@@ -84,7 +84,7 @@
     "category": "Modus",
     "definition": "Subjunctive I. Used for reported speech (indirekte Rede), mainly in journalism and formal writing.",
     "formation": "infinitive stem + -e, -est, -e, -en, -et, -en",
-    "example": "<div class=\"gram-example-item\">Er sagte, er <span class=\"gram\">habe</span> keine Zeit. (← haben)</div><div class=\"gram-example-item\">Sie meinte, sie <span class=\"gram\">komme</span> morgen. (← kommen)</div><div class=\"gram-example-item\">Er behauptete, er <span class=\"gram\">wisse</span> nichts. (← wissen)</div>",
+    "example": "<div class=\"example-item\">Er sagte, er <span class=\"hl gram\">habe</span> keine Zeit. (← haben)</div><div class=\"example-item\">Sie meinte, sie <span class=\"hl gram\">komme</span> morgen. (← kommen)</div><div class=\"example-item\">Er behauptete, er <span class=\"hl gram\">wisse</span> nichts. (← wissen)</div>",
     "note": "If the Konjunktiv I form is identical to the Indikativ, use Konjunktiv II instead."
   },
   {
@@ -92,7 +92,7 @@
     "category": "Modus",
     "definition": "Subjunctive II. Expresses hypotheticals, wishes, and polite requests.",
     "formation": "Präteritum stem + umlaut (if possible) + -e endings; or würde + Infinitiv",
-    "example": "<div class=\"gram-example-item\">Wenn ich reich <span class=\"gram\">wäre</span>, würde ich reisen. (← sein)</div><div class=\"gram-example-item\">Ich <span class=\"gram\">hätte</span> gern ein Glas Wasser. (← haben)</div><div class=\"gram-example-item\"><span class=\"gram\">Könntest</span> du mir bitte helfen? (← können)</div>",
+    "example": "<div class=\"example-item\">Wenn ich reich <span class=\"hl gram\">wäre</span>, würde ich reisen. (← sein)</div><div class=\"example-item\">Ich <span class=\"hl gram\">hätte</span> gern ein Glas Wasser. (← haben)</div><div class=\"example-item\"><span class=\"hl gram\">Könntest</span> du mir bitte helfen? (← können)</div>",
     "note": "würde + Infinitiv is the everyday substitute for most verbs. Strong forms survive mainly for wäre, hätte, könnte, müsste."
   },
   {
@@ -100,7 +100,7 @@
     "category": "Modus",
     "definition": "Imperative mood. Used for commands, requests, and instructions.",
     "formation": "du: verb stem (+ -e optional); ihr: stem + -t; Sie: Infinitiv + Sie",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Öffne</span> das Fenster! (← öffnen)</div><div class=\"gram-example-item\"><span class=\"gram\">Kommt</span> bitte schnell! (← kommen)</div><div class=\"gram-example-item\"><span class=\"gram\">Lesen</span> Sie den Text! (← lesen)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Öffne</span> das Fenster! (← öffnen)</div><div class=\"example-item\"><span class=\"hl gram\">Kommt</span> bitte schnell! (← kommen)</div><div class=\"example-item\"><span class=\"hl gram\">Lesen</span> Sie den Text! (← lesen)</div>",
     "note": "Stem-vowel e→i/ie carries over: geben → Gib! lesen → Lies!"
   },
   {
@@ -108,7 +108,7 @@
     "category": "Genus",
     "definition": "Masculine gender. Nouns that take der in the nominative.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Der</span> Tisch ist groß. (← der Tisch)</div><div class=\"gram-example-item\"><span class=\"gram\">Der</span> Stuhl ist bequem. (← der Stuhl)</div><div class=\"gram-example-item\"><span class=\"gram\">Der</span> Baum ist hoch. (← der Baum)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Der</span> Tisch ist groß. (← der Tisch)</div><div class=\"example-item\"><span class=\"hl gram\">Der</span> Stuhl ist bequem. (← der Stuhl)</div><div class=\"example-item\"><span class=\"hl gram\">Der</span> Baum ist hoch. (← der Baum)</div>",
     "note": "Common markers: -er, -ling, -ismus; days, months, seasons, weather."
   },
   {
@@ -116,7 +116,7 @@
     "category": "Genus",
     "definition": "Feminine gender. Nouns that take die in the nominative.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Die</span> Lampe ist neu. (← die Lampe)</div><div class=\"gram-example-item\"><span class=\"gram\">Die</span> Zeitung liegt auf dem Tisch. (← die Zeitung)</div><div class=\"gram-example-item\"><span class=\"gram\">Die</span> Blume ist schön. (← die Blume)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Die</span> Lampe ist neu. (← die Lampe)</div><div class=\"example-item\"><span class=\"hl gram\">Die</span> Zeitung liegt auf dem Tisch. (← die Zeitung)</div><div class=\"example-item\"><span class=\"hl gram\">Die</span> Blume ist schön. (← die Blume)</div>",
     "note": "Common markers: -ung, -heit, -keit, -schaft, -tion, -ie, -tät."
   },
   {
@@ -124,7 +124,7 @@
     "category": "Genus",
     "definition": "Neuter gender. Nouns that take das in the nominative.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Das</span> Buch ist interessant. (← das Buch)</div><div class=\"gram-example-item\"><span class=\"gram\">Das</span> Mädchen spielt draußen. (← das Mädchen)</div><div class=\"gram-example-item\"><span class=\"gram\">Das</span> Fenster ist offen. (← das Fenster)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Das</span> Buch ist interessant. (← das Buch)</div><div class=\"example-item\"><span class=\"hl gram\">Das</span> Mädchen spielt draußen. (← das Mädchen)</div><div class=\"example-item\"><span class=\"hl gram\">Das</span> Fenster ist offen. (← das Fenster)</div>",
     "note": "Common markers: -chen, -lein (diminutives), -ment, -um; Ge- collectives."
   },
   {
@@ -132,7 +132,7 @@
     "category": "Numerus",
     "definition": "Singular. Refers to one person, thing, or concept.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Das Kind</span> spielt. (← das Kind)</div><div class=\"gram-example-item\"><span class=\"gram\">Der Hund</span> bellt laut. (← der Hund)</div><div class=\"gram-example-item\"><span class=\"gram\">Die Tasse</span> ist voll. (← die Tasse)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Das Kind</span> spielt. (← das Kind)</div><div class=\"example-item\"><span class=\"hl gram\">Der Hund</span> bellt laut. (← der Hund)</div><div class=\"example-item\"><span class=\"hl gram\">Die Tasse</span> ist voll. (← die Tasse)</div>",
     "note": ""
   },
   {
@@ -140,7 +140,7 @@
     "category": "Numerus",
     "definition": "Plural. Refers to more than one. German has five plural patterns with no single reliable rule.",
     "formation": "five patterns: -e, -er, -n/-en, -s, or no change; often with umlaut",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Die Kinder</span> spielen. (← das Kind → die Kinder)</div><div class=\"gram-example-item\"><span class=\"gram\">Die Bücher</span> liegen auf dem Tisch. (← das Buch → die Bücher)</div><div class=\"gram-example-item\"><span class=\"gram\">Die Hunde</span> laufen im Park. (← der Hund → die Hunde)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Die Kinder</span> spielen. (← das Kind → die Kinder)</div><div class=\"example-item\"><span class=\"hl gram\">Die Bücher</span> liegen auf dem Tisch. (← das Buch → die Bücher)</div><div class=\"example-item\"><span class=\"hl gram\">Die Hunde</span> laufen im Park. (← der Hund → die Hunde)</div>",
     "note": "All plurals take die in the nominative/accusative regardless of the singular gender."
   },
   {
@@ -148,7 +148,7 @@
     "category": "Komparation",
     "definition": "Positive degree. The base form of an adjective or adverb, with no comparison.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\">Das Haus ist <span class=\"gram\">groß</span>. (← groß)</div><div class=\"gram-example-item\">Der Kaffee ist <span class=\"gram\">heiß</span>. (← heiß)</div><div class=\"gram-example-item\">Das Buch ist <span class=\"gram\">interessant</span>. (← interessant)</div>",
+    "example": "<div class=\"example-item\">Das Haus ist <span class=\"hl gram\">groß</span>. (← groß)</div><div class=\"example-item\">Der Kaffee ist <span class=\"hl gram\">heiß</span>. (← heiß)</div><div class=\"example-item\">Das Buch ist <span class=\"hl gram\">interessant</span>. (← interessant)</div>",
     "note": "Used in so … wie comparisons: Er ist so groß wie ich."
   },
   {
@@ -156,7 +156,7 @@
     "category": "Komparation",
     "definition": "Comparative degree. Compares two items — 'more' or '-er' in English.",
     "formation": "adjective + -er (often with umlaut on a/o/u)",
-    "example": "<div class=\"gram-example-item\">Das Haus ist <span class=\"gram\">größer</span> als die Wohnung. (← groß)</div><div class=\"gram-example-item\">Der Sommer ist <span class=\"gram\">wärmer</span> als der Frühling. (← warm)</div><div class=\"gram-example-item\">Sie läuft <span class=\"gram\">schneller</span> als ich. (← schnell)</div>",
+    "example": "<div class=\"example-item\">Das Haus ist <span class=\"hl gram\">größer</span> als die Wohnung. (← groß)</div><div class=\"example-item\">Der Sommer ist <span class=\"hl gram\">wärmer</span> als der Frühling. (← warm)</div><div class=\"example-item\">Sie läuft <span class=\"hl gram\">schneller</span> als ich. (← schnell)</div>",
     "note": "Always uses als (not wie) for the comparison."
   },
   {
@@ -164,7 +164,7 @@
     "category": "Komparation",
     "definition": "Superlative degree. Indicates the highest degree — 'most' or '-est' in English.",
     "formation": "am + adjective + -sten; or article + adjective + -ste (before nouns)",
-    "example": "<div class=\"gram-example-item\">Das ist das <span class=\"gram\">größte</span> Haus. (← groß)</div><div class=\"gram-example-item\">Er läuft am <span class=\"gram\">schnellsten</span>. (← schnell)</div><div class=\"gram-example-item\">Sie ist die <span class=\"gram\">klügste</span> Schülerin. (← klug)</div>",
+    "example": "<div class=\"example-item\">Das ist das <span class=\"hl gram\">größte</span> Haus. (← groß)</div><div class=\"example-item\">Er läuft am <span class=\"hl gram\">schnellsten</span>. (← schnell)</div><div class=\"example-item\">Sie ist die <span class=\"hl gram\">klügste</span> Schülerin. (← klug)</div>",
     "note": ""
   },
   {
@@ -172,7 +172,7 @@
     "category": "Verbform",
     "definition": "Infinitive. The base/dictionary form of a verb, almost always ending in -en.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\">Ich möchte heute Abend <span class=\"gram\">kochen</span>. (← kochen)</div><div class=\"gram-example-item\">Er will morgen <span class=\"gram\">schwimmen</span>. (← schwimmen)</div><div class=\"gram-example-item\">Wir müssen jetzt <span class=\"gram\">gehen</span>. (← gehen)</div>",
+    "example": "<div class=\"example-item\">Ich möchte heute Abend <span class=\"hl gram\">kochen</span>. (← kochen)</div><div class=\"example-item\">Er will morgen <span class=\"hl gram\">schwimmen</span>. (← schwimmen)</div><div class=\"example-item\">Wir müssen jetzt <span class=\"hl gram\">gehen</span>. (← gehen)</div>",
     "note": "A few verbs end in -n instead of -en: tun, sein."
   },
   {
@@ -180,7 +180,7 @@
     "category": "Verbform",
     "definition": "Present participle (Partizip Präsens). Describes an ongoing action, used mainly as an adjective.",
     "formation": "Infinitiv + -d",
-    "example": "<div class=\"gram-example-item\">Das <span class=\"gram\">schlafende</span> Kind liegt im Bett. (← schlafen → schlafend)</div><div class=\"gram-example-item\">Der <span class=\"gram\">bellende</span> Hund weckte mich. (← bellen → bellend)</div><div class=\"gram-example-item\">Die <span class=\"gram\">wartenden</span> Gäste wurden ungeduldig. (← warten → wartend)</div>",
+    "example": "<div class=\"example-item\">Das <span class=\"hl gram\">schlafende</span> Kind liegt im Bett. (← schlafen → schlafend)</div><div class=\"example-item\">Der <span class=\"hl gram\">bellende</span> Hund weckte mich. (← bellen → bellend)</div><div class=\"example-item\">Die <span class=\"hl gram\">wartenden</span> Gäste wurden ungeduldig. (← warten → wartend)</div>",
     "note": "Rarely used as a verb — mostly appears as an adjective before a noun."
   },
   {
@@ -188,7 +188,7 @@
     "category": "Verbform",
     "definition": "Past participle. Essential building block of Perfekt, Plusquamperfekt, and Passiv.",
     "formation": "weak: ge- + stem + -t; strong: ge- + stem (vowel change) + -en",
-    "example": "<div class=\"gram-example-item\">Er hat das Fenster <span class=\"gram\">geöffnet</span>. (← öffnen)</div><div class=\"gram-example-item\">Sie hat den Brief <span class=\"gram\">geschrieben</span>. (← schreiben)</div><div class=\"gram-example-item\">Wir haben gut <span class=\"gram\">geschlafen</span>. (← schlafen)</div>",
+    "example": "<div class=\"example-item\">Er hat das Fenster <span class=\"hl gram\">geöffnet</span>. (← öffnen)</div><div class=\"example-item\">Sie hat den Brief <span class=\"hl gram\">geschrieben</span>. (← schreiben)</div><div class=\"example-item\">Wir haben gut <span class=\"hl gram\">geschlafen</span>. (← schlafen)</div>",
     "note": "No ge- for inseparable prefixes (besucht) or verbs ending in -ieren (studiert)."
   },
   {
@@ -196,7 +196,7 @@
     "category": "Verbform",
     "definition": "Passive voice. Shifts focus from who does the action to what is done.",
     "formation": "werden (conjugated) + Partizip II",
-    "example": "<div class=\"gram-example-item\">Das Fenster <span class=\"gram\">wird</span> <span class=\"gram\">geöffnet</span>. (← öffnen)</div><div class=\"gram-example-item\">Der Brief <span class=\"gram\">wurde</span> <span class=\"gram\">geschrieben</span>. (← schreiben)</div><div class=\"gram-example-item\">Die Kinder <span class=\"gram\">werden</span> <span class=\"gram\">gerufen</span>. (← rufen)</div>",
+    "example": "<div class=\"example-item\">Das Fenster <span class=\"hl gram\">wird</span> <span class=\"hl gram\">geöffnet</span>. (← öffnen)</div><div class=\"example-item\">Der Brief <span class=\"hl gram\">wurde</span> <span class=\"hl gram\">geschrieben</span>. (← schreiben)</div><div class=\"example-item\">Die Kinder <span class=\"hl gram\">werden</span> <span class=\"hl gram\">gerufen</span>. (← rufen)</div>",
     "note": "Zustandspassiv (sein + Partizip II) describes the resulting state: Das Fenster ist geöffnet."
   },
   {
@@ -204,7 +204,7 @@
     "category": "Deklination",
     "definition": "Strong declension. Adjective endings when there is no article (or after quantity words like viele, einige).",
     "formation": "adjective takes the ending the missing article would have had: -er, -e, -es, -en, -em",
-    "example": "<div class=\"gram-example-item\"><span class=\"gram\">Kalter</span> Kaffee schmeckt nicht. (← kalt)</div><div class=\"gram-example-item\"><span class=\"gram\">Frisches</span> Brot riecht gut. (← frisch)</div><div class=\"gram-example-item\"><span class=\"gram\">Warme</span> Milch hilft beim Schlafen. (← warm)</div>",
+    "example": "<div class=\"example-item\"><span class=\"hl gram\">Kalter</span> Kaffee schmeckt nicht. (← kalt)</div><div class=\"example-item\"><span class=\"hl gram\">Frisches</span> Brot riecht gut. (← frisch)</div><div class=\"example-item\"><span class=\"hl gram\">Warme</span> Milch hilft beim Schlafen. (← warm)</div>",
     "note": "Think of it as: the adjective does the article's job."
   },
   {
@@ -212,7 +212,7 @@
     "category": "Deklination",
     "definition": "Weak declension. Adjective endings after a definite article (der/die/das) — almost always -e or -en.",
     "formation": "nominative singular: -e; everything else: -en",
-    "example": "<div class=\"gram-example-item\">Der <span class=\"gram\">kalte</span> Kaffee steht auf dem Tisch. (← kalt)</div><div class=\"gram-example-item\">Die <span class=\"gram\">kleine</span> Katze schläft. (← klein)</div><div class=\"gram-example-item\">Ich mag das <span class=\"gram\">rote</span> Kleid. (← rot)</div>",
+    "example": "<div class=\"example-item\">Der <span class=\"hl gram\">kalte</span> Kaffee steht auf dem Tisch. (← kalt)</div><div class=\"example-item\">Die <span class=\"hl gram\">kleine</span> Katze schläft. (← klein)</div><div class=\"example-item\">Ich mag das <span class=\"hl gram\">rote</span> Kleid. (← rot)</div>",
     "note": "Called 'weak' because the article already signals gender/case, so the adjective ending is minimal."
   },
   {
@@ -220,7 +220,7 @@
     "category": "Deklination",
     "definition": "Mixed declension. Adjective endings after ein, kein, mein, etc. — a mix of strong and weak patterns.",
     "formation": "strong where ein-word has no ending (masc nom, neuter nom/acc: -er, -es); weak elsewhere: -e/-en",
-    "example": "<div class=\"gram-example-item\">Ein <span class=\"gram\">kalter</span> Wind weht. (← kalt)</div><div class=\"gram-example-item\">Mein <span class=\"gram\">neues</span> Auto ist schnell. (← neu)</div><div class=\"gram-example-item\">Kein <span class=\"gram\">guter</span> Freund lügt. (← gut)</div>",
+    "example": "<div class=\"example-item\">Ein <span class=\"hl gram\">kalter</span> Wind weht. (← kalt)</div><div class=\"example-item\">Mein <span class=\"hl gram\">neues</span> Auto ist schnell. (← neu)</div><div class=\"example-item\">Kein <span class=\"hl gram\">guter</span> Freund lügt. (← gut)</div>",
     "note": "Only three cells differ from weak: masculine nominative (-er), neuter nominative (-es), neuter accusative (-es)."
   },
   {
@@ -228,7 +228,7 @@
     "category": "Sonstiges",
     "definition": "Base form / dictionary form. The uninflected form you look up in a dictionary.",
     "formation": "",
-    "example": "<div class=\"gram-example-item\">Die <span class=\"gram\">Grundform</span> von \"ging\" ist \"gehen\". (← gehen)</div><div class=\"gram-example-item\">Die <span class=\"gram\">Grundform</span> von \"größer\" ist \"groß\". (← groß)</div><div class=\"gram-example-item\">Die <span class=\"gram\">Grundform</span> von \"Bücher\" ist \"Buch\". (← das Buch)</div>",
+    "example": "<div class=\"example-item\">Die <span class=\"hl gram\">Grundform</span> von \"ging\" ist \"gehen\". (← gehen)</div><div class=\"example-item\">Die <span class=\"hl gram\">Grundform</span> von \"größer\" ist \"groß\". (← groß)</div><div class=\"example-item\">Die <span class=\"hl gram\">Grundform</span> von \"Bücher\" ist \"Buch\". (← das Buch)</div>",
     "note": "For nouns, the Grundform is nominative singular; for verbs, the Infinitiv; for adjectives, the Positiv."
   }
 ]

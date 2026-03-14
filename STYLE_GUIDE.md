@@ -20,17 +20,15 @@ All colours use CSS variables defined in `BASE_VARS`. Dark mode is the default; 
 | `--accent-en` | `#f5c842` | `#b07800` | English word accent |
 | `--chip-bg` | `#2e3a5a` | `#dde3ef` | Chip/badge/tooltip backgrounds |
 | `--cloze-text` | `#b0d0e4` | `#1a3a5e` | Cloze sentence text |
-| `--p1` | `#4fa3e0` | `#1a6fa8` | Phase 1 blue |
-| `--p2` | `#3dbb72` | `#217a44` | Phase 2 green |
-| `--p3` | `#f08030` | `#c05a00` | Phase 3 orange |
-| `--p4` | `#9b59b6` | `#6c3483` | Phase 4 purple |
-| `--disambig-fg/bg` | `#f08080` / `rgba(…0.08)` | `#c0302a` / `rgba(…0.07)` | Disambiguation "NOT:" text |
-| `--note-fg/bg` | `#90c0a0` / `rgba(…0.08)` | `#2a7a4a` / `rgba(…0.07)` | Note/mnemonic text |
-| `--accent-pfx` | `#c0a0e0` | `#7b5ea7` | Prefix card accent (defined in PREFIX_CLASSES) |
+| `--p1`–`--p4` | blue/green/orange/purple | darker variants | Source badge colour hashing |
+| `--disambig-fg/bg` | `#f08080` / `rgba(…0.08)` | `#c0302a` / `rgba(…0.07)` | Disambiguation "NOT:" callout |
+| `--note-fg/bg` | `#90c0a0` / `rgba(…0.08)` | `#2a7a4a` / `rgba(…0.07)` | Note callout |
+| `--accent-pfx` | `#c0a0e0` | `#7b5ea7` | Prefix card accent |
+| `--accent-gram` | `#5bbfb5` | `#2a8a7e` | Grammar card accent |
 
 ### Adding new note-type accents
 
-Follow the prefix pattern: define `--accent-xxx` in the note-type's own CSS section with a `@media` light override. Choose a colour that doesn't clash with P1–P4 or `--accent-pfx`.
+Define `--accent-xxx` in the note-type's own CSS section with a `@media` light override. Then bind shared classes to it: `.hero.xxx { color: var(--accent-xxx); }` etc.
 
 ## Typography
 
@@ -40,13 +38,18 @@ Follow the prefix pattern: define `--accent-xxx` in the note-type's own CSS sect
 
 | Element | Size | Weight |
 |---------|------|--------|
-| Hero word (`.word-de`) | `clamp(1.6rem, 6vw, 2.4rem)` | 700 |
-| Secondary word (`.word-en`) | `clamp(1.4rem, 5vw, 2rem)` | 600 |
+| Hero (`.hero`) | `clamp(2.2rem, 8vw, 3.2rem)` | 800 |
+| Vocab word DE (`.word-de`) | `clamp(1.6rem, 6vw, 2.4rem)` | 700 |
+| Sub-hero (`.sub-hero`) | varies by note type | 600 |
+| Vocab word EN (`.word-en`) | `clamp(1.4rem, 5vw, 2rem)` | 600 |
 | Cloze sentence | `clamp(1rem, 3.5vw, 1.2rem)` | 500 |
+| Examples (`.examples`) | `0.92rem` | normal |
 | Sentence DE | `1.05rem` | normal |
 | Sentence EN | `0.88rem` | normal, italic |
+| Hint text (`.hint-text`) | `0.88rem` | normal, italic |
 | IPA | `0.95rem` | normal |
-| Badges/labels (`.card-type`, `.source-badge`) | `0.62rem` | 700, uppercase, tracked |
+| Callout (`.callout`) | `0.80rem` | normal |
+| Badges (`.card-type`, `.type-tag`, `.source-badge`) | `0.62rem` | 700, uppercase, tracked |
 | POS hint | `0.78rem` | normal, italic |
 | Tooltip (`.cloze-hint-tooltip`) | `0.72rem` | 500, small-caps |
 
@@ -60,34 +63,69 @@ html, body, #qa { margin: 0; height: 100%; }    /* Reset Anki's margin */
 
 - `.card` = full-viewport grid container (centering)
 - `.kard` = content container (max-width, padding)
-- Always set `box-sizing: border-box` on content containers
 - `#qa` height chain is required for AnkiMobile
 
-## Component Patterns
+## Shared Component Classes
 
-### Card header
+These live in `BASE_LAYOUT` and are available to all note types.
+
+### `.hero` — Large centred display
+Used for the primary element on front cards (prefix, grammar term). Note-type modifier sets colour:
 ```html
-<div class="card-header">
-  <div class="card-type">EN → DE</div>
-  <\!-- optional: source badge, phase badge on right -->
+<div class="hero pfx timed">{{Prefix}}-</div>
+<div class="hero gram">{{Term}}</div>
+```
+
+### `.sub-hero` — Medium centred display
+Used for secondary hero content (meaning, definition). Note-type modifier sets colour and font-size override:
+```html
+<div class="sub-hero pfx">{{CoreMeaning}}</div>
+<div class="sub-hero gram">{{Definition}}</div>
+```
+
+### `.type-tag` — Uppercase label
+Used for category/type labels below or above hero content:
+```html
+<div class="type-tag">{{PrefixType}}</div>
+<div class="type-tag">{{Category}}</div>
+```
+
+### `.hint-text` — Muted italic hint
+Used for supplementary text (spatial sense, formation pattern):
+```html
+<div class="hint-text">{{SpatialSense}}</div>
+<div class="hint-text">{{Formation}}</div>
+```
+
+### `.examples` + `.hl` — Example block with highlights
+Used for example lists. The `.hl` span highlights the relevant part in the note-type accent colour:
+```html
+<div class="examples">
+  <span class="hl pfx">auf</span>machen — to open
 </div>
 ```
-- `0.62rem`, `font-weight: 700`, `letter-spacing: 0.10em`, `text-transform: uppercase`, `color: var(--subtext)`
-
-### Divider
+For multiple examples, wrap each in `.example-item`:
 ```html
+<div class="examples">
+  <div class="example-item">Er <span class="hl gram">öffnete</span> die Tür.</div>
+  <div class="example-item">Sie <span class="hl gram">spielte</span> Klavier.</div>
+</div>
+```
+
+### `.callout` — Bordered callout box
+Base class with modifiers for colour:
+```html
+<div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
+<div class="callout callout-note">{{Note}}</div>
+```
+
+### Card header + divider
+```html
+<div class="card-header">
+  <div class="card-type">Grammar</div>
+</div>
 <hr class="divider">
 ```
-- `border-top: 1px solid var(--border)`, `margin: 16px 0`
-
-### Badges (source/phase)
-- Pill shape: `border-radius: 4px`, `padding: 2px 8px`
-- `0.62rem`, `font-weight: 700`, `text-transform: uppercase`
-- Background: phase colour variable, text: `#fff`
-
-### Chip/tooltip backgrounds
-- Use `var(--chip-bg)` for floating UI elements (tooltips, info chips)
-- Text in chips: `var(--subtext)`
 
 ## Animations
 
@@ -95,7 +133,8 @@ html, body, #qa { margin: 0; height: 100%; }    /* Reset Anki's margin */
 - Two-step discrete colour shift: accent → amber (6–7s) → coral (9–10s)
 - Applied via `.timed` class on the front card only
 - Back cards have no urgency animation
-- Keyframes: `urgency-de`, `urgency-en`, `urgency-blank`, `urgency-pfx`
+- Keyframes in BASE_LAYOUT: `urgency-de`, `urgency-en`, `urgency-blank`
+- Note-type keyframes: `urgency-pfx`, `urgency-gram` (start from their accent colour)
 
 ### Tooltip entrance
 - `opacity: 0 → 1`, `translateY(4px) → 0` over `200ms ease-out`
@@ -104,9 +143,10 @@ html, body, #qa { margin: 0; height: 100%; }    /* Reset Anki's margin */
 ## Rules for New Card Types
 
 1. **Use the shared base.** Compose CSS as `BASE_VARS + BASE_LAYOUT + YOUR_CLASSES`. Never duplicate base styles.
-2. **Define a note-type accent.** Add `--accent-xxx` with dark/light values in your CSS section.
-3. **Reuse component patterns.** Card header, dividers, badges should look identical across note types.
-4. **Never style in isolation.** Always reference this guide and the existing token values.
-5. **Test in review mode** on both Anki desktop and AnkiMobile, not just Browse → Preview.
-6. **Mobile-first.** Use `clamp()` for text sizing. Test on narrow viewports.
-7. **Push via `anki-german templates`.** Never edit templates in Anki's UI.
+2. **Use shared component classes.** `.hero`, `.sub-hero`, `.type-tag`, `.hint-text`, `.examples`, `.callout` — add a note-type modifier class for colour only.
+3. **Define a note-type accent.** Add `--accent-xxx` with dark/light values. Bind via `.hero.xxx`, `.sub-hero.xxx`, `.examples .hl.xxx`.
+4. **Add a urgency keyframe** starting from your accent colour, bind via `.hero.xxx.timed`.
+5. **Never style in isolation.** Always reference this guide and the existing token values.
+6. **Test in review mode** on both Anki desktop and AnkiMobile, not just Browse → Preview.
+7. **Mobile-first.** Use `clamp()` for text sizing. Test on narrow viewports.
+8. **Push via `anki-german templates`.** Never edit templates in Anki's UI.

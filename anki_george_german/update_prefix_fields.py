@@ -22,7 +22,7 @@ def format_examples_html(prefix, examples):
         translation = ex["translation"]
         pfx_lower = prefix.lower()
         if verb.lower().startswith(pfx_lower):
-            highlighted = f'<span class="pfx">{verb[:len(prefix)]}</span>{verb[len(prefix):]}'
+            highlighted = f'<span class="hl pfx">{verb[:len(prefix)]}</span>{verb[len(prefix):]}'
         else:
             highlighted = verb
         lines.append(f"{highlighted} — {translation}")
