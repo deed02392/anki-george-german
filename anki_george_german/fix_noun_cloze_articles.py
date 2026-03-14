@@ -1,23 +1,32 @@
 #!/usr/bin/env python3
-"""Fix noun cloze cards to include the article in ClozeWord.
+"""Fix noun cloze cards to include articles and contractions in ClozeWord.
 
 For noun sentences, if an article (der/die/das/den/dem/des/ein/eine/etc.)
-immediately precedes the cloze word in the sentence, update ClozeWord to
-include the article.  This prevents the visible article from giving away
-the gender on the cloze card.
+or a contracted preposition+article (beim, im, zum, zur, etc.) immediately
+precedes the cloze word in the sentence, update ClozeWord to include it.
+This ensures the learner must produce the full noun phrase including case.
 
 Usage:
-    uv run python tools/fix_noun_cloze_articles.py --dry-run
-    uv run python tools/fix_noun_cloze_articles.py
+    anki-german enrich noun-cloze --dry-run
+    anki-german enrich noun-cloze
 """
 import argparse
 import re
 
 from ._anki import anki, DECK, MODEL, ARTICLE_SET, fetch_vocab_notes
 
+# Contracted preposition+article forms.
+# The cloze should include these so the learner produces the full phrase.
+CONTRACTIONS = {
+    "am", "ans", "aufs", "beim", "durchs", "fürs",
+    "im", "ins", "vom", "zum", "zur", "ums", "hinterm",
+    "hintern", "hinters", "überm", "übern", "übers",
+    "unterm", "untern", "unters", "vors", "vorm",
+}
 
-def find_preceding_article(sentence, cloze_word):
-    """If an article immediately precedes cloze_word in sentence, return it."""
+
+def find_preceding_article_or_contraction(sentence, cloze_word):
+    """If an article or contraction immediately precedes cloze_word, return it."""
     # Handle separable verb ~ delimiter — only look at the first part
     first_part = cloze_word.split("~")[0].strip()
     idx = sentence.find(first_part)
@@ -34,8 +43,8 @@ def find_preceding_article(sentence, cloze_word):
     # Strip punctuation from the preceding word
     clean = preceding_word.strip(".,;:!?\"'()[]{}–—")
 
-    if clean.lower() in ARTICLE_SET:
-        # Return the article as it appears in the sentence (preserving case)
+    if clean.lower() in ARTICLE_SET or clean.lower() in CONTRACTIONS:
+        # Return as it appears in the sentence (preserving case)
         return clean
 
     return None
@@ -80,15 +89,15 @@ def fix_notes(dry_run=False):
                 new_clozes.append(cloze)
                 continue
 
-            # Skip if cloze already starts with an article
+            # Skip if cloze already starts with an article or contraction
             first_word = cloze.split()[0] if cloze else ""
-            if first_word.lower() in ARTICLE_SET:
+            if first_word.lower() in ARTICLE_SET or first_word.lower() in CONTRACTIONS:
                 new_clozes.append(cloze)
                 continue
 
-            article = find_preceding_article(sent, cloze)
-            if article:
-                new_cloze = f"{article} {cloze}"
+            preceding = find_preceding_article_or_contraction(sent, cloze)
+            if preceding:
+                new_cloze = f"{preceding} {cloze}"
                 # Verify the combined string is in the sentence
                 if new_cloze in sent:
                     new_clozes.append(new_cloze)
