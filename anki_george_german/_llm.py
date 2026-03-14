@@ -117,13 +117,14 @@ def call_llm_text(messages, token, *, model=FLOODGATE_MODEL, max_tokens=4096):
     return data["choices"][0]["message"]["content"].strip()
 
 
-def call_llm_with_retry(messages, token, *, max_tokens=8192,
-                         expect_len=None):
+def call_llm_with_retry(messages, token, *, model=FLOODGATE_MODEL,
+                         max_tokens=8192, expect_len=None):
     """Call the LLM with retry, 401 token refresh, and shape validation.
 
     Args:
         messages: Chat messages to send.
         token: OIDC bearer token (refreshed on 401).
+        model: Floodgate model identifier.
         max_tokens: Max response tokens.
         expect_len: If set, require the response list to have this length.
 
@@ -132,7 +133,8 @@ def call_llm_with_retry(messages, token, *, max_tokens=8192,
     """
     for attempt in range(2):
         try:
-            result = call_llm(messages, token, max_tokens=max_tokens)
+            result = call_llm(messages, token, model=model,
+                              max_tokens=max_tokens)
             if not isinstance(result, list):
                 print(f"  Bad response shape (attempt {attempt + 1}): not a list")
                 if attempt == 0:

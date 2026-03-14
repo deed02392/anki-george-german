@@ -15,6 +15,8 @@ import sys
 from ._anki import anki, DECK, MODEL
 from ._llm import get_floodgate_token, call_llm_with_retry
 
+# Hints are a simpler task — use Sonnet for speed, keep Opus for generation.
+HINTS_MODEL = "aws:anthropic.claude-sonnet-4-6"
 BATCH_SIZE = 10
 
 HINT_PROMPT = """\
@@ -112,6 +114,7 @@ def run(args):
         result = call_llm_with_retry(
             [{"role": "user", "content": prompt}],
             token,
+            model=HINTS_MODEL,
             max_tokens=4096,
             expect_len=len(batch),
         )
