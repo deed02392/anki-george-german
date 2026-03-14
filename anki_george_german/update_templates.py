@@ -489,12 +489,13 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
 </script>"""
 
 
-def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos_id=None):
+def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos_id=None, hint=False):
     """JS that picks a random variant and applies cloze blanking.
 
     is_front=True:  pick random index, store in sessionStorage.
     is_front=False: load index from sessionStorage (fallback to random).
     pos_id:         element id to fill with the variant-matched POS value.
+    hint:           if True, also render ClozeHint tooltip on first cloze span.
     """
     if is_front:
         idx_logic = """\
@@ -511,6 +512,40 @@ def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos
   var posVals = "{{{{POS}}}}".split("|");
   var pel = document.getElementById("{pos_id}");
   if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();"""
+    hint_block = ""
+    if hint:
+        hint_block = f"""
+  /* ── Hint tooltip ── */
+  var hints = "{{{{ClozeHint}}}}".split("|");
+  var hint = (hints[idx] || "").trim();
+  if (hint) {{
+    var spans = document.querySelectorAll("#{sentence_id} .{span_class}");
+    if (spans.length) {{
+      var span = spans[0];
+      var wrapper = document.createElement("span");
+      wrapper.className = "cloze-hint-trigger";
+      span.parentNode.insertBefore(wrapper, span);
+      wrapper.appendChild(span);
+      var tip = document.createElement("span");
+      tip.className = "cloze-hint-tooltip";
+      tip.textContent = hint;
+      wrapper.appendChild(tip);
+      wrapper.addEventListener("mouseenter", function(){{ tip.classList.add("visible"); }});
+      wrapper.addEventListener("mouseleave", function(){{ tip.classList.remove("visible"); }});
+      var isTouch = false;
+      wrapper.addEventListener("touchstart", function(e){{
+        isTouch = true;
+        e.preventDefault();
+        var show = !tip.classList.contains("visible");
+        document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){{ t.classList.remove("visible"); }});
+        if (show) tip.classList.add("visible");
+      }});
+      document.addEventListener("touchstart", function(e){{
+        if (!wrapper.contains(e.target)) tip.classList.remove("visible");
+      }});
+      wrapper.addEventListener("click", function(e){{ if (isTouch) e.preventDefault(); }});
+    }}
+  }}"""
     return f"""
 <script>
 (function(){{
@@ -540,7 +575,7 @@ def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos
   var el = document.getElementById("{sentence_id}");
   if (el) el.innerHTML = result;
   var tel = document.getElementById("{translation_id}");
-  if (tel) tel.textContent = (translations[idx] || "").trim();{pos_line}
+  if (tel) tel.textContent = (translations[idx] || "").trim();{pos_line}{hint_block}
 }})();
 </script>"""
 
@@ -663,48 +698,7 @@ CLOZE_BACK = """\
 
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 """ + """
-</div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos") + """
-<script>
-(function(){
-  var hints = "{{ClozeHint}}".split("|");
-  var clozeWords = "{{ClozeWord}}".split("|");
-  var idx;
-  try { idx = parseInt(sessionStorage.getItem("v_" + "{{Word}}")); } catch(e) {}
-  if (isNaN(idx) || idx < 0 || idx >= clozeWords.length) idx = 0;
-  var hint = (hints[idx] || "").trim();
-  if (!hint) return;
-  var spans = document.querySelectorAll("#cloze-a .cloze-answer");
-  if (!spans.length) return;
-  /* Wrap the first cloze-answer span with a trigger and add tooltip */
-  var span = spans[0];
-  var wrapper = document.createElement("span");
-  wrapper.className = "cloze-hint-trigger";
-  span.parentNode.insertBefore(wrapper, span);
-  wrapper.appendChild(span);
-  var tip = document.createElement("span");
-  tip.className = "cloze-hint-tooltip";
-  tip.textContent = hint;
-  wrapper.appendChild(tip);
-  /* Desktop: hover */
-  wrapper.addEventListener("mouseenter", function(){ tip.classList.add("visible"); });
-  wrapper.addEventListener("mouseleave", function(){ tip.classList.remove("visible"); });
-  /* Mobile: tap toggle, dismiss on outside tap */
-  var isTouch = false;
-  wrapper.addEventListener("touchstart", function(e){
-    isTouch = true;
-    e.preventDefault();
-    var show = !tip.classList.contains("visible");
-    /* Hide any other open tooltips first */
-    document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){ t.classList.remove("visible"); });
-    if (show) tip.classList.add("visible");
-  });
-  document.addEventListener("touchstart", function(e){
-    if (!wrapper.contains(e.target)) tip.classList.remove("visible");
-  });
-  /* Prevent hover from firing after touch */
-  wrapper.addEventListener("click", function(e){ if (isTouch) e.preventDefault(); });
-})();
-</script>"""
+</div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos", hint=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Prefix templates

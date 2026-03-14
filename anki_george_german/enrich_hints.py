@@ -26,12 +26,15 @@ For each card below, generate a SHORT (2-5 word) grammatical annotation for each
 cloze word, explaining the inflected form using German grammar terms. \
 Use middle dot (·) as separator between components.
 
-Examples of good annotations:
-- Verb: "Präteritum · er/sie/es", "Konjunktiv II · ich", "Präsens · 3. Person Plural"
-- Noun with article: "Akkusativ · maskulin", "Dativ · Plural"
-- Adjective: "Komparativ · Dativ · Plural"
-- If the cloze word is already the dictionary/base form, use "Grundform"
+Rules:
+- Verb: tense · person/number, e.g. "Präteritum · er/sie/es", "Konjunktiv II · ich"
+- Noun: case · gender · number. Use lowercase adjective forms for gender: \
+maskulin, feminin, neutral (NOT Maskulinum/Femininum/Neutrum). \
+E.g. "Akkusativ · maskulin", "Dativ · Plural", "Nominativ · ohne Artikel"
+- Adjective: degree · case · number, e.g. "Komparativ · Dativ · Plural"
+- If the cloze is the dictionary/base form unchanged, use "Grundform"
 - For separable verbs (cloze_word contains ~), annotate the whole verb form
+- Keep annotations SHORT: 2-5 words max
 
 Return ONLY a JSON array (no markdown, no commentary). Each element:
 {{
