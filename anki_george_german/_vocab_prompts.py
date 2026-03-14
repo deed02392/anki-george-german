@@ -30,6 +30,11 @@ For separable verbs where the prefix separates, use ~ (tilde) between parts (e.g
 (e.g. if sentence is "Er bemühte sich", cloze_word is "bemühte~sich")
 - Sentences should be 5-15 words
 - Use British English for translations (colour, mum, favourite)
+- English translations must read naturally — do NOT force the dictionary headword into the \
+translation when a different English word fits better. For example, if the card is "der Sohn" \
+and the German sentence uses "Sohn" in a context where English would say "boy" or "child", \
+translate it naturally ("As a young boy…") not literally ("As a small son…"). \
+The goal is idiomatic English, not a word-for-word gloss
 - "cloze_hint" is a SHORT (2-5 word) grammatical annotation explaining the inflected \
 form of the cloze word using German grammar terms and middle dot (·) as separator. Examples: \
 Verb → "Präteritum · er/sie/es", "Konjunktiv II · ich", "Präsens · 3. Person Plural"; \
