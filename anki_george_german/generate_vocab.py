@@ -1026,11 +1026,16 @@ def cmd_enrich(args):
     """Handle the 'enrich' subcommand — add sentences to existing cards."""
     target = args.sentences
 
-    # Find notes by source tag
-    print(f"\n── Finding notes with source::{args.source} ──")
-    all_notes = fetch_vocab_notes(f'"tag:source::{args.source}"')
+    # Find notes — by source tag if given, otherwise whole deck
+    source = getattr(args, "source", None)
+    if source:
+        print(f"\n── Finding notes with source::{source} ──")
+        all_notes = fetch_vocab_notes(f'"tag:source::{source}"')
+    else:
+        print(f"\n── Finding all vocab notes ──")
+        all_notes = fetch_vocab_notes("")
     if not all_notes:
-        print("No notes found with that source tag.")
+        print("No notes found.")
         return
     print(f"  Found {len(all_notes)} notes")
 
@@ -1172,7 +1177,7 @@ def cmd_enrich(args):
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    print(f"  Source:    {args.source}")
+    print(f"  Source:    {source or '(all notes)'}")
     print(f"  Target:   {target} sentences per card")
     print(f"  Found:    {len(to_enrich)} cards needing enrichment")
     if args.dry_run:

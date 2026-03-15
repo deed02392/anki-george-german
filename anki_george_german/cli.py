@@ -77,7 +77,7 @@ def main():
                         help="(Legacy) Paragraph range — bypasses chapter detection")
     text_p.add_argument("--phase", type=int, default=4)
     text_p.add_argument("--batch-size", type=int, default=10)
-    text_p.add_argument("--sentences", type=int, default=2)
+    text_p.add_argument("--sentences", type=int, default=3)
     text_p.add_argument("--dry-run", action="store_true")
     text_p.add_argument("--enrich", action="store_true")
 
@@ -92,7 +92,7 @@ def main():
     domain_p.add_argument("--source", required=True)
     domain_p.add_argument("--count", type=int, default=30)
     domain_p.add_argument("--phase", type=int, default=4)
-    domain_p.add_argument("--sentences", type=int, default=2)
+    domain_p.add_argument("--sentences", type=int, default=3)
     domain_p.add_argument("--dry-run", action="store_true")
 
     # -- enrich --------------------------------------------------------
@@ -101,7 +101,8 @@ def main():
 
     sent_p = enrich_sub.add_parser("sentences",
                                    help="Add example sentences to existing cards")
-    sent_p.add_argument("--source", required=True)
+    sent_p.add_argument("--source",
+                        help="Filter by source tag (default: all notes)")
     sent_p.add_argument("--sentences", type=int, default=3)
     sent_p.add_argument("--batch-size", type=int, default=10)
     sent_p.add_argument("--dry-run", action="store_true")
