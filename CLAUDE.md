@@ -46,7 +46,7 @@ anki-german generate text       --file --source [--select] [--paragraphs] [--pha
 anki-german generate domain     --brief --source [--count] [--phase] [--sentences] [--dry-run]
 anki-german generate scan       --file [--chunk-minutes] [--reading-speed]
 anki-german enrich sentences    --source [--sentences] [--batch-size] [--dry-run]
-anki-german enrich ipa          [--ipa-only] [--audio-only] [--audio-delay] [--no-llm] [--dry-run]
+anki-german enrich audio        [--ipa-only] [--audio-only] [--audio-delay] [--no-llm] [--dry-run]
 anki-german enrich disambig     [--dry-run]
 anki-german enrich noun-cloze   [--dry-run]
 anki-german unsuspend           [--apply] [--max N]
@@ -217,10 +217,11 @@ html, body, #qa { margin: 0; height: 100%; }
 
 ### Usage
 ```sh
-anki-german enrich ipa --ipa-only     # fast
-anki-german enrich ipa --audio-only   # slow (rate limits)
-anki-german enrich ipa --no-llm       # skip LLM fallback
-anki-german enrich ipa --dry-run
+anki-german enrich audio              # both IPA + audio
+anki-german enrich audio --ipa-only   # fast
+anki-german enrich audio --audio-only # slow (rate limits)
+anki-german enrich audio --no-llm     # skip LLM fallback
+anki-german enrich audio --dry-run
 ```
 
 ## Dependencies

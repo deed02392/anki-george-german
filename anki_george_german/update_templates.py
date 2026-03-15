@@ -352,6 +352,21 @@ VOCAB_CLASSES = """
   border: 5px solid transparent;
   border-top-color: var(--chip-bg);
 }
+
+/* ── Audio replay button (Anki default restyle) ── */
+.replay-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  opacity: 0.4;
+  transform: scale(0.7);
+  transform-origin: center;
+  transition: opacity 200ms;
+}
+.replay-button:hover { opacity: 0.85; }
+.replay-button svg circle { fill: var(--surface); stroke: var(--subtext); }
+.replay-button svg path { fill: var(--subtext); }
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -653,6 +668,7 @@ DE_EN_BACK = """\
   <div class="word-de">{{Word}}</div>
   {{#POS}}<div class="pos-hint" id="deen-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
 
   <hr class="divider">
 
@@ -694,6 +710,7 @@ CLOZE_BACK = """\
   <div class="word-de">{{Word}}</div>
   {{#POS}}<div class="pos-hint" id="cloze-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
   <div class="word-en">{{WordTranslation}}</div>
 
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}

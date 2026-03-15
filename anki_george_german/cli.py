@@ -15,7 +15,7 @@ def dispatch(args):
         if args.enrich_command == "sentences":
             from .generate_vocab import cmd_enrich
             cmd_enrich(args)
-        elif args.enrich_command == "ipa":
+        elif args.enrich_command in ("audio", "ipa"):
             from .enrich_ipa_audio import run
             run(args)
         elif args.enrich_command == "disambig":
@@ -106,15 +106,18 @@ def main():
     sent_p.add_argument("--batch-size", type=int, default=10)
     sent_p.add_argument("--dry-run", action="store_true")
 
-    ipa_p = enrich_sub.add_parser("ipa", help="IPA/audio from Wiktionary + LLM")
-    ipa_p.add_argument("words", nargs="*",
+    audio_p = enrich_sub.add_parser("audio", aliases=["ipa"],
+                                     help="Enrich IPA + audio from Wiktionary, LLM, and TTS")
+    audio_p.add_argument("words", nargs="*",
                        help="Specific words to enrich (default: all missing)")
-    ipa_p.add_argument("--dry-run", action="store_true")
-    ipa_p.add_argument("--ipa-only", action="store_true")
-    ipa_p.add_argument("--audio-only", action="store_true")
-    ipa_p.add_argument("--audio-delay", type=float, default=5.0)
-    ipa_p.add_argument("--no-llm", action="store_true",
+    audio_p.add_argument("--dry-run", action="store_true")
+    audio_p.add_argument("--ipa-only", action="store_true")
+    audio_p.add_argument("--audio-only", action="store_true")
+    audio_p.add_argument("--audio-delay", type=float, default=5.0)
+    audio_p.add_argument("--no-llm", action="store_true",
                        help="Skip LLM fallback for Wiktionary misses")
+    audio_p.add_argument("--redownload", action="store_true",
+                       help="Re-fetch audio from Wiktionary (prefer higher quality)")
 
     disambig_p = enrich_sub.add_parser("disambig",
                                        help="Disambiguate shared translations")
