@@ -15,6 +15,7 @@ Usage:
 import argparse
 import base64
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -26,15 +27,67 @@ import requests
 
 from ._anki import anki, DECK, MODEL, ARTICLES
 from ._llm import get_floodgate_token, call_llm_with_retry
+from . import DATA_DIR
 
 WIKT_API = "https://de.wiktionary.org/w/api.php"
+CHECKPOINT_PATH = DATA_DIR / "enrich_index.json"
+
+# If Wiktionary's Retry-After exceeds this (seconds), save checkpoint and exit
+MAX_RATE_LIMIT_WAIT = 120
 
 # Wikimedia requires a descriptive User-Agent (https://w.wiki/4wJS)
 web = requests.Session()
 web.headers["User-Agent"] = "anki-george-german/1.0 (German vocab enrichment script)"
 
-# Sentinel returned when a request fails due to rate limiting (not a data miss)
-_RATE_LIMITED = "RATE_LIMITED"
+# Sentinel: request failed due to rate limiting or transient error (not a data miss)
+_DEFERRED = "DEFERRED"
+
+# Sentinel: rate limit wait exceeds MAX_RATE_LIMIT_WAIT — save checkpoint and exit
+_DEFERRED_BAIL = "DEFERRED_BAIL"
+
+
+# ── Checkpoint persistence ────────────────────────────────────────────────────
+
+def _load_checkpoint():
+    """Load a saved index checkpoint. Returns (plan, ipa_misses, tts_candidates, indexed_nids)."""
+    if not CHECKPOINT_PATH.exists():
+        return None
+    try:
+        data = json.loads(CHECKPOINT_PATH.read_text())
+        return data
+    except (json.JSONDecodeError, KeyError):
+        return None
+
+
+def _save_checkpoint(plan, ipa_misses, tts_candidates):
+    """Save the current index state to disk."""
+    CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "plan": plan,
+        "ipa_misses": ipa_misses,
+        "tts_candidates": tts_candidates,
+    }
+    CHECKPOINT_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def _clear_checkpoint():
+    """Remove the checkpoint file after successful completion."""
+    if CHECKPOINT_PATH.exists():
+        CHECKPOINT_PATH.unlink()
+
+
+def _note_needs_work(note, do_ipa, do_audio, redownload):
+    """Check if a note needs any enrichment work."""
+    if "Word" not in note["fields"]:
+        return False  # not a vocab note (e.g. Prefix, Grammar)
+    has_ipa = bool(note["fields"].get("IPA", {}).get("value", ""))
+    has_audio = bool(note["fields"].get("Audio", {}).get("value", ""))
+    needs_ipa = do_ipa and not has_ipa
+    needs_audio = do_audio and (not has_audio or redownload)
+    if not needs_ipa and not needs_audio:
+        return False
+    _, is_phrase = extract_lookup_word(note["fields"]["Word"]["value"])
+    return not is_phrase
 
 
 # ── Word extraction ──────────────────────────────────────────────────────────
@@ -57,13 +110,16 @@ def extract_lookup_word(word_field):
 def fetch_wikitext(word):
     """Fetch the wikitext for a German Wiktionary page.
 
-    Returns wikitext string on success, _RATE_LIMITED if all retries
-    exhausted due to 429, or None if the page genuinely doesn't exist.
+    Returns wikitext string on success, _DEFERRED if retries exhausted
+    due to 429 or transient errors, _DEFERRED_BAIL if the server asks us
+    to wait longer than MAX_RATE_LIMIT_WAIT, or None if the page genuinely
+    doesn't exist (got a clean response with no German section).
     """
     candidates = [word]
     if word.lower() != word:
         candidates.append(word.lower())
     hit_rate_limit = False
+    hit_transient = False
     for attempt in candidates:
         params = {"action": "parse", "page": attempt, "format": "json", "prop": "wikitext"}
         for retry in range(3):
@@ -73,6 +129,10 @@ def fetch_wikitext(word):
                     hit_rate_limit = True
                     wait = int(resp.headers.get("Retry-After", 30))
                     wait = max(wait, 10)
+                    if wait > MAX_RATE_LIMIT_WAIT:
+                        print(f"    (Wiktionary rate limited for {wait}s — "
+                              f"exceeds {MAX_RATE_LIMIT_WAIT}s threshold)")
+                        return _DEFERRED_BAIL
                     print(f"    (Wiktionary rate limited, waiting {wait}s...)")
                     time.sleep(wait)
                     continue
@@ -83,12 +143,15 @@ def fetch_wikitext(word):
                         return wikitext
                 break  # got a response (even if no German section) — don't retry
             except (KeyError, requests.RequestException):
+                hit_transient = True
                 if retry < 2:
                     time.sleep(2)
                     continue
                 break
-    # If we never got a clean response and hit rate limits, report that
-    return _RATE_LIMITED if hit_rate_limit else None
+    # Rate limits or transient errors → defer (don't misclassify as "page missing")
+    if hit_rate_limit or hit_transient:
+        return _DEFERRED
+    return None
 
 
 def extract_german_section(wikitext):
@@ -226,7 +289,7 @@ def probe_commons_variants(base_filename):
 def download_audio(url, retries=3):
     """Download audio file. Retries on 429 and transient errors.
 
-    Returns bytes on success, _RATE_LIMITED if 429 exhausted retries,
+    Returns bytes on success, _DEFERRED if 429 exhausted retries,
     or None on other failures.
     """
     hit_rate_limit = False
@@ -247,7 +310,7 @@ def download_audio(url, retries=3):
                 time.sleep(3)
                 continue
             return None
-    return _RATE_LIMITED if hit_rate_limit else None
+    return _DEFERRED if hit_rate_limit else None
 
 
 def store_audio_in_anki(filename, data):
@@ -386,7 +449,7 @@ GEMINI_API_URL = (
 def _gemini_tts_single(word, api_key):
     """Generate TTS audio for a single word via Gemini API.
 
-    Returns raw PCM bytes (s16le, 24kHz, mono), _RATE_LIMITED if rate
+    Returns raw PCM bytes (s16le, 24kHz, mono), _DEFERRED if rate
     limited after retries, or None on other failures.
     """
     payload = {
@@ -416,7 +479,7 @@ def _gemini_tts_single(word, api_key):
                     print(f"    (TTS rate limited, waiting {wait}s...)")
                     time.sleep(wait)
                     continue
-                return _RATE_LIMITED
+                return _DEFERRED
             resp.raise_for_status()
             data = resp.json()
             audio_b64 = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
@@ -424,7 +487,7 @@ def _gemini_tts_single(word, api_key):
         except (requests.RequestException, KeyError, IndexError) as e:
             print(f"    TTS error for '{word}': {e}")
             return None
-    return _RATE_LIMITED
+    return _DEFERRED
 
 
 def _gemini_tts_fallback(audio_misses, dry_run=False):
@@ -461,7 +524,7 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
             continue
 
         pcm_data = _gemini_tts_single(word_field, api_key)
-        if pcm_data is _RATE_LIMITED:
+        if pcm_data is _DEFERRED:
             print(f"  {word_field:<30} audio=TTS deferred (rate limited)")
             deferred.append((nid, word_field))
             continue
@@ -486,7 +549,7 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
         for nid, word_field in deferred:
             lookup, _ = extract_lookup_word(word_field)
             pcm_data = _gemini_tts_single(word_field, api_key)
-            if pcm_data is _RATE_LIMITED or not pcm_data:
+            if pcm_data is _DEFERRED or not pcm_data:
                 print(f"  {word_field:<30} audio=TTS retry fail")
                 continue
             mp3_name = f"tts_{lookup}.mp3"
@@ -509,6 +572,16 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                  redownload=False):
     """Enrich notes with IPA and/or audio from Wiktionary.
 
+    Three-phase architecture:
+      1. **Index** — scan all words on Wiktionary (lightweight API calls),
+         classify each into has-IPA, has-audio, needs-LLM, needs-TTS.
+      2. **Fallback** — run LLM IPA generation for all misses (one batch call).
+      3. **Download & apply** — fetch Wiktionary audio, apply IPA + audio to
+         Anki, then run TTS for remaining audio misses.
+
+    This lets LLM work happen while we already know the full picture, and
+    avoids interleaving slow downloads with Wiktionary API calls.
+
     Args:
         note_ids: List of note IDs to enrich. If None, finds all notes
                   missing IPA/audio in the deck.
@@ -518,9 +591,6 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         dry_run: Preview without applying changes.
         llm_fallback: Use LLM/TTS fallback for Wiktionary misses.
         redownload: Re-fetch audio from Wiktionary even if already present.
-        audio_delay: Seconds between audio downloads.
-        dry_run: Preview without applying changes.
-        llm_fallback: Use LLM/TTS fallback for Wiktionary misses.
 
     Returns:
         Dict with counts: ipa_added, audio_added, skipped_phrase, not_found.
@@ -546,7 +616,6 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             all_ids |= set(anki("findNotes", query=f'\"deck:{DECK}\" IPA:'))
         if do_audio:
             if redownload:
-                # All notes — we'll re-fetch audio for everything
                 all_ids |= set(anki("findNotes", query=f'\"deck:{DECK}\"'))
             else:
                 all_ids |= set(anki("findNotes", query=f'\"deck:{DECK}\" Audio:'))
@@ -564,17 +633,49 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     stats = {"ipa_added": 0, "ipa_miss": 0, "audio_added": 0, "audio_miss": 0,
              "skipped_phrase": 0, "no_page": 0, "already_ok": 0,
              "ipa_llm": 0, "audio_tts": 0}
-    ipa_misses = []          # genuinely no IPA on Wiktionary → LLM candidates
-    tts_candidates = []      # genuinely no audio on Wiktionary → TTS candidates
-    wikt_ipa_deferred = []   # IPA exists but rate-limited → retry Wiktionary
-    wikt_audio_deferred = [] # audio exists but rate-limited → retry Wiktionary
-    retry_map = {}           # populated during Wiktionary retry phase
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # Phase 1: INDEX — scan Wiktionary for all words (API calls only, no
+    # downloads).  Builds a plan of what each word needs.
+    # Checkpoint-aware: resumes from a saved index if one exists.
+    # ══════════════════════════════════════════════════════════════════════════
+    # Plan entry per note: {nid, word, lookup, needs_ipa, needs_audio,
+    #   ipa, audio_filename, existing_audio}
+    plan = []          # fully indexed entries
+    deferred = {}      # nid -> {word, lookup, needs_ipa, needs_audio} (rate-limited)
+    ipa_misses = []    # (nid, word) — genuinely no IPA on Wiktionary
+    tts_candidates = []  # (nid, word) — genuinely no audio on Wiktionary
+
+    # Try to resume from checkpoint
+    checkpoint = _load_checkpoint()
+    indexed_nids = set()
+    if checkpoint:
+        plan = checkpoint["plan"]
+        ipa_misses = [tuple(x) for x in checkpoint["ipa_misses"]]
+        tts_candidates = [tuple(x) for x in checkpoint["tts_candidates"]]
+        indexed_nids = {e["nid"] for e in plan}
+        indexed_nids |= {nid for nid, _ in ipa_misses}
+        indexed_nids |= {nid for nid, _ in tts_candidates}
+        remaining = sum(1 for n in notes
+                        if n["noteId"] not in indexed_nids
+                        and _note_needs_work(n, do_ipa, do_audio, redownload))
+        print(f"\n── Phase 1: Indexing Wiktionary "
+              f"(resumed: {len(indexed_nids)} cached, {remaining} remaining) ──")
+    else:
+        print("\n── Phase 1: Indexing Wiktionary ──")
+
+    bailed = False
     for note in notes:
         nid = note["noteId"]
-        word_field = note["fields"]["Word"]["value"]
-        has_ipa = bool(note["fields"]["IPA"]["value"])
+        if nid in indexed_nids:
+            continue  # already in checkpoint
+
+        word_field = note["fields"].get("Word", {}).get("value", "")
+        if not word_field:
+            continue  # not a vocab note (e.g. Prefix, Grammar)
+        has_ipa = bool(note["fields"].get("IPA", {}).get("value", ""))
         has_audio = bool(note["fields"].get("Audio", {}).get("value", ""))
+        existing_audio = note["fields"].get("Audio", {}).get("value", "")
 
         needs_ipa = do_ipa and not has_ipa
         needs_audio = do_audio and (not has_audio or redownload)
@@ -589,14 +690,22 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             stats["skipped_phrase"] += 1
             continue
 
-        # Fetch from Wiktionary
+        # Fetch wikitext (lightweight API call)
         wikitext = fetch_wikitext(lookup)
-        if wikitext is _RATE_LIMITED:
+        if wikitext is _DEFERRED_BAIL:
+            # Save what we have and exit
+            print(f"\n  Rate limit too long — saving checkpoint "
+                  f"({len(plan)} words indexed so far)")
+            _save_checkpoint(plan, ipa_misses, tts_candidates)
+            print(f"  Checkpoint saved to {CHECKPOINT_PATH}")
+            print("  Re-run the same command to resume.")
+            bailed = True
+            break
+        if wikitext is _DEFERRED:
             print(f"  DEFERRED (rate limited): {word_field}")
-            if needs_ipa:
-                wikt_ipa_deferred.append((nid, word_field, lookup))
-            if needs_audio:
-                wikt_audio_deferred.append((nid, word_field, lookup))
+            deferred[nid] = {"word": word_field, "lookup": lookup,
+                             "needs_ipa": needs_ipa, "needs_audio": needs_audio,
+                             "existing_audio": existing_audio}
             continue
         if not wikitext:
             print(f"  MISS: {word_field} -> no Wiktionary page for '{lookup}'")
@@ -607,68 +716,181 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                 tts_candidates.append((nid, word_field))
             continue
 
-        # Extract IPA
-        ipa = None
-        if needs_ipa:
-            ipa = extract_ipa(wikitext)
-            if not ipa:
-                stats["ipa_miss"] += 1
-                ipa_misses.append((nid, word_field))
+        # Extract IPA and audio filename from wikitext
+        ipa = extract_ipa(wikitext) if needs_ipa else None
+        if needs_ipa and not ipa:
+            stats["ipa_miss"] += 1
+            ipa_misses.append((nid, word_field))
 
-        # Extract and download audio
         audio_filename = None
-        audio_data = None
         if needs_audio:
             audio_filename = extract_audio_filename(wikitext)
             if not audio_filename:
                 stats["audio_miss"] += 1
                 tts_candidates.append((nid, word_field))
-            elif not dry_run:
-                # Probe Commons for higher-quality numbered variants
-                audio_filename = probe_commons_variants(audio_filename)
-                # Skip download if we already have this exact file
-                new_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
-                existing = note["fields"].get("Audio", {}).get("value", "")
-                if existing == f"[sound:{new_mp3}]":
-                    if redownload:
-                        print(f"  {word_field:<30} audio=same ({new_mp3})")
-                    stats["already_ok"] += 1
-                    continue
-                else:
-                    url = commons_url_from_filename(audio_filename)
-                    audio_data = download_audio(url)
-                    if audio_data is _RATE_LIMITED:
-                        print(f"  DEFERRED (download rate limited): {word_field}")
-                        wikt_audio_deferred.append((nid, word_field, lookup))
-                        audio_data = None
-                        audio_filename = None
 
-        # Report — show source for each enrichment
+        plan.append({
+            "nid": nid, "word": word_field, "lookup": lookup,
+            "needs_ipa": needs_ipa, "needs_audio": needs_audio,
+            "ipa": ipa, "audio_filename": audio_filename,
+            "existing_audio": existing_audio,
+        })
+        time.sleep(0.3)  # gentle rate limiting for API calls
+
+    if bailed:
+        return stats
+
+    # ── Retry deferred Wiktionary lookups ────────────────────────────────────
+    if deferred and not dry_run:
+        for pass_num in range(3):
+            if not deferred:
+                break
+            wait = 30 * (pass_num + 1)
+            print(f"\n  Wiktionary retry pass {pass_num + 1} "
+                  f"({len(deferred)} words, waiting {wait}s)...")
+            time.sleep(wait)
+
+            done_nids = []
+            bail_retry = False
+            for nid, info in deferred.items():
+                wikitext = fetch_wikitext(info["lookup"])
+                if wikitext is _DEFERRED_BAIL:
+                    bail_retry = True
+                    break
+                if wikitext is _DEFERRED:
+                    continue  # still limited, try next pass
+                if not wikitext:
+                    if info["needs_ipa"]:
+                        ipa_misses.append((nid, info["word"]))
+                    if info["needs_audio"]:
+                        tts_candidates.append((nid, info["word"]))
+                    done_nids.append(nid)
+                    continue
+
+                ipa = extract_ipa(wikitext) if info["needs_ipa"] else None
+                if info["needs_ipa"] and not ipa:
+                    stats["ipa_miss"] += 1
+                    ipa_misses.append((nid, info["word"]))
+
+                audio_filename = None
+                if info["needs_audio"]:
+                    audio_filename = extract_audio_filename(wikitext)
+                    if not audio_filename:
+                        stats["audio_miss"] += 1
+                        tts_candidates.append((nid, info["word"]))
+
+                plan.append({
+                    "nid": nid, "word": info["word"], "lookup": info["lookup"],
+                    "needs_ipa": info["needs_ipa"], "needs_audio": info["needs_audio"],
+                    "ipa": ipa, "audio_filename": audio_filename,
+                    "existing_audio": info["existing_audio"],
+                })
+                done_nids.append(nid)
+                print(f"  {info['word']:<30} indexed (Wiktionary retry)")
+
+            for nid in done_nids:
+                del deferred[nid]
+
+            if bail_retry:
+                print(f"\n  Rate limit too long during retry — saving checkpoint "
+                      f"({len(plan)} words indexed so far)")
+                _save_checkpoint(plan, ipa_misses, tts_candidates)
+                print(f"  Checkpoint saved to {CHECKPOINT_PATH}")
+                print("  Re-run the same command to resume.")
+                return stats
+
+        # Still rate-limited after all retries — skip entirely
+        for nid, info in deferred.items():
+            print(f"  {info['word']:<30} still rate-limited, skipping (re-run later)")
+
+    # Print the index summary
+    wikt_ipa_count = sum(1 for e in plan if e["ipa"])
+    wikt_audio_count = sum(1 for e in plan if e["audio_filename"])
+    print(f"\n  Index complete: {len(plan)} words scanned")
+    if do_ipa:
+        print(f"    IPA from Wiktionary: {wikt_ipa_count}, "
+              f"need LLM: {len(ipa_misses)}")
+    if do_audio:
+        print(f"    Audio from Wiktionary: {wikt_audio_count}, "
+              f"need TTS: {len(tts_candidates)}")
+    if deferred:
+        print(f"    Rate-limited (skipped): {len(deferred)}")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # Phase 2: LLM FALLBACK — generate IPA for all Wiktionary misses in one
+    # batch.  This runs while we haven't started downloading audio yet.
+    # ══════════════════════════════════════════════════════════════════════════
+    if llm_fallback and ipa_misses and do_ipa:
+        print("\n── Phase 2: LLM IPA fallback ──")
+        llm_count = _llm_ipa_fallback(ipa_misses, dry_run=dry_run)
+        stats["ipa_llm"] = llm_count
+        stats["ipa_added"] += llm_count
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # Phase 3: DOWNLOAD & APPLY — fetch audio files from Commons, apply all
+    # IPA + audio updates to Anki, then run TTS for remaining misses.
+    # ══════════════════════════════════════════════════════════════════════════
+    if plan:
+        print("\n── Phase 3: Download & apply ──")
+
+    for entry in plan:
+        nid = entry["nid"]
+        word_field = entry["word"]
+        ipa = entry["ipa"]
+        audio_filename = entry["audio_filename"]
+
+        # Probe Commons for higher-quality numbered variants
+        if audio_filename and not dry_run:
+            audio_filename = probe_commons_variants(audio_filename)
+
+        # Skip download if we already have this exact file
+        audio_data = None
+        if audio_filename and not dry_run:
+            new_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
+            existing = entry["existing_audio"]
+            if existing == f"[sound:{new_mp3}]":
+                if redownload:
+                    print(f"  {word_field:<30} audio=same ({new_mp3})")
+                stats["already_ok"] += 1
+                audio_filename = None  # nothing to download
+                if not ipa:
+                    continue  # nothing to do at all for this note
+
+        # Download audio from Commons
+        if audio_filename and not dry_run:
+            url = commons_url_from_filename(audio_filename)
+            audio_data = download_audio(url)
+            if audio_data is _DEFERRED:
+                print(f"  {word_field:<30} audio=download rate-limited, skipping")
+                audio_data = None
+                audio_filename = None
+            elif not audio_data:
+                # Non-rate-limit download failure → fall back to TTS
+                tts_candidates.append((nid, word_field))
+
+        # Report
         parts = []
         if do_ipa:
             if ipa:
-                parts.append(f"IPA={ipa} (Wiktionary)")
-            elif has_ipa:
-                parts.append("IPA=ok")
-            else:
+                parts.append(f"IPA={ipa}")
+            elif entry["needs_ipa"]:
                 parts.append("IPA=miss (→LLM)")
+            else:
+                parts.append("IPA=ok")
         if do_audio:
-            if has_audio and not needs_audio:
-                parts.append("audio=ok")
-            elif audio_filename:
+            if audio_filename:
                 if audio_data or dry_run:
                     parts.append(f"audio=Wiktionary ({audio_filename})")
                 else:
                     parts.append(f"audio=Wiktionary fail ({audio_filename})")
-            elif any(nid == n and word_field == w for n, w, _ in wikt_audio_deferred):
-                pass  # already printed DEFERRED line
+            elif entry["needs_audio"]:
+                pass  # already classified as TTS candidate or same-file skip
             else:
-                parts.append("audio=miss (→TTS)")
+                parts.append("audio=ok")
 
         if parts:
             prefix = "[dry-run] " if dry_run else "  "
-            status_str = "  ".join(parts)
-            print(f"{prefix}{word_field:<30} {status_str}")
+            print(f"{prefix}{word_field:<30} {'  '.join(parts)}")
 
         if dry_run:
             if ipa:
@@ -677,12 +899,12 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                 stats["audio_added"] += 1
             continue
 
-        # Apply changes
+        # Apply changes to Anki
         fields_update = {}
         if ipa:
             fields_update["IPA"] = ipa
             stats["ipa_added"] += 1
-        if audio_data and audio_data is not _RATE_LIMITED:
+        if audio_data and audio_data is not _DEFERRED:
             mp3_name = store_audio_in_anki(audio_filename, audio_data)
             fields_update["Audio"] = f"[sound:{mp3_name}]"
             stats["audio_added"] += 1
@@ -690,98 +912,9 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         if fields_update:
             anki("updateNoteFields", note={"id": nid, "fields": fields_update})
 
-        # Rate limiting
-        if needs_audio and audio_filename:
+        # Rate limiting between downloads
+        if audio_data:
             time.sleep(audio_delay)
-        else:
-            time.sleep(0.5)
-
-    # ── Retry Wiktionary-deferred items ──────────────────────────────────────
-    if (wikt_ipa_deferred or wikt_audio_deferred) and not dry_run:
-        # Merge into a single retry list keyed by note id
-        retry_map = {}  # nid -> {word_field, lookup, needs_ipa, needs_audio}
-        for nid, wf, lk in wikt_ipa_deferred:
-            retry_map.setdefault(nid, {"word": wf, "lookup": lk,
-                                       "ipa": True, "audio": False})
-        for nid, wf, lk in wikt_audio_deferred:
-            entry = retry_map.setdefault(nid, {"word": wf, "lookup": lk,
-                                               "ipa": False, "audio": False})
-            entry["audio"] = True
-
-        for pass_num in range(3):
-            if not retry_map:
-                break
-            wait = 30 * (pass_num + 1)
-            print(f"\n  Wiktionary retry pass {pass_num + 1} "
-                  f"({len(retry_map)} words, waiting {wait}s)...")
-            time.sleep(wait)
-
-            done_nids = []
-            for nid, info in retry_map.items():
-                wikitext = fetch_wikitext(info["lookup"])
-                if wikitext is _RATE_LIMITED:
-                    continue  # still limited, try next pass
-                if not wikitext:
-                    # Page genuinely doesn't exist — move to fallback lists
-                    if info["ipa"]:
-                        ipa_misses.append((nid, info["word"]))
-                    if info["audio"]:
-                        tts_candidates.append((nid, info["word"]))
-                    done_nids.append(nid)
-                    continue
-
-                fields_update = {}
-                if info["ipa"]:
-                    ipa = extract_ipa(wikitext)
-                    if ipa:
-                        fields_update["IPA"] = ipa
-                        stats["ipa_added"] += 1
-                        print(f"  {info['word']:<30} IPA={ipa} (Wiktionary retry)")
-                    else:
-                        ipa_misses.append((nid, info["word"]))
-                    info["ipa"] = False
-
-                if info["audio"]:
-                    af = extract_audio_filename(wikitext)
-                    if not af:
-                        tts_candidates.append((nid, info["word"]))
-                    else:
-                        af = probe_commons_variants(af)
-                        url = commons_url_from_filename(af)
-                        data = download_audio(url)
-                        if data is _RATE_LIMITED:
-                            continue  # still limited
-                        if data:
-                            mp3_name = store_audio_in_anki(af, data)
-                            fields_update["Audio"] = f"[sound:{mp3_name}]"
-                            stats["audio_added"] += 1
-                            print(f"  {info['word']:<30} audio=Wiktionary retry ({af})")
-                            time.sleep(audio_delay)
-                        else:
-                            tts_candidates.append((nid, info["word"]))
-                    info["audio"] = False
-
-                if fields_update:
-                    anki("updateNoteFields", note={"id": nid, "fields": fields_update})
-
-                if not info["ipa"] and not info["audio"]:
-                    done_nids.append(nid)
-
-            for nid in done_nids:
-                del retry_map[nid]
-
-        # Anything still in retry_map after all passes — move to fallback
-        for nid, info in retry_map.items():
-            # Still rate-limited after retries — do NOT send to TTS/LLM.
-            # These words have Wiktionary data, just couldn't fetch it.
-            # They'll be picked up on the next run.
-            print(f"  {info['word']:<30} still rate-limited, skipping (re-run later)")
-
-    # ── LLM fallback for IPA (genuinely missing from Wiktionary) ─────────────
-    if llm_fallback and ipa_misses and do_ipa:
-        llm_count = _llm_ipa_fallback(ipa_misses, dry_run=dry_run)
-        stats["ipa_llm"] = llm_count
-        stats["ipa_added"] += llm_count
 
     # ── TTS fallback for audio (genuinely missing from Wiktionary) ───────────
     if llm_fallback and tts_candidates and do_audio:
@@ -789,7 +922,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         stats["audio_tts"] = tts_count
         stats["audio_added"] += tts_count
 
-    # Summary
+    # ── Summary ──────────────────────────────────────────────────────────────
     prefix = "[dry-run] " if dry_run else ""
     print(f"\n{prefix}Enrichment summary:")
     if do_ipa:
@@ -810,8 +943,11 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     print(f"  No Wiktionary page: {stats['no_page']}")
     if stats["already_ok"]:
         print(f"  Already complete: {stats['already_ok']}")
-    if retry_map:
-        print(f"  Wikt rate-limited: {len(retry_map)} (re-run later)")
+    if deferred:
+        print(f"  Wikt rate-limited: {len(deferred)} (re-run later)")
+
+    # All phases completed — clear any saved checkpoint
+    _clear_checkpoint()
 
     return stats
 

@@ -26,6 +26,20 @@ def _make_note(nid, word, ipa="", audio=""):
     }
 
 
+def _make_prefix_note(nid, prefix="ver"):
+    """Build a Prefix note type dict (no Word/IPA/Audio fields)."""
+    return {
+        "noteId": nid,
+        "fields": {
+            "Prefix": {"value": prefix},
+            "PrefixType": {"value": "inseparable"},
+            "CoreMeaning": {"value": "change, wrong"},
+            "SpatialSense": {"value": "transforms state"},
+            "Examples": {"value": "<b>ver</b>stehen"},
+        },
+    }
+
+
 def _mock_response(status=200, json_data=None, content=b"", headers=None):
     """Build a minimal requests.Response-like object."""
     r = types.SimpleNamespace()
@@ -400,7 +414,7 @@ class TestFetchWikitext:
         assert result == wikitext
 
     def test_no_german_page(self, monkeypatch):
-        """Page exists but has no German section → return None (not _RATE_LIMITED)."""
+        """Page exists but has no German section → return None (not _DEFERRED)."""
         wikitext = "== dog ({{Sprache|Englisch}}) ==\ncontent"
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: _mock_response(
             json_data={"parse": {"wikitext": {"*": wikitext}}}))
@@ -419,13 +433,13 @@ class TestFetchWikitext:
         assert result is None
 
     def test_rate_limited_returns_sentinel(self, monkeypatch):
-        """All retries hit 429 → return _RATE_LIMITED."""
+        """All retries hit 429 → return _DEFERRED."""
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: _mock_response(
             status=429, headers={"Retry-After": "1"}))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia.fetch_wikitext("Hund")
-        assert result is eia._RATE_LIMITED
+        assert result is eia._DEFERRED
 
     def test_rate_limit_then_success(self, monkeypatch):
         """First request 429, second succeeds."""
@@ -461,7 +475,7 @@ class TestFetchWikitext:
         assert result == wikitext
 
     def test_network_error_retries(self, monkeypatch):
-        """Transient network error retries, then fails."""
+        """Transient network error retries, then defers (not a genuine miss)."""
         def _get(*a, **kw):
             raise requests.ConnectionError("Network down")
 
@@ -469,7 +483,7 @@ class TestFetchWikitext:
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia.fetch_wikitext("Hund")
-        assert result is None  # not _RATE_LIMITED
+        assert result is eia._DEFERRED
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -493,7 +507,7 @@ class TestDownloadAudio:
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia.download_audio("http://example.com/audio.ogg")
-        assert result is eia._RATE_LIMITED
+        assert result is eia._DEFERRED
 
     def test_network_error_returns_none(self, monkeypatch):
         def _get(*a, **kw):
@@ -634,7 +648,7 @@ class TestGeminiTtsSingle:
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia._gemini_tts_single("Hund", "fake-key")
-        assert result is eia._RATE_LIMITED
+        assert result is eia._DEFERRED
 
     def test_error_returns_none(self, monkeypatch):
         def _post(*a, **kw):
@@ -695,7 +709,7 @@ class TestGeminiTtsFallback:
         def _tts(word, key):
             call_count[0] += 1
             if call_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             return b"pcm-data"
 
         monkeypatch.setattr(eia, "_gemini_tts_single", _tts)
@@ -775,10 +789,10 @@ class TestLlmIpaFallback:
 
 
 @pytest.fixture
-def enrich_env(monkeypatch):
+def enrich_env(monkeypatch, tmp_path):
     """Set up a fully mocked environment for enrich_notes()."""
     updates = []  # captured updateNoteFields calls
-    wikitext_db = {}  # word -> wikitext (or _RATE_LIMITED)
+    wikitext_db = {}  # word -> wikitext (or _DEFERRED)
 
     def _anki(action, **params):
         if action == "modelFieldNames":
@@ -818,6 +832,7 @@ def enrich_env(monkeypatch):
     monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
     monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
     monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+    monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "enrich_index.json")
 
     env = {
         "updates": updates,
@@ -875,7 +890,7 @@ class TestEnrichNotes:
     def test_rate_limited_wikt_not_sent_to_tts(self, enrich_env, monkeypatch):
         """Rate-limited Wiktionary fetch → deferred, NOT sent to TTS."""
         enrich_env["notes"].append(_make_note(1, "der Hund"))
-        enrich_env["wikitext_db"]["Hund"] = eia._RATE_LIMITED
+        enrich_env["wikitext_db"]["Hund"] = eia._DEFERRED
         tts_calls = []
         llm_calls = []
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
@@ -890,7 +905,7 @@ class TestEnrichNotes:
         """Audio exists on Wiktionary but download is rate-limited → deferred."""
         enrich_env["notes"].append(_make_note(1, "der Hund", ipa="hʊnt"))
         enrich_env["wikitext_db"]["Hund"] = WIKITEXT_WITH_IPA.replace("Freund", "Hund")
-        monkeypatch.setattr(eia, "download_audio", lambda url: eia._RATE_LIMITED)
+        monkeypatch.setattr(eia, "download_audio", lambda url: eia._DEFERRED)
         tts_calls = []
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
                             lambda words, **kw: (tts_calls.extend(words), 0)[-1])
@@ -976,7 +991,7 @@ class TestEnrichNotesRetryPhase:
         def _fetch(word):
             fetch_count[0] += 1
             if fetch_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             return wikitext_good
 
         def _anki(action, **params):
@@ -1017,7 +1032,7 @@ class TestEnrichNotesRetryPhase:
             return []
 
         monkeypatch.setattr(eia, "anki", _anki)
-        monkeypatch.setattr(eia, "fetch_wikitext", lambda word: eia._RATE_LIMITED)
+        monkeypatch.setattr(eia, "fetch_wikitext", lambda word: eia._DEFERRED)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
                             lambda words, **kw: (tts_calls.extend(words), 0)[-1])
@@ -1036,7 +1051,7 @@ class TestEnrichNotesRetryPhase:
         def _fetch(word):
             fetch_count[0] += 1
             if fetch_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             return None  # page doesn't exist
 
         def _anki(action, **params):
@@ -1149,16 +1164,16 @@ class TestRunCli:
 class TestGeminiTtsSingleEdgeCases:
 
     def test_all_retries_429_returns_sentinel(self, monkeypatch):
-        """All 3 loop iterations hit 429 continue → final return _RATE_LIMITED."""
+        """All 3 loop iterations hit 429 continue → final return _DEFERRED."""
         # Need attempt < 2 to be True for first two, then False for third
         # which triggers the return inside the loop. But the final return
         # after the for is line 354. This requires all 3 iterations to
-        # continue (not return). Actually the code returns _RATE_LIMITED
+        # continue (not return). Actually the code returns _DEFERRED
         # on attempt == 2 (line 346), so line 354 is dead code unless
         # the loop somehow exhausts without returning. It's reachable only
         # if the last attempt falls through a non-429 path.
         # Actually, looking at the code: if attempt 0 and 1 get 429, they
-        # continue. Attempt 2 gets 429 → returns _RATE_LIMITED (line 346).
+        # continue. Attempt 2 gets 429 → returns _DEFERRED (line 346).
         # Line 354 is unreachable in current logic. Let's skip it.
         pass
 
@@ -1172,7 +1187,7 @@ class TestGeminiTtsFallbackRetryFail:
 
         def _tts(word, key):
             call_count[0] += 1
-            return eia._RATE_LIMITED  # always rate limited
+            return eia._DEFERRED  # always rate limited
 
         monkeypatch.setattr(eia, "_gemini_tts_single", _tts)
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
@@ -1351,7 +1366,7 @@ class TestEnrichNotesRetryPhaseAdditional:
         def _fetch(word):
             fetch_count[0] += 1
             if fetch_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             # Page exists but no IPA
             return WIKITEXT_NO_IPA
 
@@ -1371,7 +1386,7 @@ class TestEnrichNotesRetryPhaseAdditional:
         def _fetch(word):
             fetch_count[0] += 1
             if fetch_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             return WIKITEXT_NO_IPA  # no audio template
 
         tts_calls = []
@@ -1391,7 +1406,7 @@ class TestEnrichNotesRetryPhaseAdditional:
         def _fetch(word):
             fetch_count[0] += 1
             if fetch_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             return wikt
 
         tts_calls = []
@@ -1412,18 +1427,227 @@ class TestEnrichNotesRetryPhaseAdditional:
         def _fetch(word):
             fetch_count[0] += 1
             if fetch_count[0] == 1:
-                return eia._RATE_LIMITED
+                return eia._DEFERRED
             return wikt
 
         tts_calls = []
         self._setup(monkeypatch, notes, _fetch)
-        monkeypatch.setattr(eia, "download_audio", lambda url: eia._RATE_LIMITED)
+        monkeypatch.setattr(eia, "download_audio", lambda url: eia._DEFERRED)
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
                             lambda words, **kw: (tts_calls.extend(words), 0)[-1])
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         # Should NOT go to TTS — Wiktionary has it, just can't download
         assert len(tts_calls) == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# I. Checkpoint persistence
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestCheckpoint:
+
+    def test_save_load_clear(self, tmp_path, monkeypatch):
+        """Round-trip: save → load → clear."""
+        cp_path = tmp_path / "enrich_index.json"
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", cp_path)
+
+        plan = [{"nid": 1, "word": "Hund", "ipa": "hʊnt", "audio_filename": "De-Hund.ogg"}]
+        ipa_misses = [(2, "Katze")]
+        tts_candidates = [(3, "Maus")]
+
+        eia._save_checkpoint(plan, ipa_misses, tts_candidates)
+        assert cp_path.exists()
+
+        data = eia._load_checkpoint()
+        assert data["plan"] == plan
+        assert data["ipa_misses"] == [[2, "Katze"]]  # tuples become lists in JSON
+        assert data["tts_candidates"] == [[3, "Maus"]]
+
+        eia._clear_checkpoint()
+        assert not cp_path.exists()
+
+    def test_load_missing_file(self, tmp_path, monkeypatch):
+        """Loading when no checkpoint exists returns None."""
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "nope.json")
+        assert eia._load_checkpoint() is None
+
+    def test_load_corrupt_file(self, tmp_path, monkeypatch):
+        """Loading a corrupt checkpoint returns None."""
+        cp_path = tmp_path / "enrich_index.json"
+        cp_path.write_text("not json{{{")
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", cp_path)
+        assert eia._load_checkpoint() is None
+
+    def test_clear_nonexistent(self, tmp_path, monkeypatch):
+        """Clearing when no file exists is a no-op."""
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "nope.json")
+        eia._clear_checkpoint()  # should not raise
+
+
+class TestCheckpointIntegration:
+    """Test checkpoint save/resume within enrich_notes."""
+
+    def _setup(self, monkeypatch, notes, fetch_fn, tmp_path):
+        updates = []
+
+        def _anki(action, **params):
+            if action == "modelFieldNames":
+                return ["Word", "POS", "IPA", "Audio"]
+            if action == "notesInfo":
+                return notes
+            if action == "updateNoteFields":
+                updates.append(params["note"])
+            return []
+
+        monkeypatch.setattr(eia, "anki", _anki)
+        monkeypatch.setattr(eia, "fetch_wikitext", fetch_fn)
+        monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        cp_path = tmp_path / "enrich_index.json"
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", cp_path)
+        return updates, cp_path
+
+    def test_bail_saves_checkpoint(self, monkeypatch, tmp_path):
+        """When Wiktionary returns BAIL, checkpoint is saved and function returns."""
+        notes = [_make_note(1, "der Hund"), _make_note(2, "die Katze")]
+        call_count = [0]
+        wikt = WIKITEXT_WITH_IPA.replace("Freund", "Hund")
+
+        def _fetch(word):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return wikt  # first word succeeds
+            return eia._DEFERRED_BAIL  # second word bails
+
+        updates, cp_path = self._setup(monkeypatch, notes, _fetch, tmp_path)
+
+        result = eia.enrich_notes(note_ids=[1, 2], ipa_only=True)
+        assert cp_path.exists(), "checkpoint file should be saved"
+        data = eia._load_checkpoint()
+        assert len(data["plan"]) == 1  # only the first word was indexed
+
+    def test_resume_from_checkpoint(self, monkeypatch, tmp_path):
+        """Resuming skips already-indexed words and processes remaining."""
+        notes = [_make_note(1, "der Hund"), _make_note(2, "die Katze")]
+        wikt_hund = WIKITEXT_WITH_IPA.replace("Freund", "Hund")
+        wikt_katze = WIKITEXT_WITH_IPA.replace("Freund", "Katze")
+
+        # Pre-save a checkpoint with Hund already indexed
+        cp_path = tmp_path / "enrich_index.json"
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", cp_path)
+        eia._save_checkpoint(
+            [{"nid": 1, "word": "der Hund", "lookup": "Hund",
+              "needs_ipa": True, "needs_audio": False,
+              "ipa": "hʊnt", "audio_filename": None,
+              "existing_audio": ""}],
+            [], [],
+        )
+
+        # Only Katze should be fetched
+        fetched_words = []
+
+        def _fetch(word):
+            fetched_words.append(word)
+            return wikt_katze
+
+        updates, _ = self._setup(monkeypatch, notes, _fetch, tmp_path)
+        # Re-set checkpoint path since _setup overwrites it
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", cp_path)
+
+        result = eia.enrich_notes(note_ids=[1, 2], ipa_only=True)
+        assert "Hund" not in fetched_words, "Hund should be skipped (in checkpoint)"
+        assert "Katze" in fetched_words
+        # Checkpoint should be cleared after success
+        assert not cp_path.exists()
+
+    def test_checkpoint_cleared_on_success(self, monkeypatch, tmp_path):
+        """Checkpoint file is removed after successful completion."""
+        notes = [_make_note(1, "der Hund")]
+        wikt = WIKITEXT_WITH_IPA.replace("Freund", "Hund")
+
+        updates, cp_path = self._setup(
+            monkeypatch, notes, lambda w: wikt, tmp_path)
+
+        # Create a stale checkpoint
+        eia._save_checkpoint([{"nid": 99, "word": "stale", "ipa": None,
+                               "audio_filename": None, "needs_ipa": True,
+                               "needs_audio": False, "lookup": "stale",
+                               "existing_audio": ""}], [], [])
+        assert cp_path.exists()
+
+        result = eia.enrich_notes(note_ids=[1], ipa_only=True)
+        assert not cp_path.exists(), "checkpoint should be cleared after success"
+
+    def test_bail_during_retry_saves_checkpoint(self, monkeypatch, tmp_path):
+        """BAIL during retry phase also saves checkpoint."""
+        notes = [_make_note(1, "der Hund")]
+        call_count = [0]
+
+        def _fetch(word):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return eia._DEFERRED  # deferred in main loop
+            return eia._DEFERRED_BAIL  # bail during retry
+
+        updates, cp_path = self._setup(monkeypatch, notes, _fetch, tmp_path)
+
+        result = eia.enrich_notes(note_ids=[1], ipa_only=True)
+        assert cp_path.exists(), "checkpoint should be saved on bail during retry"
+
+
+class TestNoteNeedsWork:
+
+    def test_needs_ipa(self):
+        note = _make_note(1, "der Hund", ipa="", audio="[sound:x.mp3]")
+        assert eia._note_needs_work(note, do_ipa=True, do_audio=False, redownload=False)
+
+    def test_needs_audio(self):
+        note = _make_note(1, "der Hund", ipa="hʊnt", audio="")
+        assert eia._note_needs_work(note, do_ipa=False, do_audio=True, redownload=False)
+
+    def test_complete_note(self):
+        note = _make_note(1, "der Hund", ipa="hʊnt", audio="[sound:x.mp3]")
+        assert not eia._note_needs_work(note, do_ipa=True, do_audio=True, redownload=False)
+
+    def test_redownload(self):
+        note = _make_note(1, "der Hund", ipa="hʊnt", audio="[sound:x.mp3]")
+        assert eia._note_needs_work(note, do_ipa=False, do_audio=True, redownload=True)
+
+    def test_phrase_excluded(self):
+        note = _make_note(1, "Wie geht's?", ipa="", audio="")
+        assert not eia._note_needs_work(note, do_ipa=True, do_audio=True, redownload=False)
+
+
+class TestRateLimitBail:
+    """Test _DEFERRED_BAIL sentinel in fetch_wikitext."""
+
+    def test_bail_on_high_retry_after(self, monkeypatch):
+        """fetch_wikitext returns _DEFERRED_BAIL when Retry-After > threshold."""
+        resp = _mock_response(429, headers={"Retry-After": "3600"})
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: resp)
+        monkeypatch.setattr(eia, "MAX_RATE_LIMIT_WAIT", 120)
+
+        result = eia.fetch_wikitext("Hund")
+        assert result is eia._DEFERRED_BAIL
+
+    def test_normal_rate_limit_still_retries(self, monkeypatch):
+        """fetch_wikitext returns _DEFERRED (not BAIL) for short waits."""
+        call_count = [0]
+
+        def _get(*args, **kwargs):
+            call_count[0] += 1
+            return _mock_response(429, headers={"Retry-After": "10"})
+
+        monkeypatch.setattr(eia.web, "get", _get)
+        monkeypatch.setattr(eia, "MAX_RATE_LIMIT_WAIT", 120)
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+
+        result = eia.fetch_wikitext("Hund")
+        assert result is eia._DEFERRED
+        assert call_count[0] >= 3  # retried
 
 
 class TestMainEntrypoint:
@@ -1438,3 +1662,153 @@ class TestMainEntrypoint:
         eia.main()
         assert called[0]["ipa_only"] is True
         assert called[0]["dry_run"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# J. Argument permutations — integration tests for flag combos
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestArgPermutations:
+    """Test common flag combinations against a realistic mixed-note deck."""
+
+    def _make_deck(self):
+        """Return a mix of vocab notes and non-vocab notes."""
+        return [
+            _make_note(1, "der Hund", ipa="hʊnt", audio="[sound:De-Hund.mp3]"),
+            _make_note(2, "die Katze", ipa="", audio=""),
+            _make_note(3, "laufen", ipa="ˈlaʊfn̩", audio=""),
+            _make_prefix_note(100, "ver"),
+            _make_prefix_note(101, "ent"),
+        ]
+
+    def _setup(self, monkeypatch, notes, tmp_path):
+        updates = []
+        wikt = WIKITEXT_WITH_IPA
+
+        def _anki(action, **params):
+            if action == "modelFieldNames":
+                return ["Word", "POS", "IPA", "Audio"]
+            if action == "notesInfo":
+                return notes
+            if action == "updateNoteFields":
+                updates.append(params["note"])
+            if action == "findNotes":
+                return [n["noteId"] for n in notes]
+            return []
+
+        monkeypatch.setattr(eia, "anki", _anki)
+        monkeypatch.setattr(eia, "fetch_wikitext", lambda w: wikt)
+        monkeypatch.setattr(eia, "download_audio", lambda url: b"audiobytes")
+        monkeypatch.setattr(eia, "store_audio_in_anki",
+                            lambda fn, d: fn.rsplit(".", 1)[0] + ".mp3")
+        monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "probe_commons_variants", lambda f: f)
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "cp.json")
+        return updates
+
+    def test_ipa_only(self, monkeypatch, tmp_path):
+        """--ipa-only skips audio entirely, ignores prefix notes."""
+        notes = self._make_deck()
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(note_ids=[1, 2, 3, 100, 101], ipa_only=True)
+        # Only note 2 needs IPA (note 1 and 3 already have it)
+        assert result["ipa_added"] >= 1
+        assert result["audio_added"] == 0
+
+    def test_audio_only(self, monkeypatch, tmp_path):
+        """--audio-only skips IPA entirely, ignores prefix notes."""
+        notes = self._make_deck()
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(note_ids=[1, 2, 3, 100, 101], audio_only=True)
+        assert result["ipa_added"] == 0
+        assert result["audio_added"] >= 1
+
+    def test_audio_only_redownload(self, monkeypatch, tmp_path):
+        """--audio-only --redownload re-fetches audio for notes that have it."""
+        notes = self._make_deck()
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(
+            note_ids=[1, 2, 3, 100, 101],
+            audio_only=True, redownload=True)
+        # Notes 1, 2, 3 should all be processed; prefix notes skipped
+        assert result["audio_added"] >= 1
+
+    def test_dry_run_no_changes(self, monkeypatch, tmp_path):
+        """--dry-run makes no AnkiConnect update calls."""
+        notes = self._make_deck()
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(
+            note_ids=[1, 2, 3, 100, 101], dry_run=True)
+        assert len(updates) == 0
+
+    def test_no_llm(self, monkeypatch, tmp_path):
+        """--no-llm skips LLM/TTS fallback."""
+        notes = [_make_note(1, "der Hund")]
+        llm_called = []
+        tts_called = []
+
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        # Page miss → would normally go to LLM/TTS
+        monkeypatch.setattr(eia, "fetch_wikitext", lambda w: None)
+        monkeypatch.setattr(eia, "_llm_ipa_fallback",
+                            lambda *a, **kw: (llm_called.append(1), 0)[-1])
+        monkeypatch.setattr(eia, "_gemini_tts_fallback",
+                            lambda *a, **kw: (tts_called.append(1), 0)[-1])
+
+        result = eia.enrich_notes(note_ids=[1], llm_fallback=False)
+        assert len(llm_called) == 0
+        assert len(tts_called) == 0
+
+    def test_prefix_notes_skipped(self, monkeypatch, tmp_path):
+        """Non-vocab notes (Prefix) are silently skipped."""
+        notes = [_make_prefix_note(100)]
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(note_ids=[100])
+        # Prefix note has no Word field → skipped
+        assert result["ipa_added"] == 0
+        assert result["audio_added"] == 0
+
+    def test_mixed_vocab_and_prefix(self, monkeypatch, tmp_path):
+        """Vocab and prefix notes coexist without errors."""
+        notes = [_make_note(1, "der Hund"), _make_prefix_note(100)]
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(note_ids=[1, 100])
+        # Should process the vocab note and skip the prefix note
+        assert result["ipa_added"] >= 0  # ran without error
+
+    def test_redownload_same_file_skip(self, monkeypatch, tmp_path):
+        """--redownload skips notes that already have the best audio."""
+        # Note already has De-Freund.mp3 which matches what Wiktionary offers
+        notes = [_make_note(1, "der Freund", ipa="fʁɔʏnt",
+                            audio="[sound:De-Freund.mp3]")]
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(
+            note_ids=[1], audio_only=True, redownload=True)
+        # Should skip since audio is already the same
+        assert result["already_ok"] >= 1
+        assert len(updates) == 0
+
+    def test_all_flags_combined(self, monkeypatch, tmp_path):
+        """All flags at once: --dry-run --ipa-only --no-llm."""
+        notes = self._make_deck()
+        updates = self._setup(monkeypatch, notes, tmp_path)
+        result = eia.enrich_notes(
+            note_ids=[1, 2, 3, 100, 101],
+            ipa_only=True, dry_run=True, llm_fallback=False)
+        assert len(updates) == 0
+        assert result["audio_added"] == 0
+
+
+class TestNoteNeedsWorkNonVocab:
+    """Test _note_needs_work with non-vocab note types."""
+
+    def test_prefix_note(self):
+        note = _make_prefix_note(1)
+        assert not eia._note_needs_work(note, do_ipa=True, do_audio=True, redownload=True)
+
+    def test_missing_word_field(self):
+        note = {"noteId": 1, "fields": {"SomeField": {"value": "x"}}}
+        assert not eia._note_needs_work(note, do_ipa=True, do_audio=True, redownload=False)
