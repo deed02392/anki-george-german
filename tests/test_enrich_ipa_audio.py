@@ -306,6 +306,14 @@ class TestCommonsUrlFromFilename:
         url2 = eia.commons_url_from_filename("De-Katze.ogg")
         assert url1 != url2
 
+    def test_spaces_normalized_to_underscores(self):
+        """Wikimedia Commons uses underscores; wikitext may have spaces."""
+        url = eia.commons_url_from_filename("LL-Q188 (deu)-Sebastian Wallroth-rennen.wav")
+        normalized = "LL-Q188_(deu)-Sebastian_Wallroth-rennen.wav"
+        md5 = hashlib.md5(normalized.encode()).hexdigest()
+        assert f"/{md5[0]}/{md5[:2]}/" in url
+        assert "LL-Q188_%28deu%29-Sebastian_Wallroth-rennen.wav" in url
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # F2. probe_commons_variants()

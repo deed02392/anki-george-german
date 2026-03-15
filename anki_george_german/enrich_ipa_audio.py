@@ -186,6 +186,8 @@ def extract_audio_filename(wikitext):
 
 def commons_url_from_filename(filename):
     """Compute the direct Wikimedia Commons URL using MD5 hash path."""
+    # Commons uses underscores, wikitext may have spaces
+    filename = filename.replace(" ", "_")
     md5 = hashlib.md5(filename.encode()).hexdigest()
     return (f"https://upload.wikimedia.org/wikipedia/commons"
             f"/{md5[0]}/{md5[:2]}/{requests.utils.quote(filename)}")
