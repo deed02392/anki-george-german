@@ -624,13 +624,22 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             elif not dry_run:
                 # Probe Commons for higher-quality numbered variants
                 audio_filename = probe_commons_variants(audio_filename)
-                url = commons_url_from_filename(audio_filename)
-                audio_data = download_audio(url)
-                if audio_data is _RATE_LIMITED:
-                    print(f"  DEFERRED (download rate limited): {word_field}")
-                    wikt_audio_deferred.append((nid, word_field, lookup))
-                    audio_data = None
-                    audio_filename = None  # suppress "Wiktionary fail" in report
+                # Skip download if we already have this exact file
+                new_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
+                existing = note["fields"].get("Audio", {}).get("value", "")
+                if existing == f"[sound:{new_mp3}]":
+                    if redownload:
+                        print(f"  {word_field:<30} audio=same ({new_mp3})")
+                    audio_filename = None  # same file, nothing to do
+                    stats["already_ok"] += 1
+                else:
+                    url = commons_url_from_filename(audio_filename)
+                    audio_data = download_audio(url)
+                    if audio_data is _RATE_LIMITED:
+                        print(f"  DEFERRED (download rate limited): {word_field}")
+                        wikt_audio_deferred.append((nid, word_field, lookup))
+                        audio_data = None
+                        audio_filename = None
 
         # Report — show source for each enrichment
         parts = []

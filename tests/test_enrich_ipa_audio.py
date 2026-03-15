@@ -805,6 +805,7 @@ def enrich_env(monkeypatch):
     monkeypatch.setattr(eia, "anki", _anki_dispatch)
     monkeypatch.setattr(eia, "fetch_wikitext", _fetch)
     monkeypatch.setattr(eia, "download_audio", lambda url: b"audio-bytes")
+    monkeypatch.setattr(eia, "probe_commons_variants", lambda fn: fn)
     monkeypatch.setattr(eia, "store_audio_in_anki", lambda fn, data: fn.replace(".ogg", ".mp3"))
     monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
     monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
@@ -915,6 +916,38 @@ class TestEnrichNotes:
         eia.enrich_notes(note_ids=[1], llm_fallback=False)
         assert not llm_called[0]
         assert not tts_called[0]
+
+    def test_redownload_skips_same_file(self, enrich_env):
+        """redownload skips download when note already has the same mp3."""
+        # Note already has De-Freund.mp3 (from De-Freund.ogg)
+        enrich_env["notes"].append(
+            _make_note(1, "der Freund", ipa="fʁɔɪ̯nt", audio="[sound:De-Freund.mp3]"))
+        enrich_env["wikitext_db"]["Freund"] = WIKITEXT_WITH_IPA
+        download_called = [False]
+        orig_download = enrich_env.get("_orig_download")
+
+        import anki_george_german.enrich_ipa_audio as _eia
+        def _track_download(url):
+            download_called[0] = True
+            return b"audio-bytes"
+        _eia.download_audio = _track_download
+
+        result = eia.enrich_notes(note_ids=[1], audio_only=True, redownload=True)
+        assert not download_called[0]  # no download — same file
+        assert result["already_ok"] == 1
+
+    def test_redownload_upgrades_different_file(self, enrich_env, monkeypatch):
+        """redownload downloads when probe finds a better variant."""
+        # Note has De-Freund.mp3 but probe will find De-Freund2.ogg
+        enrich_env["notes"].append(
+            _make_note(1, "der Freund", ipa="fʁɔɪ̯nt", audio="[sound:De-Freund.mp3]"))
+        enrich_env["wikitext_db"]["Freund"] = WIKITEXT_WITH_IPA
+        monkeypatch.setattr(eia, "probe_commons_variants", lambda fn: "De-Freund2.ogg")
+
+        result = eia.enrich_notes(note_ids=[1], audio_only=True, redownload=True)
+        assert result["audio_added"] == 1
+        assert any("De-Freund2.mp3" in u["fields"].get("Audio", "")
+                    for u in enrich_env["updates"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════
