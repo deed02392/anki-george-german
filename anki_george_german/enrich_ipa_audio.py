@@ -630,8 +630,8 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                 if existing == f"[sound:{new_mp3}]":
                     if redownload:
                         print(f"  {word_field:<30} audio=same ({new_mp3})")
-                    audio_filename = None  # same file, nothing to do
                     stats["already_ok"] += 1
+                    continue
                 else:
                     url = commons_url_from_filename(audio_filename)
                     audio_data = download_audio(url)
