@@ -154,6 +154,85 @@ def fetch_wikitext(word):
     return None
 
 
+def fetch_wikitext_batch(words):
+    """Fetch wikitext for up to 50 words in a single API call.
+
+    Uses action=query with prop=revisions (raw content, no server-side parse).
+    Returns dict mapping each input word to its wikitext (str), _DEFERRED,
+    _DEFERRED_BAIL, or None.
+    """
+    results = {}
+    # Build title list — try original case first; we'll retry lowercase misses
+    titles = "|".join(words)
+    params = {
+        "action": "query", "titles": titles, "format": "json",
+        "prop": "revisions", "rvprop": "content", "rvslots": "main",
+    }
+    for retry in range(3):
+        try:
+            resp = web.get(WIKT_API, params=params, timeout=30)
+            if resp.status_code == 429:
+                wait = int(resp.headers.get("Retry-After", 30))
+                wait = max(wait, 10)
+                if wait > MAX_RATE_LIMIT_WAIT:
+                    print(f"    (Wiktionary rate limited for {wait}s — "
+                          f"exceeds {MAX_RATE_LIMIT_WAIT}s threshold)")
+                    return {w: _DEFERRED_BAIL for w in words}
+                print(f"    (Wiktionary rate limited, waiting {wait}s...)")
+                time.sleep(wait)
+                continue
+            data = resp.json()
+            break
+        except (requests.RequestException, ValueError):
+            if retry < 2:
+                time.sleep(2)
+                continue
+            return {w: _DEFERRED for w in words}
+    else:
+        return {w: _DEFERRED for w in words}
+
+    # Map normalised titles back to input words
+    # MediaWiki may normalise titles (e.g. capitalisation), track via "normalized"
+    normalised = {}
+    for entry in data.get("query", {}).get("normalized", []):
+        normalised[entry["to"]] = entry["from"]
+
+    # Build a lookup from title → wikitext
+    title_to_wikitext = {}
+    for page in data.get("query", {}).get("pages", {}).values():
+        title = page.get("title", "")
+        if page.get("missing") is not None:
+            title_to_wikitext[title] = None
+            continue
+        try:
+            content = page["revisions"][0]["slots"]["main"]["*"]
+            if "{{Sprache|Deutsch}}" in content:
+                title_to_wikitext[title] = content
+            else:
+                title_to_wikitext[title] = None
+        except (KeyError, IndexError):
+            title_to_wikitext[title] = None
+
+    # Map results back to input words
+    for word in words:
+        # Check exact title match first
+        if word in title_to_wikitext:
+            results[word] = title_to_wikitext[word]
+        else:
+            # Check if MediaWiki normalised our title
+            found = False
+            for title, wikitext in title_to_wikitext.items():
+                orig = normalised.get(title, title)
+                if orig == word:
+                    results[word] = wikitext
+                    found = True
+                    break
+            if not found:
+                results[word] = None
+
+    return results
+
+
 def extract_german_section(wikitext):
     """Extract only the German language section from a Wiktionary page."""
     lines = wikitext.split("\n")
@@ -286,11 +365,12 @@ def probe_commons_variants(base_filename):
     return best
 
 
-def download_audio(url, retries=3):
+def download_audio(url, retries=3, progress_ctx=""):
     """Download audio file. Retries on 429 and transient errors.
 
     Returns bytes on success, _DEFERRED if 429 exhausted retries,
     or None on other failures.
+    progress_ctx: optional string like "[42/100] Hund" for rate-limit messages.
     """
     hit_rate_limit = False
     for attempt in range(retries):
@@ -300,7 +380,8 @@ def download_audio(url, retries=3):
                 hit_rate_limit = True
                 wait = int(resp.headers.get("Retry-After", 60))
                 wait = max(wait, 10)
-                print(f"    (rate limited, waiting {wait}s...)")
+                print(f"    (rate limited, waiting {wait}s..."
+                      f"{' — ' + progress_ctx if progress_ctx else ''})")
                 time.sleep(wait)
                 continue
             resp.raise_for_status()
@@ -665,6 +746,9 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         print("\n── Phase 1: Indexing Wiktionary ──")
 
     bailed = False
+
+    # Collect notes that need work (pre-filter before API calls)
+    work_items = []  # (note, word_field, lookup, needs_ipa, needs_audio, existing_audio)
     for note in notes:
         nid = note["noteId"]
         if nid in indexed_nids:
@@ -690,10 +774,85 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             stats["skipped_phrase"] += 1
             continue
 
-        # Fetch wikitext (lightweight API call)
-        wikitext = fetch_wikitext(lookup)
-        if wikitext is _DEFERRED_BAIL:
-            # Save what we have and exit
+        work_items.append((note, word_field, lookup, needs_ipa, needs_audio, existing_audio))
+
+    # Batch-fetch wikitext from Wiktionary (up to 50 titles per request)
+    BATCH_SIZE = 50
+    lookup_to_item = {}  # lookup -> list of work_items sharing that lookup
+    for item in work_items:
+        lookup = item[2]
+        lookup_to_item.setdefault(lookup, []).append(item)
+
+    all_lookups = list(lookup_to_item.keys())
+    wikitext_cache = {}  # lookup -> wikitext | None | _DEFERRED | _DEFERRED_BAIL
+
+    for batch_start in range(0, len(all_lookups), BATCH_SIZE):
+        batch = all_lookups[batch_start:batch_start + BATCH_SIZE]
+        batch_results = fetch_wikitext_batch(batch)
+
+        # Check for bail — but first process any successful results from this batch
+        has_bail = any(v is _DEFERRED_BAIL for v in batch_results.values())
+
+        wikitext_cache.update(batch_results)
+
+        # Retry misses with lowercase (some words need lowercase lookup)
+        lowercase_retry = []
+        if not has_bail:
+            for word in batch:
+                result = batch_results.get(word)
+                if result is None and word.lower() != word:
+                    lowercase_retry.append((word, word.lower()))
+
+            if lowercase_retry:
+                lc_words = [lc for _, lc in lowercase_retry]
+                lc_results = fetch_wikitext_batch(lc_words)
+                if any(v is _DEFERRED_BAIL for v in lc_results.values()):
+                    has_bail = True
+                else:
+                    for orig, lc in lowercase_retry:
+                        if lc_results.get(lc):
+                            wikitext_cache[orig] = lc_results[lc]
+
+        # Process this batch's results into plan/misses
+        for lookup in batch:
+            wikitext = wikitext_cache.get(lookup)
+            for item in lookup_to_item[lookup]:
+                note, word_field, _, needs_ipa, needs_audio, existing_audio = item
+                nid = note["noteId"]
+
+                if wikitext is _DEFERRED or wikitext is _DEFERRED_BAIL:
+                    deferred[nid] = {"word": word_field, "lookup": lookup,
+                                     "needs_ipa": needs_ipa, "needs_audio": needs_audio,
+                                     "existing_audio": existing_audio}
+                    continue
+                if not wikitext:
+                    stats["no_page"] += 1
+                    if needs_ipa:
+                        ipa_misses.append((nid, word_field))
+                    if needs_audio:
+                        tts_candidates.append((nid, word_field))
+                    continue
+
+                ipa = extract_ipa(wikitext) if needs_ipa else None
+                if needs_ipa and not ipa:
+                    stats["ipa_miss"] += 1
+                    ipa_misses.append((nid, word_field))
+
+                audio_filename = None
+                if needs_audio:
+                    audio_filename = extract_audio_filename(wikitext)
+                    if not audio_filename:
+                        stats["audio_miss"] += 1
+                        tts_candidates.append((nid, word_field))
+
+                plan.append({
+                    "nid": nid, "word": word_field, "lookup": lookup,
+                    "needs_ipa": needs_ipa, "needs_audio": needs_audio,
+                    "ipa": ipa, "audio_filename": audio_filename,
+                    "existing_audio": existing_audio,
+                })
+
+        if has_bail:
             print(f"\n  Rate limit too long — saving checkpoint "
                   f"({len(plan)} words indexed so far)")
             _save_checkpoint(plan, ipa_misses, tts_candidates)
@@ -701,46 +860,16 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             print("  Re-run the same command to resume.")
             bailed = True
             break
-        if wikitext is _DEFERRED:
-            print(f"  DEFERRED (rate limited): {word_field}")
-            deferred[nid] = {"word": word_field, "lookup": lookup,
-                             "needs_ipa": needs_ipa, "needs_audio": needs_audio,
-                             "existing_audio": existing_audio}
-            continue
-        if not wikitext:
-            print(f"  MISS: {word_field} -> no Wiktionary page for '{lookup}'")
-            stats["no_page"] += 1
-            if needs_ipa:
-                ipa_misses.append((nid, word_field))
-            if needs_audio:
-                tts_candidates.append((nid, word_field))
-            continue
 
-        # Extract IPA and audio filename from wikitext
-        ipa = extract_ipa(wikitext) if needs_ipa else None
-        if needs_ipa and not ipa:
-            stats["ipa_miss"] += 1
-            ipa_misses.append((nid, word_field))
-
-        audio_filename = None
-        if needs_audio:
-            audio_filename = extract_audio_filename(wikitext)
-            if not audio_filename:
-                stats["audio_miss"] += 1
-                tts_candidates.append((nid, word_field))
-
-        plan.append({
-            "nid": nid, "word": word_field, "lookup": lookup,
-            "needs_ipa": needs_ipa, "needs_audio": needs_audio,
-            "ipa": ipa, "audio_filename": audio_filename,
-            "existing_audio": existing_audio,
-        })
-        time.sleep(0.3)  # gentle rate limiting for API calls
+        indexed_so_far = len(plan) + len(ipa_misses) + len(tts_candidates) + len(deferred)
+        print(f"  Batch {batch_start // BATCH_SIZE + 1}: "
+              f"indexed {len(batch)} words ({indexed_so_far} total)")
+        time.sleep(1)  # gentle pacing between batches
 
     if bailed:
         return stats
 
-    # ── Retry deferred Wiktionary lookups ────────────────────────────────────
+    # ── Retry deferred Wiktionary lookups (batched) ─────────────────────────
     if deferred and not dry_run:
         for pass_num in range(3):
             if not deferred:
@@ -750,22 +879,42 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                   f"({len(deferred)} words, waiting {wait}s)...")
             time.sleep(wait)
 
-            done_nids = []
+            # Batch-fetch all deferred lookups
+            deferred_lookups = list({info["lookup"] for info in deferred.values()})
+            retry_cache = {}
             bail_retry = False
-            for nid, info in deferred.items():
-                wikitext = fetch_wikitext(info["lookup"])
-                if wikitext is _DEFERRED_BAIL:
+            for batch_start in range(0, len(deferred_lookups), BATCH_SIZE):
+                batch = deferred_lookups[batch_start:batch_start + BATCH_SIZE]
+                batch_results = fetch_wikitext_batch(batch)
+                if any(v is _DEFERRED_BAIL for v in batch_results.values()):
                     bail_retry = True
                     break
-                if wikitext is _DEFERRED:
-                    continue  # still limited, try next pass
-                if not wikitext:
-                    if info["needs_ipa"]:
-                        ipa_misses.append((nid, info["word"]))
-                    if info["needs_audio"]:
-                        tts_candidates.append((nid, info["word"]))
-                    done_nids.append(nid)
-                    continue
+                retry_cache.update(batch_results)
+
+                # Lowercase retry for misses
+                lc_retry = [(w, w.lower()) for w in batch
+                            if retry_cache.get(w) is None and w.lower() != w]
+                if lc_retry:
+                    lc_results = fetch_wikitext_batch([lc for _, lc in lc_retry])
+                    if any(v is _DEFERRED_BAIL for v in lc_results.values()):
+                        bail_retry = True
+                        break
+                    for orig, lc in lc_retry:
+                        if lc_results.get(lc):
+                            retry_cache[orig] = lc_results[lc]
+
+            done_nids = []
+            for nid, info in deferred.items():
+                wikitext = retry_cache.get(info["lookup"])
+                if wikitext is None or wikitext is _DEFERRED:
+                    if wikitext is None and info["lookup"] in retry_cache:
+                        # Genuinely missing
+                        if info["needs_ipa"]:
+                            ipa_misses.append((nid, info["word"]))
+                        if info["needs_audio"]:
+                            tts_candidates.append((nid, info["word"]))
+                        done_nids.append(nid)
+                    continue  # still deferred or not in this batch
 
                 ipa = extract_ipa(wikitext) if info["needs_ipa"] else None
                 if info["needs_ipa"] and not ipa:
@@ -831,9 +980,9 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     # IPA + audio updates to Anki, then run TTS for remaining misses.
     # ══════════════════════════════════════════════════════════════════════════
     if plan:
-        print("\n── Phase 3: Download & apply ──")
+        print(f"\n── Phase 3: Download & apply ({len(plan)} words) ──")
 
-    for entry in plan:
+    for entry_idx, entry in enumerate(plan, 1):
         nid = entry["nid"]
         word_field = entry["word"]
         ipa = entry["ipa"]
@@ -850,7 +999,8 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             existing = entry["existing_audio"]
             if existing == f"[sound:{new_mp3}]":
                 if redownload:
-                    print(f"  {word_field:<30} audio=same ({new_mp3})")
+                    print(f"  [{entry_idx}/{len(plan)}] "
+                          f"{word_field:<30} audio=same ({new_mp3})")
                 stats["already_ok"] += 1
                 audio_filename = None  # nothing to download
                 if not ipa:
@@ -859,9 +1009,11 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         # Download audio from Commons
         if audio_filename and not dry_run:
             url = commons_url_from_filename(audio_filename)
-            audio_data = download_audio(url)
+            ctx = f"[{entry_idx}/{len(plan)}] {word_field}"
+            audio_data = download_audio(url, progress_ctx=ctx)
             if audio_data is _DEFERRED:
-                print(f"  {word_field:<30} audio=download rate-limited, skipping")
+                print(f"  [{entry_idx}/{len(plan)}] "
+                      f"{word_field:<30} audio=download rate-limited, skipping")
                 audio_data = None
                 audio_filename = None
             elif not audio_data:
@@ -890,7 +1042,8 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
 
         if parts:
             prefix = "[dry-run] " if dry_run else "  "
-            print(f"{prefix}{word_field:<30} {'  '.join(parts)}")
+            progress = f"[{entry_idx}/{len(plan)}] " if not dry_run else ""
+            print(f"{prefix}{progress}{word_field:<30} {'  '.join(parts)}")
 
         if dry_run:
             if ipa:
