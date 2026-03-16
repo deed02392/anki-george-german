@@ -619,16 +619,18 @@ class TestGeminiTtsSingle:
         monkeypatch.setattr(eia.requests, "post", lambda *a, **kw: resp)
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
-        result = eia._gemini_tts_single("Hund", "fake-key")
+        result, err = eia._gemini_tts_single("Hund", "fake-key")
         assert result == b"pcm-audio-data"
+        assert err is None
 
     def test_rate_limited(self, monkeypatch):
         monkeypatch.setattr(eia.requests, "post", lambda *a, **kw: _mock_response(
-            status=429, headers={"Retry-After": "1"}))
+            status=429))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
-        result = eia._gemini_tts_single("Hund", "fake-key")
+        result, err = eia._gemini_tts_single("Hund", "fake-key")
         assert result is eia._DEFERRED
+        assert err is not None
 
     def test_error_returns_none(self, monkeypatch):
         def _post(*a, **kw):
@@ -637,7 +639,7 @@ class TestGeminiTtsSingle:
         monkeypatch.setattr(eia.requests, "post", _post)
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
-        result = eia._gemini_tts_single("Hund", "fake-key")
+        result, err = eia._gemini_tts_single("Hund", "fake-key")
         assert result is None
 
     def test_bad_response_shape(self, monkeypatch):
@@ -645,7 +647,7 @@ class TestGeminiTtsSingle:
             json_data={"candidates": []}))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
-        result = eia._gemini_tts_single("Hund", "fake-key")
+        result, err = eia._gemini_tts_single("Hund", "fake-key")
         assert result is None
 
 
@@ -671,7 +673,7 @@ class TestGeminiTtsFallback:
 
     def test_success(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
-        monkeypatch.setattr(eia, "_gemini_tts_single", lambda w, k: b"pcm-data")
+        monkeypatch.setattr(eia, "_gemini_tts_single", lambda w, k: (b"pcm-data", None))
         stored = []
         monkeypatch.setattr(eia, "store_pcm_audio_in_anki",
                             lambda name, data: (stored.append(name), name)[-1])
@@ -682,28 +684,31 @@ class TestGeminiTtsFallback:
         assert result == 1
         assert stored[0] == "tts_Hund.mp3"
 
-    def test_rate_limited_defers_and_retries(self, monkeypatch):
+    def test_rate_limited_stops_immediately(self, monkeypatch):
+        """Daily quota hit → stop, don't retry."""
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
         call_count = [0]
+        mock_resp = _mock_response(status=429, json_data={
+            "error": {"details": [
+                {"@type": "type.googleapis.com/google.rpc.RetryInfo",
+                 "retryDelay": "33s"},
+            ]}
+        })
 
         def _tts(word, key):
             call_count[0] += 1
-            if call_count[0] == 1:
-                return eia._DEFERRED
-            return b"pcm-data"
+            return eia._DEFERRED, mock_resp
 
         monkeypatch.setattr(eia, "_gemini_tts_single", _tts)
-        monkeypatch.setattr(eia, "store_pcm_audio_in_anki", lambda n, d: n)
-        monkeypatch.setattr(eia, "anki", lambda *a, **kw: None)
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
-        result = eia._gemini_tts_fallback([(1, "der Hund")])
-        assert result == 1
-        assert call_count[0] == 2  # first call + retry
+        result = eia._gemini_tts_fallback([(1, "der Hund"), (2, "die Katze")])
+        assert result == 0
+        assert call_count[0] == 1  # stopped after first 429
 
     def test_permanent_failure(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
-        monkeypatch.setattr(eia, "_gemini_tts_single", lambda w, k: None)
+        monkeypatch.setattr(eia, "_gemini_tts_single", lambda w, k: (None, None))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia._gemini_tts_fallback([(1, "der Hund")])
@@ -1162,23 +1167,29 @@ class TestGeminiTtsSingleEdgeCases:
         pass
 
 
-class TestGeminiTtsFallbackRetryFail:
+class TestGeminiTtsFallbackQuotaStop:
 
-    def test_retry_pass_also_fails(self, monkeypatch):
-        """TTS deferred word fails again on retry → counted as fail."""
+    def test_stops_on_quota_skips_remaining(self, monkeypatch):
+        """Daily quota hit on 2nd word → stops, doesn't call 3rd."""
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
         call_count = [0]
+        mock_resp = _mock_response(status=429, json_data={"error": {"details": []}})
 
         def _tts(word, key):
             call_count[0] += 1
-            return eia._DEFERRED  # always rate limited
+            if call_count[0] == 2:
+                return eia._DEFERRED, mock_resp
+            return b"pcm-data", None
 
         monkeypatch.setattr(eia, "_gemini_tts_single", _tts)
+        monkeypatch.setattr(eia, "store_pcm_audio_in_anki", lambda n, d: n)
+        monkeypatch.setattr(eia, "anki", lambda *a, **kw: None)
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
-        result = eia._gemini_tts_fallback([(1, "der Hund")])
-        assert result == 0
-        assert call_count[0] == 2  # first try + retry
+        result = eia._gemini_tts_fallback([
+            (1, "der Hund"), (2, "die Katze"), (3, "das Kind")])
+        assert result == 1  # only first word succeeded
+        assert call_count[0] == 2  # stopped after 2nd call
 
 
 class TestEnrichNotesAdditionalPaths:

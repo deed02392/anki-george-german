@@ -545,27 +545,33 @@ GEMINI_API_URL = (
 )
 
 def _parse_gemini_retry_delay(resp):
-    """Extract retry delay from a Gemini 429 response.
+    """Extract quota info from a Gemini 429 response for diagnostics.
 
     Gemini returns retry info in the JSON body (google.rpc.RetryInfo),
-    not in HTTP headers. Falls back to 30s if unparseable.
+    not in HTTP headers. Returns (retry_delay_str, quota_id) or defaults.
     """
     try:
         data = resp.json()
-        for detail in data.get("error", {}).get("details", []):
-            if detail.get("@type", "").endswith("RetryInfo"):
-                delay_str = detail.get("retryDelay", "30s")
-                return max(int(delay_str.rstrip("s")), 15)
+        details = data.get("error", {}).get("details", [])
+        delay_str = None
+        quota_id = None
+        for detail in details:
+            dtype = detail.get("@type", "")
+            if dtype.endswith("RetryInfo"):
+                delay_str = detail.get("retryDelay", "unknown")
+            elif dtype.endswith("QuotaFailure"):
+                for v in detail.get("violations", []):
+                    quota_id = v.get("quotaId", "")
+        return delay_str or "unknown", quota_id or "unknown"
     except (ValueError, KeyError, AttributeError):
-        pass
-    return 30
+        return "unknown", "unknown"
 
 
 def _gemini_tts_single(word, api_key):
     """Generate TTS audio for a single word via Gemini API.
 
     Returns raw PCM bytes (s16le, 24kHz, mono), _DEFERRED if rate
-    limited after retries, or None on other failures.
+    limited, or None on other failures.
     """
     payload = {
         "contents": [{"role": "user", "parts": [{"text":
@@ -581,33 +587,27 @@ def _gemini_tts_single(word, api_key):
             },
         },
     }
-    for attempt in range(3):
-        try:
-            resp = requests.post(
-                GEMINI_API_URL, params={"key": api_key},
-                json=payload, timeout=30,
-            )
-            if resp.status_code == 429:
-                wait = _parse_gemini_retry_delay(resp)
-                if attempt < 2:
-                    print(f"    (TTS rate limited, waiting {wait}s...)")
-                    time.sleep(wait)
-                    continue
-                return _DEFERRED
-            resp.raise_for_status()
-            data = resp.json()
-            audio_b64 = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
-            return base64.b64decode(audio_b64)
-        except (requests.RequestException, KeyError, IndexError) as e:
-            print(f"    TTS error for '{word}': {e}")
-            return None
-    return _DEFERRED
+    try:
+        resp = requests.post(
+            GEMINI_API_URL, params={"key": api_key},
+            json=payload, timeout=30,
+        )
+        if resp.status_code == 429:
+            return _DEFERRED, resp
+        resp.raise_for_status()
+        data = resp.json()
+        audio_b64 = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
+        return base64.b64decode(audio_b64), None
+    except (requests.RequestException, KeyError, IndexError) as e:
+        print(f"    TTS error for '{word}': {e}")
+        return None, None
 
 
 def _gemini_tts_fallback(audio_misses, dry_run=False):
     """Generate TTS audio via Gemini for words missing Wiktionary audio.
 
-    Processes all words, deferring rate-limited ones for a retry pass.
+    Gemini's free tier has a daily quota (e.g. 10 req/day), so on the
+    first 429 we stop immediately — retrying is pointless within a run.
 
     Args:
         audio_misses: list of (note_id, word_field) tuples.
@@ -626,9 +626,8 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
 
     print(f"\n  TTS fallback for {len(audio_misses)} words...")
     updated = 0
-    deferred = []  # words that hit rate limits — retry later
 
-    for nid, word_field in audio_misses:
+    for i, (nid, word_field) in enumerate(audio_misses):
         lookup, _ = extract_lookup_word(word_field)
         prefix = "[dry-run] " if dry_run else "  "
 
@@ -637,11 +636,13 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
             updated += 1
             continue
 
-        pcm_data = _gemini_tts_single(word_field, api_key)
+        pcm_data, err_resp = _gemini_tts_single(word_field, api_key)
         if pcm_data is _DEFERRED:
-            print(f"  {word_field:<30} audio=TTS deferred (rate limited)")
-            deferred.append((nid, word_field))
-            continue
+            remaining = len(audio_misses) - i
+            delay_str, quota_id = _parse_gemini_retry_delay(err_resp)
+            print(f"  TTS daily quota reached ({quota_id}, retry after {delay_str})")
+            print(f"  Skipping remaining {remaining} words — re-run tomorrow")
+            break
         if not pcm_data:
             print(f"  {word_field:<30} audio=TTS fail")
             continue
@@ -655,26 +656,6 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
         print(f"  {word_field:<30} audio=TTS ok")
         updated += 1
         time.sleep(1)
-
-    # Retry deferred words with longer waits
-    if deferred and not dry_run:
-        print(f"\n  Retrying {len(deferred)} rate-limited TTS words (60s wait)...")
-        time.sleep(60)
-        for nid, word_field in deferred:
-            lookup, _ = extract_lookup_word(word_field)
-            pcm_data = _gemini_tts_single(word_field, api_key)
-            if pcm_data is _DEFERRED or not pcm_data:
-                print(f"  {word_field:<30} audio=TTS retry fail")
-                continue
-            mp3_name = f"tts_{lookup}.mp3"
-            store_pcm_audio_in_anki(mp3_name, pcm_data)
-            anki("updateNoteFields", note={
-                "id": nid,
-                "fields": {"Audio": f"[sound:{mp3_name}]"},
-            })
-            print(f"  {word_field:<30} audio=TTS retry ok")
-            updated += 1
-            time.sleep(3)
 
     return updated
 
