@@ -11,6 +11,10 @@ Usage:
     anki-german enrich audio --ipa-only   # just IPA (fast)
     anki-german enrich audio --audio-only # just audio downloads
     anki-german enrich audio --dry-run    # preview without changes
+
+Authentication (optional, 10x rate limit):
+    export WIKTIONARY_USER='Username@BotName'
+    export WIKTIONARY_PASS='bot-password-from-Special:BotPasswords'
 """
 import argparse
 import base64
@@ -45,6 +49,45 @@ _DEFERRED = "DEFERRED"
 
 # Sentinel: rate limit wait exceeds MAX_RATE_LIMIT_WAIT — save checkpoint and exit
 _DEFERRED_BAIL = "DEFERRED_BAIL"
+
+
+# ── Wikimedia authentication ─────────────────────────────────────────────────
+
+def _wiktionary_login():
+    """Log in to de.wiktionary.org using bot password from environment.
+
+    Set WIKTIONARY_USER and WIKTIONARY_PASS environment variables.
+    WIKTIONARY_USER should be "Username@BotName" and WIKTIONARY_PASS
+    is the bot password from Special:BotPasswords.
+
+    Authenticated users get 5000 req/hr instead of 500 req/hr on the
+    REST API.
+    """
+    user = os.environ.get("WIKTIONARY_USER", "")
+    pw = os.environ.get("WIKTIONARY_PASS", "")
+    if not user or not pw:
+        return False
+
+    # Step 1: Get login token
+    resp = web.get(WIKT_API, params={
+        "action": "query", "meta": "tokens", "type": "login", "format": "json",
+    }, timeout=10)
+    token = resp.json()["query"]["tokens"]["logintoken"]
+
+    # Step 2: Log in with bot password
+    resp = web.post(WIKT_API, data={
+        "action": "login", "lgname": user, "lgpassword": pw,
+        "lgtoken": token, "format": "json",
+    }, timeout=10)
+    result = resp.json().get("login", {})
+    if result.get("result") == "Success":
+        print(f"  Wiktionary: logged in as {result.get('lgusername', user)} "
+              f"(5000 req/hr)")
+        return True
+    else:
+        print(f"  Wiktionary login failed: {result.get('result', 'unknown')} "
+              f"— {result.get('reason', '')}")
+        return False
 
 
 # ── Checkpoint persistence ────────────────────────────────────────────────────
@@ -721,6 +764,9 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     do_ipa = not audio_only
     do_audio = not ipa_only
 
+    # Authenticate with Wiktionary for higher rate limits (5000/hr vs 500/hr)
+    logged_in = _wiktionary_login()
+
     # Ensure the Audio field exists
     if do_audio and not dry_run:
         fields = anki("modelFieldNames", modelName=MODEL)
@@ -1027,11 +1073,10 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     if plan:
         print(f"\n── Phase 3: Download & apply ({len(plan)} words) ──")
 
-    # Pace REST API calls: anonymous limit is 500/hr (~7.2s/call).
-    # Track calls and throttle if we're going too fast.
-    rest_call_times = []  # timestamps of recent REST API calls
-    REST_WINDOW = 3600  # 1 hour
-    REST_LIMIT = 480    # stay under the 500/hr limit with margin
+    # Pace REST API calls: anonymous 500/hr, authenticated 5000/hr.
+    rest_call_times = []
+    REST_WINDOW = 3600
+    REST_LIMIT = 4800 if logged_in else 480
 
     for entry_idx, entry in enumerate(plan, 1):
         nid = entry["nid"]
