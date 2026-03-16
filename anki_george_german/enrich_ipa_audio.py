@@ -988,13 +988,24 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         ipa = entry["ipa"]
         audio_filename = entry["audio_filename"]
 
-        # Probe Commons for higher-quality numbered variants
+        # Skip download if we already have this exact file (check before probing).
+        # In --redownload mode, skip this early check so we still probe Commons
+        # for higher-quality numbered variants (De-Word2.ogg etc.).
+        audio_data = None
+        if audio_filename and not dry_run and not redownload:
+            base_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
+            existing = entry["existing_audio"]
+            if existing == f"[sound:{base_mp3}]":
+                stats["already_ok"] += 1
+                audio_filename = None
+                if not ipa:
+                    continue
+
+        # Probe Commons for higher-quality numbered variants (only if we need to download)
         if audio_filename and not dry_run:
             audio_filename = probe_commons_variants(audio_filename)
 
-        # Skip download if we already have this exact file
-        audio_data = None
-        if audio_filename and not dry_run:
+            # Re-check after probing — the probed variant might already be stored
             new_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
             existing = entry["existing_audio"]
             if existing == f"[sound:{new_mp3}]":
@@ -1004,7 +1015,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                 stats["already_ok"] += 1
                 audio_filename = None  # nothing to download
                 if not ipa:
-                    continue  # nothing to do at all for this note
+                    continue
 
         # Download audio from Commons
         if audio_filename and not dry_run:
