@@ -75,7 +75,6 @@ def main():
                         help="Reading speed in wpm for chunking (default: 100)")
     text_p.add_argument("--paragraphs",
                         help="(Legacy) Paragraph range — bypasses chapter detection")
-    text_p.add_argument("--phase", type=int, default=4)
     text_p.add_argument("--batch-size", type=int, default=10)
     text_p.add_argument("--sentences", type=int, default=3)
     text_p.add_argument("--dry-run", action="store_true")
@@ -91,7 +90,6 @@ def main():
     domain_p.add_argument("--brief", required=True)
     domain_p.add_argument("--source", required=True)
     domain_p.add_argument("--count", type=int, default=30)
-    domain_p.add_argument("--phase", type=int, default=4)
     domain_p.add_argument("--sentences", type=int, default=3)
     domain_p.add_argument("--dry-run", action="store_true")
 

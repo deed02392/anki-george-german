@@ -42,8 +42,8 @@ img/                        Documentation images
 The project installs as `anki-german` via `uv sync`:
 
 ```sh
-anki-german generate text       --file --source [--select] [--paragraphs] [--phase] [--batch-size] [--sentences] [--dry-run] [--enrich]
-anki-german generate domain     --brief --source [--count] [--phase] [--sentences] [--dry-run]
+anki-german generate text       --file --source [--select] [--paragraphs] [--batch-size] [--sentences] [--dry-run] [--enrich]
+anki-german generate domain     --brief --source [--count] [--sentences] [--dry-run]
 anki-german generate scan       --file [--chunk-minutes] [--reading-speed]
 anki-german enrich sentences    --source [--sentences] [--batch-size] [--dry-run]
 anki-german enrich audio        [--ipa-only] [--audio-only] [--audio-delay] [--no-llm] [--dry-run]
@@ -68,7 +68,7 @@ Two modes for generating new vocabulary cards:
 anki-german generate text \
     --file data/books/Schachenovelle.txt \
     --source schachnovelle --paragraphs 1-30 \
-    --domain literature --phase 4 --dry-run
+    --domain literature --dry-run
 ```
 
 Pipeline stages:
@@ -79,7 +79,7 @@ Pipeline stages:
 5. **Summarise** — LLM summarises the text chunk for thematic context
 6. **LLM enrichment** — Claude Sonnet generates all card fields in batches of ~10
 7. **Validation** — cloze substring check, verbatim quote rejection, field presence
-8. **Import** — `addNotes` to Anki with source/domain/phase tags
+8. **Import** — `addNotes` to Anki with source tags
 9. **IPA enrichment** — automatic Wiktionary IPA lookup for new notes
 10. **Checkpoint** — save JSON to `data/generated/`
 
@@ -88,7 +88,7 @@ Pipeline stages:
 anki-german generate domain \
     --brief "IT security vocabulary" \
     --source it_security --count 30 \
-    --domain security,technology --phase 4 --dry-run
+    --domain security,technology --dry-run
 ```
 
 Skips spaCy/compound stages; LLM generates words from the brief directly.
@@ -135,25 +135,14 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 - `GRAMMAR_CLASSES` — grammar-specific (accent colour, `.hero.gram`, `.sub-hero.gram`)
 - Shared components in `BASE_LAYOUT`: `.hero`, `.sub-hero`, `.type-tag`, `.hint-text`, `.examples`/`.hl`, `.callout`
 
-## Phase Badges
-
-| Phase | Colour (dark) | Colour (light) | CSS class |
-|-------|--------------|----------------|-----------|
-| P1 | #4fa3e0 (blue) | #1a6fa8 | `.phase-1` |
-| P2 | #3dbb72 (green) | #217a44 | `.phase-2` |
-| P3 | #f08030 (orange) | #c05a00 | `.phase-3` |
-| P4 | #9b59b6 (purple) | #6c3483 | `.phase-4` |
-
 ## Tag Structure
 
 - `source::schachnovelle`, `source::it_security` — origin of the card
-- `domain::literature`, `domain::security` — extends existing `domain::play`, etc.
-- `phase::4` — new phases beyond the original 1-3
-- Existing tags (`child_vocab`, `phase::1`, etc.) are untouched
+- `source::schachnovelle::chunk::1` — chapter/chunk within a source
 
-## Vocab Note Type Fields (13)
+## Vocab Note Type Fields (12)
 
-Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, SentenceTranslation, Domains, Phase, Note
+Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, ClozeHint, SentenceTranslation, Note
 
 ### ClozeWord convention
 

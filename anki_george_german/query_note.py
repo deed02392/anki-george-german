@@ -17,7 +17,6 @@ def _print_note(note):
     article = _field(note, "Article")
     ipa = _field(note, "IPA")
     disambig = _field(note, "WordTranslationDisambiguate")
-    phase = _field(note, "Phase")
     usage_note = _field(note, "Note")
 
     # Header
@@ -57,8 +56,6 @@ def _print_note(note):
 
     # Footer
     meta = []
-    if phase:
-        meta.append(f"P{phase}")
     meta.append(f"#{note['noteId']}")
     if usage_note:
         print(f"\n  Note: {usage_note}")
