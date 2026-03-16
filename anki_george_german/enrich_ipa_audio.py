@@ -320,6 +320,35 @@ def extract_ipa(wikitext):
     return m.group(1) if m else None
 
 
+def detect_old_spelling(wikitext):
+    """Detect if a Wiktionary page is an old-spelling redirect.
+
+    German Wiktionary marks these with templates like:
+      {{Alte Schreibweise|jedes Mal|Reform 1996}}
+      {{Schweizer und Liechtensteiner Schreibweise|spaßen|...}}
+
+    Or prose like:
+      "X ist eine alte Schreibweise von Y"
+
+    Returns the modern spelling (str) if detected, or None.
+    """
+    # Template form: {{Alte Schreibweise|modern|...}}
+    m = re.search(r"\{\{Alte Schreibweise\|([^}|]+)", wikitext)
+    if m:
+        return m.group(1).strip()
+    # Swiss/Liechtenstein variant: {{Schweizer und Liechtensteiner Schreibweise|modern|...}}
+    m = re.search(r"\{\{Schweizer und Liechtensteiner Schreibweise\|([^}|]+)", wikitext)
+    if m:
+        return m.group(1).strip()
+    # Prose form (rendered HTML or other wikis)
+    m = re.search(
+        r"ist eine (?:alte|veraltete|nicht mehr gültige) Schreibweise von "
+        r"(?:''+)?(?:\[\[)?([^\]'.\n]+)",
+        wikitext,
+    )
+    return m.group(1).strip() if m else None
+
+
 
 # ── Audio discovery via REST API ─────────────────────────────────────────────
 
@@ -330,10 +359,16 @@ def fetch_best_audio(word):
     Wiktionary page, filters to German audio (De-*.ogg/wav), and picks the
     best candidate by quality heuristics.
 
-    Returns (filename, direct_url) on success, or (None, None) if no audio
-    is available. Returns (_DEFERRED, None) on rate limit / transient error.
+    Returns (filename, direct_url, detail) on success, or (None, None, detail)
+    if no audio is available. Returns (_DEFERRED/_DEFERRED_BAIL, None, detail)
+    on rate limit / transient error.
+
+    detail is a short string describing what happened (for logging).
     """
-    for attempt_word in [word, word.lower()] if word.lower() != word else [word]:
+    attempts = [word, word.lower()] if word.lower() != word else [word]
+    for attempt_word in attempts:
+        is_fallback = attempt_word != word
+        page_label = f"lowercase page '{attempt_word}'" if is_fallback else f"page '{attempt_word}'"
         url = f"{WIKT_REST}/page/{requests.utils.quote(attempt_word, safe='')}/links/media"
         for retry in range(3):
             try:
@@ -342,7 +377,7 @@ def fetch_best_audio(word):
                     wait = int(resp.headers.get("Retry-After", 30))
                     wait = max(wait, 10)
                     if wait > MAX_RATE_LIMIT_WAIT:
-                        return _DEFERRED_BAIL, None
+                        return _DEFERRED_BAIL, None, "rate-limited (Retry-After too long)"
                     print(f"    (REST media rate limited, waiting {wait}s...)")
                     time.sleep(wait)
                     continue
@@ -353,20 +388,33 @@ def fetch_best_audio(word):
                 files = data.get("files", [])
                 result = _pick_best_audio(files, attempt_word)
                 if result:
-                    return result
-                # Debug: log what files existed but didn't match
+                    filename, file_url = result
+                    if is_fallback:
+                        detail = f"via {page_label} (NOT main page)"
+                        print(f"    (warning: {word} matched via lowercase fallback → {filename})")
+                    else:
+                        detail = f"via {page_label}"
+                    return filename, file_url, detail
+                # Page exists but no matching audio — log what was there
                 audio_titles = [f.get("title", "?") for f in files
                                 if f.get("preferred", {}).get("mediatype") == "AUDIO"]
                 if audio_titles:
-                    print(f"    (REST: {attempt_word} has audio files but none matched: "
+                    print(f"    ({page_label}: audio files exist but none matched: "
                           f"{audio_titles[:5]})")
+                elif not is_fallback:
+                    # Only log "no audio" for the primary page
+                    all_titles = [f.get("title", "?") for f in files]
+                    if all_titles:
+                        print(f"    ({page_label}: {len(all_titles)} media files, none are audio)")
                 break  # page exists but no matching audio
             except (requests.RequestException, ValueError):
                 if retry < 2:
                     time.sleep(2)
                     continue
-                return _DEFERRED, None
-    return None, None
+                return _DEFERRED, None, f"network error on {page_label}"
+    if len(attempts) > 1:
+        return None, None, "no audio on main or lowercase page"
+    return None, None, "no audio on Wiktionary"
 
 
 def _pick_best_audio(files, word):
@@ -393,8 +441,8 @@ def _pick_best_audio(files, word):
             title = title[5:]
         fn_lower = title.lower()
 
-        # Try standard De-{word}.ogg/.wav/.mp3 format
-        audio_ext = fn_lower.endswith((".ogg", ".wav", ".mp3"))
+        # Try standard De-{word}.ogg/.wav/.mp3/.oga format
+        audio_ext = fn_lower.endswith((".ogg", ".wav", ".mp3", ".oga"))
         is_standard = fn_lower.startswith("de-") and audio_ext
         is_lingua = False
         ll_match = None
@@ -404,8 +452,10 @@ def _pick_best_audio(files, word):
                 continue
             basename = title.rsplit(".", 1)[0]  # "De-Hund2"
             stem = basename[3:]  # "Hund2"  (strip "De-")
-            stem_base = re.sub(r"\d+$", "", stem)  # "Hund"
-            if " " in stem or stem_base.lower() != word.lower():
+            # Strip trailing digits and any parenthetical suffix like " 01 (fcm)"
+            stem_clean = re.sub(r"[\s(].*$", "", stem)  # "erinnern 01 (fcm)" -> "erinnern"
+            stem_base = re.sub(r"\d+$", "", stem_clean)  # "Hund2" -> "Hund"
+            if stem_base.lower() != word.lower():
                 continue
         else:
             ll_match = ll_re.match(title)
@@ -424,11 +474,15 @@ def _pick_best_audio(files, word):
         duration = original.get("duration") or 0
         timestamp = f.get("latest", {}).get("timestamp", "")
 
-        # Score: numbered standard variants best, then Lingua Libre, then base
+        # Score: clean numbered variants best, then Lingua Libre, then base,
+        # then metadata-tagged (e.g. "(fcm)") variants lowest among standard
         if is_lingua:
             score = 2
-        elif re.search(r"\d\.(ogg|wav|mp3)$", fn_lower):
+        elif re.search(r"\d\.(ogg|wav|mp3|oga)$", fn_lower):
             score = 3
+        elif "(" in title or " " in basename[3:]:
+            # Has metadata suffix like "01 (fcm)" — usable but not preferred
+            score = 0
         else:
             score = 1
 
@@ -685,15 +739,16 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
         dry_run: Preview without applying.
 
     Returns:
-        Number of notes updated.
+        (updated, quota_skipped) — number of notes updated, number skipped
+        due to quota exhaustion.
     """
     if not audio_misses:
-        return 0
+        return 0, 0
 
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         print("\n  Skipping TTS fallback (GEMINI_API_KEY not set)")
-        return 0
+        return 0, 0
 
     print(f"\n  TTS fallback for {len(audio_misses)} words...")
     updated = 0
@@ -713,7 +768,7 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
             delay_str, quota_id = _parse_gemini_retry_delay(err_resp)
             print(f"  TTS daily quota reached ({quota_id}, retry after {delay_str})")
             print(f"  Skipping remaining {remaining} words — re-run tomorrow")
-            break
+            return updated, remaining
         if not pcm_data:
             print(f"  {word_field:<30} audio=TTS fail")
             continue
@@ -728,7 +783,7 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
         updated += 1
         time.sleep(1)
 
-    return updated
+    return updated, 0
 
 
 # ── Core enrichment function (importable) ────────────────────────────────────
@@ -814,6 +869,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     deferred = {}      # nid -> {word, lookup, needs_ipa, needs_audio} (rate-limited)
     ipa_misses = []    # (nid, word) — genuinely no IPA on Wiktionary
     tts_candidates = []  # (nid, word) — genuinely no audio on Wiktionary
+    old_spellings = []  # (word, modern_form) — deck entries with outdated spelling
 
     # Try to resume from checkpoint
     checkpoint = _load_checkpoint()
@@ -932,6 +988,11 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                             tts_candidates.append((nid, word_field))
                         continue
 
+                    # Detect old/reformed spelling redirects
+                    modern = detect_old_spelling(wikitext)
+                    if modern:
+                        old_spellings.append((word_field, modern))
+
                     ipa = extract_ipa(wikitext) if needs_ipa else None
                     if needs_ipa and not ipa:
                         stats["ipa_miss"] += 1
@@ -1014,6 +1075,11 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                     stats["ipa_miss"] += 1
                     ipa_misses.append((nid, info["word"]))
 
+                # Detect old/reformed spelling redirects
+                modern = detect_old_spelling(wikitext)
+                if modern:
+                    old_spellings.append((info["word"], modern))
+
                 plan.append({
                     "nid": nid, "word": info["word"], "lookup": info["lookup"],
                     "needs_ipa": info["needs_ipa"], "needs_audio": info["needs_audio"],
@@ -1087,6 +1153,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         audio_filename = None
         audio_data = None
         audio_url = None
+        audio_detail = None
         if entry["needs_audio"] and not dry_run:
             lookup = entry["lookup"]
 
@@ -1101,7 +1168,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                 time.sleep(wait)
             rest_call_times.append(time.time())
 
-            best_file, best_url = fetch_best_audio(lookup)
+            best_file, best_url, detail = fetch_best_audio(lookup)
             if best_file is _DEFERRED_BAIL:
                 # Long rate limit — wait it out and retry once
                 remaining = len(plan) - entry_idx
@@ -1109,17 +1176,22 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                       f"{word_field:<30} rate-limited, waiting 120s "
                       f"({remaining} words remaining)...")
                 time.sleep(120)
-                best_file, best_url = fetch_best_audio(lookup)
+                best_file, best_url, detail = fetch_best_audio(lookup)
             if best_file is _DEFERRED or best_file is _DEFERRED_BAIL:
                 # Still failing — skip this word
                 print(f"  [{entry_idx}/{len(plan)}] "
-                      f"{word_field:<30} audio=skipped (rate limit)")
+                      f"{word_field:<30} audio=skipped ({detail})")
             elif best_file:
                 audio_filename = best_file
                 audio_url = best_url
+                audio_detail = detail
+                # Warn about non-standard filenames (metadata, spaces, etc.)
+                if best_file.startswith("De-") and ("(" in best_file or " " in best_file):
+                    print(f"    (note: using metadata-tagged file: {best_file})")
             else:
                 # No audio on Wiktionary → TTS candidate
                 tts_candidates.append((nid, word_field))
+                audio_detail = detail
         elif entry["needs_audio"] and dry_run:
             audio_filename = f"De-{entry['lookup']}.ogg"  # placeholder for dry-run
 
@@ -1128,13 +1200,17 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
             best_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
             existing = entry["existing_audio"]
             if existing == f"[sound:{best_mp3}]":
-                if redownload:
-                    print(f"  [{entry_idx}/{len(plan)}] "
-                          f"{word_field:<30} audio=same ({best_mp3})")
+                print(f"  [{entry_idx}/{len(plan)}] "
+                      f"{word_field:<30} audio=same ({best_mp3})")
                 stats["already_ok"] += 1
                 audio_filename = None
                 if not ipa:
                     continue
+            elif existing and audio_filename:
+                # We have audio but Wiktionary found a DIFFERENT file
+                old_name = existing.replace("[sound:", "").rstrip("]")
+                print(f"  [{entry_idx}/{len(plan)}] "
+                      f"{word_field:<30} audio=UPDATE {old_name} → {audio_filename}")
 
         # Download audio from Commons
         if audio_filename and not dry_run:
@@ -1162,13 +1238,14 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         if do_audio:
             if audio_filename:
                 if audio_data or dry_run:
-                    parts.append(f"audio=Wiktionary ({audio_filename})")
+                    parts.append(f"audio=NEW ({audio_filename})")
                 else:
-                    parts.append(f"audio=Wiktionary fail ({audio_filename})")
+                    parts.append(f"audio=FAIL download ({audio_filename})")
+            elif entry["needs_audio"] and audio_detail:
+                parts.append(f"audio=none — {audio_detail} (→TTS)")
             elif entry["needs_audio"]:
                 parts.append("audio=none (→TTS)")
-            else:
-                parts.append("audio=ok")
+            # Don't log "audio=ok" for words that already had audio and weren't checked
 
         if parts:
             prefix = "[dry-run] " if dry_run else "  "
@@ -1201,9 +1278,10 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
 
     # ── TTS fallback for audio (genuinely missing from Wiktionary) ───────────
     if llm_fallback and tts_candidates and do_audio:
-        tts_count = _gemini_tts_fallback(tts_candidates, dry_run=dry_run)
+        tts_count, tts_quota_skipped = _gemini_tts_fallback(tts_candidates, dry_run=dry_run)
         stats["audio_tts"] = tts_count
         stats["audio_added"] += tts_count
+        stats["tts_quota_skipped"] = tts_quota_skipped
 
     # ── Summary ──────────────────────────────────────────────────────────────
     prefix = "[dry-run] " if dry_run else ""
@@ -1220,12 +1298,19 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         tts_audio = stats["audio_tts"]
         detail = f" ({wikt_audio} Wiktionary + {tts_audio} TTS)" if tts_audio else ""
         print(f"  Audio added:      {stats['audio_added']}{detail}")
+        if stats.get("tts_quota_skipped"):
+            print(f"  TTS quota skip:   {stats['tts_quota_skipped']} (re-run tomorrow)")
     print(f"  Skipped (phrase): {stats['skipped_phrase']}")
     print(f"  No Wiktionary page: {stats['no_page']}")
     if stats["already_ok"]:
         print(f"  Already complete: {stats['already_ok']}")
     if deferred:
         print(f"  Wikt rate-limited: {len(deferred)} (re-run later)")
+
+    if old_spellings:
+        print(f"\n  ⚠ Old/reformed spellings detected ({len(old_spellings)}):")
+        for word, modern in old_spellings:
+            print(f"    {word} → {modern}")
 
     # All phases completed — clear any saved checkpoint
     _clear_checkpoint()

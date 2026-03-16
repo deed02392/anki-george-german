@@ -237,6 +237,32 @@ class TestExtractIpa:
         assert result is None
 
 
+class TestDetectOldSpelling:
+
+    def test_alte_schreibweise_template(self):
+        wikitext = ("== jedesmal ({{Sprache|Deutsch}}) ==\n"
+                    "{{Alte Schreibweise|jedes Mal|Reform 1996}}")
+        assert eia.detect_old_spelling(wikitext) == "jedes Mal"
+
+    def test_schweizer_schreibweise_template(self):
+        wikitext = ("== spassen ({{Sprache|Deutsch}}) ==\n"
+                    "{{Schweizer und Liechtensteiner Schreibweise"
+                    "|spaßen|Worttrennung=spas·sen}}")
+        assert eia.detect_old_spelling(wikitext) == "spaßen"
+
+    def test_prose_fallback(self):
+        wikitext = ("tschüß ist eine alte Schreibweise von "
+                    "[[tschüs]]. Sie ist nach der reformierten "
+                    "Rechtschreibung von 1996 nicht mehr korrekt.")
+        assert eia.detect_old_spelling(wikitext) == "tschüs"
+
+    def test_normal_page_returns_none(self):
+        assert eia.detect_old_spelling(WIKITEXT_WITH_IPA) is None
+
+    def test_empty_returns_none(self):
+        assert eia.detect_old_spelling("") is None
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # E. commons_url_from_filename()
 # ═══════════════════════════════════════════════════════════════════════════
@@ -301,7 +327,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename == "De-Hund2.ogg"
         assert "De-Hund2.ogg" in url
 
@@ -313,7 +339,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename == "De-Hund.ogg"
 
     def test_skips_phrase_recordings(self, monkeypatch):
@@ -324,7 +350,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("fangen")
+        filename, url, _detail = eia.fetch_best_audio("fangen")
         assert filename == "De-fangen.ogg"
 
     def test_no_audio_returns_none(self, monkeypatch):
@@ -335,7 +361,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename is None
         assert url is None
 
@@ -343,7 +369,7 @@ class TestFetchBestAudio:
         """Returns (None, None) for non-existent page."""
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: _mock_response(status=404))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("xyznonexistent")
+        filename, url, _detail = eia.fetch_best_audio("xyznonexistent")
         assert filename is None
 
     def test_rate_limit_returns_deferred(self, monkeypatch):
@@ -351,7 +377,7 @@ class TestFetchBestAudio:
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: _mock_response(
             status=429, headers={"Retry-After": "999"}))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename is eia._DEFERRED_BAIL
 
     def test_network_error_returns_deferred(self, monkeypatch):
@@ -360,7 +386,7 @@ class TestFetchBestAudio:
             raise requests.ConnectionError("fail")
         monkeypatch.setattr(eia.web, "get", _fail)
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename is eia._DEFERRED
 
     def test_prefers_numbered_over_lingua_libre(self, monkeypatch):
@@ -373,7 +399,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename == "De-Hund2.ogg"
 
     def test_lingua_libre_accepted(self, monkeypatch):
@@ -383,7 +409,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename == "LL-Q188 (deu)-WikiSpeech-Hund.ogg"
 
     def test_lingua_libre_over_base(self, monkeypatch):
@@ -395,7 +421,7 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename == "LL-Q188 (deu)-WikiSpeech-Hund.ogg"
 
     def test_file_prefix_stripped(self, monkeypatch):
@@ -405,8 +431,41 @@ class TestFetchBestAudio:
         ]
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
-        filename, url = eia.fetch_best_audio("Hund")
+        filename, url, _detail = eia.fetch_best_audio("Hund")
         assert filename == "De-Hund.ogg"
+
+    def test_oga_extension_accepted(self, monkeypatch):
+        """.oga (Ogg audio MIME extension) is accepted like .ogg."""
+        files = [
+            self._audio_file("De-Zimmer.oga"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url, _detail = eia.fetch_best_audio("Zimmer")
+        assert filename == "De-Zimmer.oga"
+
+    def test_space_metadata_filename_accepted(self, monkeypatch):
+        """Filenames with spaces/metadata like 'De-erinnern 01 (fcm).ogg' are accepted."""
+        files = [
+            self._audio_file("De-erinnern 01 (fcm).ogg"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url, _detail = eia.fetch_best_audio("erinnern")
+        assert filename == "De-erinnern 01 (fcm).ogg"
+
+    def test_clean_numbered_preferred_over_metadata(self, monkeypatch):
+        """Clean numbered variant preferred over metadata-tagged variant."""
+        files = [
+            self._audio_file("De-erinnern 01 (fcm).ogg",
+                             timestamp="2023-06-01T00:00:00Z"),
+            self._audio_file("De-erinnern2.ogg",
+                             timestamp="2020-01-01T00:00:00Z"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url, _detail = eia.fetch_best_audio("erinnern")
+        assert filename == "De-erinnern2.ogg"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -691,17 +750,17 @@ class TestGeminiTtsSingle:
 class TestGeminiTtsFallback:
 
     def test_empty_list(self):
-        assert eia._gemini_tts_fallback([]) == 0
+        assert eia._gemini_tts_fallback([]) == (0, 0)
 
     def test_no_api_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         result = eia._gemini_tts_fallback([(1, "der Hund")])
-        assert result == 0
+        assert result == (0, 0)
 
     def test_dry_run(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
         result = eia._gemini_tts_fallback([(1, "der Hund")], dry_run=True)
-        assert result == 1
+        assert result == (1, 0)
 
     def test_success(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
@@ -713,7 +772,7 @@ class TestGeminiTtsFallback:
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia._gemini_tts_fallback([(1, "der Hund")])
-        assert result == 1
+        assert result == (1, 0)
         assert stored[0] == "tts_Hund.mp3"
 
     def test_rate_limited_stops_immediately(self, monkeypatch):
@@ -735,7 +794,7 @@ class TestGeminiTtsFallback:
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia._gemini_tts_fallback([(1, "der Hund"), (2, "die Katze")])
-        assert result == 0
+        assert result == (0, 2)
         assert call_count[0] == 1  # stopped after first 429
 
     def test_permanent_failure(self, monkeypatch):
@@ -744,7 +803,7 @@ class TestGeminiTtsFallback:
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia._gemini_tts_fallback([(1, "der Hund")])
-        assert result == 0
+        assert result == (0, 0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -845,10 +904,11 @@ def enrich_env(monkeypatch, tmp_path):
     monkeypatch.setattr(eia, "fetch_wikitext", _fetch)
     monkeypatch.setattr(eia, "download_audio", lambda url, **kw: b"audio-bytes")
     monkeypatch.setattr(eia, "fetch_best_audio", lambda w: ("De-" + w + ".ogg",
-                        "https://upload.wikimedia.org/wikipedia/commons/a/aa/De-" + w + ".ogg"))
+                        "https://upload.wikimedia.org/wikipedia/commons/a/aa/De-" + w + ".ogg",
+                        "via page '" + w + "'"))
     monkeypatch.setattr(eia, "store_audio_in_anki", lambda fn, data: fn.replace(".ogg", ".mp3"))
     monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-    monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+    monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
     monkeypatch.setattr(eia.time, "sleep", lambda _: None)
     monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "enrich_index.json")
 
@@ -899,10 +959,10 @@ class TestEnrichNotes:
         # Wikitext exists but has no Audio template
         enrich_env["wikitext_db"]["Hund"] = WIKITEXT_NO_IPA.replace("Hund", "Hund")
         # REST API also finds no audio for this word
-        monkeypatch.setattr(eia, "fetch_best_audio", lambda w: (None, None))
+        monkeypatch.setattr(eia, "fetch_best_audio", lambda w: (None, None, "no audio"))
         tts_calls = []
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 1)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (1, 0))[-1])
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         assert len(tts_calls) == 1
 
@@ -913,7 +973,7 @@ class TestEnrichNotes:
         tts_calls = []
         llm_calls = []
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 0)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (0, 0))[-1])
         monkeypatch.setattr(eia, "_llm_ipa_fallback",
                             lambda words, **kw: (llm_calls.extend(words), 0)[-1])
         result = eia.enrich_notes(note_ids=[1])
@@ -927,7 +987,7 @@ class TestEnrichNotes:
         monkeypatch.setattr(eia, "download_audio", lambda url, **kw: eia._DEFERRED)
         tts_calls = []
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 0)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (0, 0))[-1])
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         assert len(tts_calls) == 0  # NOT sent to TTS
 
@@ -954,7 +1014,7 @@ class TestEnrichNotes:
         monkeypatch.setattr(eia, "_llm_ipa_fallback",
                             lambda *a, **kw: (llm_called.__setitem__(0, True), 0)[-1])
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda *a, **kw: (tts_called.__setitem__(0, True), 0)[-1])
+                            lambda *a, **kw: (tts_called.__setitem__(0, True), (0, 0))[-1])
         eia.enrich_notes(note_ids=[1], llm_fallback=False)
         assert not llm_called[0]
         assert not tts_called[0]
@@ -986,7 +1046,8 @@ class TestEnrichNotes:
         enrich_env["wikitext_db"]["Freund"] = WIKITEXT_WITH_IPA
         monkeypatch.setattr(eia, "fetch_best_audio",
                             lambda w: ("De-Freund2.ogg",
-                                       "https://upload.wikimedia.org/commons/7/73/De-Freund2.ogg"))
+                                       "https://upload.wikimedia.org/commons/7/73/De-Freund2.ogg",
+                                       "via page 'Freund'"))
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True, redownload=True)
         assert result["audio_added"] == 1
@@ -1031,7 +1092,7 @@ class TestEnrichNotesRetryPhase:
         monkeypatch.setattr(eia, "download_audio", lambda url, **kw: b"audio")
         monkeypatch.setattr(eia, "store_audio_in_anki", lambda fn, d: fn.replace(".ogg", ".mp3"))
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia.enrich_notes(note_ids=[1])
@@ -1056,7 +1117,7 @@ class TestEnrichNotesRetryPhase:
         monkeypatch.setattr(eia, "fetch_wikitext", lambda word: eia._DEFERRED)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 0)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (0, 0))[-1])
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia.enrich_notes(note_ids=[1])
@@ -1089,7 +1150,7 @@ class TestEnrichNotesRetryPhase:
         monkeypatch.setattr(eia, "_llm_ipa_fallback",
                             lambda words, **kw: (llm_calls.extend(words), len(words))[-1])
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), len(words))[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (len(words), 0))[-1])
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         result = eia.enrich_notes(note_ids=[1])
@@ -1220,7 +1281,7 @@ class TestGeminiTtsFallbackQuotaStop:
 
         result = eia._gemini_tts_fallback([
             (1, "der Hund"), (2, "die Katze"), (3, "das Kind")])
-        assert result == 1  # only first word succeeded
+        assert result == (1, 2)  # 1 succeeded, 2 skipped (quota hit on 2nd, 3rd never tried)
         assert call_count[0] == 2  # stopped after 2nd call
 
 
@@ -1244,7 +1305,8 @@ class TestEnrichNotesAdditionalPaths:
         monkeypatch.setattr(eia, "anki", _anki)
         monkeypatch.setattr(eia, "fetch_best_audio",
                             lambda w: ("De-" + w + ".ogg",
-                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg"))
+                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg",
+                                       "via page '" + w + "'"))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         return updates
 
@@ -1267,7 +1329,7 @@ class TestEnrichNotesAdditionalPaths:
         monkeypatch.setattr(eia, "anki", _anki)
         monkeypatch.setattr(eia, "fetch_wikitext", lambda w: None)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
 
         eia.enrich_notes(note_ids=None)
@@ -1304,7 +1366,7 @@ class TestEnrichNotesAdditionalPaths:
         self._setup_anki(monkeypatch, notes)
         monkeypatch.setattr(eia, "fetch_wikitext", lambda w: wikt_no_ipa)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
 
         result = eia.enrich_notes(note_ids=[1], ipa_only=True)
         assert result["ipa_miss"] == 1
@@ -1319,7 +1381,7 @@ class TestEnrichNotesAdditionalPaths:
         monkeypatch.setattr(eia, "download_audio", lambda url, **kw: b"audio")
         monkeypatch.setattr(eia, "store_audio_in_anki", lambda fn, d: fn.replace(".ogg", ".mp3"))
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
 
         # Needs audio but not IPA
         result = eia.enrich_notes(note_ids=[1])
@@ -1333,7 +1395,7 @@ class TestEnrichNotesAdditionalPaths:
         self._setup_anki(monkeypatch, notes)
         monkeypatch.setattr(eia, "fetch_wikitext", lambda w: wikt)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
 
         result = eia.enrich_notes(note_ids=[1])
         assert result["ipa_added"] == 1
@@ -1347,7 +1409,7 @@ class TestEnrichNotesAdditionalPaths:
         monkeypatch.setattr(eia, "fetch_wikitext", lambda w: wikt)
         monkeypatch.setattr(eia, "download_audio", lambda url, **kw: None)  # fail, not rate limit
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         # Audio not added, not deferred — it's a transient fail
@@ -1361,7 +1423,7 @@ class TestEnrichNotesAdditionalPaths:
         self._setup_anki(monkeypatch, notes)
         monkeypatch.setattr(eia, "fetch_wikitext", lambda w: wikt)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True, dry_run=True)
         assert result["audio_added"] == 1
@@ -1384,10 +1446,11 @@ class TestEnrichNotesRetryPhaseAdditional:
         monkeypatch.setattr(eia, "anki", _anki)
         monkeypatch.setattr(eia, "fetch_wikitext", fetch_fn)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
         monkeypatch.setattr(eia, "fetch_best_audio",
                             lambda w: ("De-" + w + ".ogg",
-                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg"))
+                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg",
+                                       "via page '" + w + "'"))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         return updates
 
@@ -1425,9 +1488,9 @@ class TestEnrichNotesRetryPhaseAdditional:
         tts_calls = []
         self._setup(monkeypatch, notes, _fetch)
         # REST API also finds no audio for this word
-        monkeypatch.setattr(eia, "fetch_best_audio", lambda w: (None, None))
+        monkeypatch.setattr(eia, "fetch_best_audio", lambda w: (None, None, "no audio"))
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 0)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (0, 0))[-1])
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         assert len(tts_calls) == 1
@@ -1448,7 +1511,7 @@ class TestEnrichNotesRetryPhaseAdditional:
         self._setup(monkeypatch, notes, _fetch)
         monkeypatch.setattr(eia, "download_audio", lambda url, **kw: None)  # fail
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 0)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (0, 0))[-1])
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         assert len(tts_calls) == 1
@@ -1469,7 +1532,7 @@ class TestEnrichNotesRetryPhaseAdditional:
         self._setup(monkeypatch, notes, _fetch)
         monkeypatch.setattr(eia, "download_audio", lambda url, **kw: eia._DEFERRED)
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda words, **kw: (tts_calls.extend(words), 0)[-1])
+                            lambda words, **kw: (tts_calls.extend(words), (0, 0))[-1])
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
         # Should NOT go to TTS — Wiktionary has it, just can't download
@@ -1539,7 +1602,7 @@ class TestCheckpointIntegration:
         monkeypatch.setattr(eia, "anki", _anki)
         monkeypatch.setattr(eia, "fetch_wikitext", fetch_fn)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         cp_path = tmp_path / "enrich_index.json"
         monkeypatch.setattr(eia, "CHECKPOINT_PATH", cp_path)
@@ -1738,10 +1801,11 @@ class TestArgPermutations:
         monkeypatch.setattr(eia, "store_audio_in_anki",
                             lambda fn, d: fn.rsplit(".", 1)[0] + ".mp3")
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: (0, 0))
         monkeypatch.setattr(eia, "fetch_best_audio",
                             lambda w: ("De-" + w + ".ogg",
-                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg"))
+                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg",
+                                       "via page '" + w + "'"))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "cp.json")
         return updates
@@ -1793,7 +1857,7 @@ class TestArgPermutations:
         monkeypatch.setattr(eia, "_llm_ipa_fallback",
                             lambda *a, **kw: (llm_called.append(1), 0)[-1])
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
-                            lambda *a, **kw: (tts_called.append(1), 0)[-1])
+                            lambda *a, **kw: (tts_called.append(1), (0, 0))[-1])
 
         result = eia.enrich_notes(note_ids=[1], llm_fallback=False)
         assert len(llm_called) == 0
