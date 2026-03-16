@@ -198,7 +198,7 @@ html, body, #qa { margin: 0; height: 100%; }
 
 - Requires Anki running with AnkiConnect add-on (2055492159)
 - Default URL: `http://localhost:8765`
-- All commands that call AnkiConnect must run in **tmux pane 4** (sandbox has network access)
+- All commands that call AnkiConnect must run in tmux session **anki** (`tmux new-session -s anki` or `tmux send-keys -t anki`)
 
 ## Wiktionary Enrichment
 
