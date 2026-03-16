@@ -1052,7 +1052,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                 else:
                     parts.append(f"audio=Wiktionary fail ({audio_filename})")
             elif entry["needs_audio"]:
-                pass  # already classified as TTS candidate or same-file skip
+                parts.append("audio=none (→TTS)")
             else:
                 parts.append("audio=ok")
 

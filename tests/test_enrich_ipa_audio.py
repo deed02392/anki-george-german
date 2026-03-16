@@ -1199,6 +1199,9 @@ class TestEnrichNotesAdditionalPaths:
             return []
 
         monkeypatch.setattr(eia, "anki", _anki)
+        monkeypatch.setattr(eia, "fetch_best_audio",
+                            lambda w: ("De-" + w + ".ogg",
+                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg"))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         return updates
 
