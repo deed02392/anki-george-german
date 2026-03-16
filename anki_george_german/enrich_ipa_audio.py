@@ -1027,6 +1027,12 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     if plan:
         print(f"\n── Phase 3: Download & apply ({len(plan)} words) ──")
 
+    # Pace REST API calls: anonymous limit is 500/hr (~7.2s/call).
+    # Track calls and throttle if we're going too fast.
+    rest_call_times = []  # timestamps of recent REST API calls
+    REST_WINDOW = 3600  # 1 hour
+    REST_LIMIT = 480    # stay under the 500/hr limit with margin
+
     for entry_idx, entry in enumerate(plan, 1):
         nid = entry["nid"]
         word_field = entry["word"]
@@ -1038,10 +1044,31 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         audio_url = None
         if entry["needs_audio"] and not dry_run:
             lookup = entry["lookup"]
+
+            # Pace REST API calls to stay under rate limit
+            now = time.time()
+            rest_call_times = [t for t in rest_call_times if now - t < REST_WINDOW]
+            if len(rest_call_times) >= REST_LIMIT:
+                oldest = rest_call_times[0]
+                wait = REST_WINDOW - (now - oldest) + 1
+                print(f"    (pacing: {len(rest_call_times)} REST calls in last hour, "
+                      f"waiting {wait:.0f}s...)")
+                time.sleep(wait)
+            rest_call_times.append(time.time())
+
             best_file, best_url = fetch_best_audio(lookup)
+            if best_file is _DEFERRED_BAIL:
+                # Long rate limit — wait it out and retry once
+                remaining = len(plan) - entry_idx
+                print(f"  [{entry_idx}/{len(plan)}] "
+                      f"{word_field:<30} rate-limited, waiting 120s "
+                      f"({remaining} words remaining)...")
+                time.sleep(120)
+                best_file, best_url = fetch_best_audio(lookup)
             if best_file is _DEFERRED or best_file is _DEFERRED_BAIL:
-                # REST API rate-limited — skip audio for this word
-                pass
+                # Still failing — skip this word
+                print(f"  [{entry_idx}/{len(plan)}] "
+                      f"{word_field:<30} audio=skipped (rate limit)")
             elif best_file:
                 audio_filename = best_file
                 audio_url = best_url
