@@ -363,18 +363,50 @@ class TestFetchBestAudio:
         filename, url = eia.fetch_best_audio("Hund")
         assert filename is eia._DEFERRED
 
-    def test_prefers_lingua_libre(self, monkeypatch):
-        """Lingua Libre recordings scored highest."""
+    def test_prefers_numbered_over_lingua_libre(self, monkeypatch):
+        """Numbered De- variants preferred over Lingua Libre."""
         files = [
-            self._audio_file("De-Hund.ogg", timestamp="2023-06-01T00:00:00Z"),
-            self._audio_file("LL-Q188-Hund.ogg", timestamp="2020-01-01T00:00:00Z"),
+            self._audio_file("De-Hund.ogg", timestamp="2020-01-01T00:00:00Z"),
+            self._audio_file("LL-Q188 (deu)-WikiSpeech-Hund.ogg",
+                             timestamp="2023-06-01T00:00:00Z"),
+            self._audio_file("De-Hund2.ogg", timestamp="2023-01-01T00:00:00Z"),
         ]
-        # LL prefix doesn't match De-{word} pattern, so it gets filtered out
-        # (Lingua Libre uses different naming: LL-Q188 (German)-speaker-word.wav)
         monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         filename, url = eia.fetch_best_audio("Hund")
-        assert filename == "De-Hund.ogg"  # LL one filtered by stem check
+        assert filename == "De-Hund2.ogg"
+
+    def test_lingua_libre_accepted(self, monkeypatch):
+        """Lingua Libre recordings are accepted when no De- files exist."""
+        files = [
+            self._audio_file("LL-Q188 (deu)-WikiSpeech-Hund.ogg"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename == "LL-Q188 (deu)-WikiSpeech-Hund.ogg"
+
+    def test_lingua_libre_over_base(self, monkeypatch):
+        """Lingua Libre preferred over plain De-Word.ogg (same timestamp)."""
+        files = [
+            self._audio_file("De-Hund.ogg", timestamp="2020-01-01T00:00:00Z"),
+            self._audio_file("LL-Q188 (deu)-WikiSpeech-Hund.ogg",
+                             timestamp="2020-01-01T00:00:00Z"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename == "LL-Q188 (deu)-WikiSpeech-Hund.ogg"
+
+    def test_file_prefix_stripped(self, monkeypatch):
+        """REST API title with 'File:' prefix is handled correctly."""
+        files = [
+            self._audio_file("File:De-Hund.ogg"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename == "De-Hund.ogg"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

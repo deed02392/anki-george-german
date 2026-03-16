@@ -307,9 +307,16 @@ def fetch_best_audio(word):
                     break  # page doesn't exist, try lowercase
                 resp.raise_for_status()
                 data = resp.json()
-                result = _pick_best_audio(data.get("files", []), word)
+                files = data.get("files", [])
+                result = _pick_best_audio(files, attempt_word)
                 if result:
                     return result
+                # Debug: log what files existed but didn't match
+                audio_titles = [f.get("title", "?") for f in files
+                                if f.get("preferred", {}).get("mediatype") == "AUDIO"]
+                if audio_titles:
+                    print(f"    (REST: {attempt_word} has audio files but none matched: "
+                          f"{audio_titles[:5]})")
                 break  # page exists but no matching audio
             except (requests.RequestException, ValueError):
                 if retry < 2:
@@ -322,29 +329,50 @@ def fetch_best_audio(word):
 def _pick_best_audio(files, word):
     """Pick the best German audio file from a media links response.
 
+    Accepts two filename conventions:
+      - Standard:      De-{word}.ogg / De-{word}N.ogg
+      - Lingua Libre:  LL-Q188 (deu)-{speaker}-{word}.ogg
+
     Returns (filename, direct_url) or None.
     """
+    # Regex for Lingua Libre German: LL-Q188 (deu)-Speaker-Word.ogg
+    ll_re = re.compile(
+        r"^LL-Q188\s*\(deu\)-[^-]+-(.+)\.(ogg|wav|mp3)$", re.IGNORECASE
+    )
+
     candidates = []
     for f in files:
         if f.get("preferred", {}).get("mediatype") != "AUDIO":
             continue
         title = f.get("title", "")
+        # REST API may include "File:" namespace prefix — strip it
+        if title.startswith("File:"):
+            title = title[5:]
         fn_lower = title.lower()
 
-        # Must be De-*.ogg or De-*.wav (standard German, not Austrian/Bavarian)
-        if not (fn_lower.startswith("de-") and
-                (fn_lower.endswith(".ogg") or fn_lower.endswith(".wav"))):
-            continue
-        if fn_lower.startswith("de-at-") or fn_lower.startswith("de-by-"):
-            continue
+        # Try standard De-{word}.ogg/.wav/.mp3 format
+        audio_ext = fn_lower.endswith((".ogg", ".wav", ".mp3"))
+        is_standard = fn_lower.startswith("de-") and audio_ext
+        is_lingua = False
+        ll_match = None
 
-        # Skip phrase recordings (contain spaces or the word "einen", etc.)
-        # A word-level recording should be De-{word}.ogg or De-{word}N.ogg
-        basename = title.rsplit(".", 1)[0]  # "De-Hund2"
-        stem = basename[3:]  # "Hund2"  (strip "De-")
-        stem_base = re.sub(r"\d+$", "", stem)  # "Hund"
-        if " " in stem or stem_base.lower() != word.lower():
-            continue
+        if is_standard:
+            if fn_lower.startswith("de-at-") or fn_lower.startswith("de-by-"):
+                continue
+            basename = title.rsplit(".", 1)[0]  # "De-Hund2"
+            stem = basename[3:]  # "Hund2"  (strip "De-")
+            stem_base = re.sub(r"\d+$", "", stem)  # "Hund"
+            if " " in stem or stem_base.lower() != word.lower():
+                continue
+        else:
+            ll_match = ll_re.match(title)
+            if ll_match:
+                ll_word = ll_match.group(1)
+                if ll_word.lower() != word.lower():
+                    continue
+                is_lingua = True
+            else:
+                continue  # neither standard nor Lingua Libre
 
         original = f.get("original", {})
         url = original.get("url", "")
@@ -353,11 +381,11 @@ def _pick_best_audio(files, word):
         duration = original.get("duration") or 0
         timestamp = f.get("latest", {}).get("timestamp", "")
 
-        # Score: Lingua Libre best, then numbered variants, then base
-        if fn_lower.startswith("ll-"):
-            score = 3
-        elif re.search(r"\d\.(ogg|wav)$", fn_lower):
+        # Score: numbered standard variants best, then Lingua Libre, then base
+        if is_lingua:
             score = 2
+        elif re.search(r"\d\.(ogg|wav|mp3)$", fn_lower):
+            score = 3
         else:
             score = 1
 
