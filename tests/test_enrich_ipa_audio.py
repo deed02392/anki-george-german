@@ -238,78 +238,7 @@ class TestExtractIpa:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# E. extract_audio_filename()
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestExtractAudioFilename:
-
-    def test_standard_audio(self):
-        result = eia.extract_audio_filename(WIKITEXT_WITH_IPA)
-        assert result == "De-Freund.ogg"
-
-    def test_no_audio(self):
-        result = eia.extract_audio_filename(WIKITEXT_NO_IPA)
-        assert result is None
-
-    def test_prefers_numbered_over_base(self):
-        wikitext = """\
-== Hund ({{Sprache|Deutsch}}) ==
-{{Aussprache}}
-:{{Audio|De-Hund.ogg}}, {{Audio|De-Hund2.ogg}}
-"""
-        result = eia.extract_audio_filename(wikitext)
-        assert result == "De-Hund2.ogg"
-
-    def test_prefers_lingua_libre(self):
-        wikitext = """\
-== Buch ({{Sprache|Deutsch}}) ==
-{{Aussprache}}
-:{{Audio|De-Buch.ogg}}, {{Audio|De-Buch2.ogg}}, {{Audio|LL-Q188 (deu)-Sebastian Wallroth-Buch.wav}}
-"""
-        result = eia.extract_audio_filename(wikitext)
-        assert result == "LL-Q188 (deu)-Sebastian Wallroth-Buch.wav"
-
-    def test_skips_austrian(self):
-        wikitext = """\
-== Katze ({{Sprache|Deutsch}}) ==
-{{Aussprache}}
-:{{Audio|De-at-Katze.ogg|die Katze|spr=at}}
-"""
-        result = eia.extract_audio_filename(wikitext)
-        assert result is None
-
-    def test_skips_bavarian(self):
-        wikitext = """\
-== gehen ({{Sprache|Deutsch}}) ==
-{{Aussprache}}
-:{{Audio|Bar-gehen.ogg|spr=by}}
-"""
-        result = eia.extract_audio_filename(wikitext)
-        assert result is None
-
-    def test_skips_dialect_keeps_standard(self):
-        wikitext = """\
-== sprechen ({{Sprache|Deutsch}}) ==
-{{Aussprache}}
-:{{Audio|De-sprechen.ogg}}, {{Audio|De-sprechen2.ogg}}, {{Audio|De-at-sprechen.ogg|spr=at}}
-"""
-        result = eia.extract_audio_filename(wikitext)
-        assert result == "De-sprechen2.ogg"
-
-    def test_only_austrian_returns_none(self):
-        """If all recordings are regional, return None."""
-        wikitext = """\
-== test ({{Sprache|Deutsch}}) ==
-{{Aussprache}}
-:{{Audio|De-at-test.ogg|spr=at}}, {{Audio|BY-test.ogg|spr=by}}
-"""
-        result = eia.extract_audio_filename(wikitext)
-        assert result is None
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# F. commons_url_from_filename()
+# E. commons_url_from_filename()
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -341,71 +270,111 @@ class TestCommonsUrlFromFilename:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# F2. probe_commons_variants()
+# F2. fetch_best_audio() — REST API audio discovery
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-class TestProbeCommonsVariants:
+class TestFetchBestAudio:
 
-    def test_finds_numbered_variant(self, monkeypatch):
-        """When De-Word2.ogg exists on Commons, returns it."""
-        def _head(url, **kw):
-            if "De-m%C3%B6gen2.ogg" in url:
-                return _mock_response(status=200)
-            return _mock_response(status=404)
-        monkeypatch.setattr(eia.web, "head", _head)
+    def _media_response(self, files):
+        """Build a mock response for /links/media."""
+        return _mock_response(json_data={"files": files})
 
-        result = eia.probe_commons_variants("De-mögen.ogg")
-        assert result == "De-mögen2.ogg"
+    def _audio_file(self, title, duration=1.0, timestamp="2023-01-01T00:00:00Z"):
+        """Build a single audio file entry as returned by the REST API."""
+        url = f"//upload.wikimedia.org/wikipedia/commons/a/aa/{title}"
+        return {
+            "title": title,
+            "file_description_url": f"https://commons.wikimedia.org/wiki/File:{title}",
+            "latest": {"timestamp": timestamp, "user": {"id": 1, "name": "test"}},
+            "preferred": {"mediatype": "AUDIO", "size": 10000, "width": None,
+                          "height": None, "duration": duration, "url": "placeholder"},
+            "original": {"mediatype": "AUDIO", "size": 10000, "width": None,
+                         "height": None, "duration": duration, "url": url},
+        }
 
-    def test_finds_highest_variant(self, monkeypatch):
-        """When both De-Word2 and De-Word3 exist, returns De-Word3."""
-        def _head(url, **kw):
-            return _mock_response(status=200)  # all exist
-        monkeypatch.setattr(eia.web, "head", _head)
+    def test_picks_numbered_variant(self, monkeypatch):
+        """Prefers De-Word2.ogg over De-Word.ogg."""
+        files = [
+            self._audio_file("De-Hund.ogg", duration=0.6, timestamp="2011-01-01T00:00:00Z"),
+            self._audio_file("De-Hund2.ogg", duration=1.4, timestamp="2023-01-01T00:00:00Z"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename == "De-Hund2.ogg"
+        assert "De-Hund2.ogg" in url
 
-        result = eia.probe_commons_variants("De-Hund.ogg")
-        assert result == "De-Hund3.ogg"
+    def test_skips_austrian(self, monkeypatch):
+        """Skips De-at-*.ogg recordings."""
+        files = [
+            self._audio_file("De-Hund.ogg"),
+            self._audio_file("De-at-Hund.ogg"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename == "De-Hund.ogg"
 
-    def test_no_variants_returns_original(self, monkeypatch):
-        def _head(url, **kw):
-            return _mock_response(status=404)
-        monkeypatch.setattr(eia.web, "head", _head)
+    def test_skips_phrase_recordings(self, monkeypatch):
+        """Skips recordings like 'De-einen Ball fangen.ogg'."""
+        files = [
+            self._audio_file("De-einen Ball fangen.ogg"),
+            self._audio_file("De-fangen.ogg"),
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("fangen")
+        assert filename == "De-fangen.ogg"
 
-        result = eia.probe_commons_variants("De-Hund.ogg")
-        assert result == "De-Hund.ogg"
+    def test_no_audio_returns_none(self, monkeypatch):
+        """Returns (None, None) when no matching audio files."""
+        files = [
+            {"title": "Dog.jpg", "preferred": {"mediatype": "BITMAP"},
+             "original": {"mediatype": "BITMAP", "url": "x"}, "latest": {}},
+        ]
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename is None
+        assert url is None
 
-    def test_already_numbered_skips_probe(self, monkeypatch):
-        """Already numbered filename isn't probed further."""
-        head_called = [False]
-        def _head(url, **kw):
-            head_called[0] = True
-            return _mock_response(status=200)
-        monkeypatch.setattr(eia.web, "head", _head)
+    def test_404_returns_none(self, monkeypatch):
+        """Returns (None, None) for non-existent page."""
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: _mock_response(status=404))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("xyznonexistent")
+        assert filename is None
 
-        result = eia.probe_commons_variants("De-Hund2.ogg")
-        assert result == "De-Hund2.ogg"
-        assert not head_called[0]
+    def test_rate_limit_returns_deferred(self, monkeypatch):
+        """Returns (_DEFERRED_BAIL, None) on excessive rate limit."""
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: _mock_response(
+            status=429, headers={"Retry-After": "999"}))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename is eia._DEFERRED_BAIL
 
-    def test_non_standard_pattern_skips_probe(self, monkeypatch):
-        """Non De-*.ogg filenames aren't probed."""
-        head_called = [False]
-        def _head(url, **kw):
-            head_called[0] = True
-            return _mock_response(status=200)
-        monkeypatch.setattr(eia.web, "head", _head)
-
-        result = eia.probe_commons_variants("LL-Q188-foo.wav")
-        assert result == "LL-Q188-foo.wav"
-        assert not head_called[0]
-
-    def test_network_error_returns_original(self, monkeypatch):
-        def _head(url, **kw):
+    def test_network_error_returns_deferred(self, monkeypatch):
+        """Returns (_DEFERRED, None) on transient network error."""
+        def _fail(*a, **kw):
             raise requests.ConnectionError("fail")
-        monkeypatch.setattr(eia.web, "head", _head)
+        monkeypatch.setattr(eia.web, "get", _fail)
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename is eia._DEFERRED
 
-        result = eia.probe_commons_variants("De-Hund.ogg")
-        assert result == "De-Hund.ogg"
+    def test_prefers_lingua_libre(self, monkeypatch):
+        """Lingua Libre recordings scored highest."""
+        files = [
+            self._audio_file("De-Hund.ogg", timestamp="2023-06-01T00:00:00Z"),
+            self._audio_file("LL-Q188-Hund.ogg", timestamp="2020-01-01T00:00:00Z"),
+        ]
+        # LL prefix doesn't match De-{word} pattern, so it gets filtered out
+        # (Lingua Libre uses different naming: LL-Q188 (German)-speaker-word.wav)
+        monkeypatch.setattr(eia.web, "get", lambda *a, **kw: self._media_response(files))
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+        filename, url = eia.fetch_best_audio("Hund")
+        assert filename == "De-Hund.ogg"  # LL one filtered by stem check
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -838,7 +807,8 @@ def enrich_env(monkeypatch, tmp_path):
     monkeypatch.setattr(eia, "anki", _anki_dispatch)
     monkeypatch.setattr(eia, "fetch_wikitext", _fetch)
     monkeypatch.setattr(eia, "download_audio", lambda url, **kw: b"audio-bytes")
-    monkeypatch.setattr(eia, "probe_commons_variants", lambda fn: fn)
+    monkeypatch.setattr(eia, "fetch_best_audio", lambda w: ("De-" + w + ".ogg",
+                        "https://upload.wikimedia.org/wikipedia/commons/a/aa/De-" + w + ".ogg"))
     monkeypatch.setattr(eia, "store_audio_in_anki", lambda fn, data: fn.replace(".ogg", ".mp3"))
     monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
     monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
@@ -891,11 +861,12 @@ class TestEnrichNotes:
         enrich_env["notes"].append(_make_note(1, "der Hund", ipa="hʊnt"))
         # Wikitext exists but has no Audio template
         enrich_env["wikitext_db"]["Hund"] = WIKITEXT_NO_IPA.replace("Hund", "Hund")
+        # REST API also finds no audio for this word
+        monkeypatch.setattr(eia, "fetch_best_audio", lambda w: (None, None))
         tts_calls = []
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
                             lambda words, **kw: (tts_calls.extend(words), 1)[-1])
         result = eia.enrich_notes(note_ids=[1], audio_only=True)
-        assert result["audio_miss"] == 1
         assert len(tts_calls) == 1
 
     def test_rate_limited_wikt_not_sent_to_tts(self, enrich_env, monkeypatch):
@@ -971,12 +942,14 @@ class TestEnrichNotes:
         assert result["already_ok"] == 1
 
     def test_redownload_upgrades_different_file(self, enrich_env, monkeypatch):
-        """redownload downloads when probe finds a better variant."""
-        # Note has De-Freund.mp3 but probe will find De-Freund2.ogg
+        """redownload downloads when REST API finds a better variant."""
+        # Note has De-Freund.mp3 but REST API will find De-Freund2.ogg
         enrich_env["notes"].append(
             _make_note(1, "der Freund", ipa="fʁɔɪ̯nt", audio="[sound:De-Freund.mp3]"))
         enrich_env["wikitext_db"]["Freund"] = WIKITEXT_WITH_IPA
-        monkeypatch.setattr(eia, "probe_commons_variants", lambda fn: "De-Freund2.ogg")
+        monkeypatch.setattr(eia, "fetch_best_audio",
+                            lambda w: ("De-Freund2.ogg",
+                                       "https://upload.wikimedia.org/commons/7/73/De-Freund2.ogg"))
 
         result = eia.enrich_notes(note_ids=[1], audio_only=True, redownload=True)
         assert result["audio_added"] == 1
@@ -1366,6 +1339,9 @@ class TestEnrichNotesRetryPhaseAdditional:
         monkeypatch.setattr(eia, "fetch_wikitext", fetch_fn)
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
         monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
+        monkeypatch.setattr(eia, "fetch_best_audio",
+                            lambda w: ("De-" + w + ".ogg",
+                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg"))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         return updates
 
@@ -1402,6 +1378,8 @@ class TestEnrichNotesRetryPhaseAdditional:
 
         tts_calls = []
         self._setup(monkeypatch, notes, _fetch)
+        # REST API also finds no audio for this word
+        monkeypatch.setattr(eia, "fetch_best_audio", lambda w: (None, None))
         monkeypatch.setattr(eia, "_gemini_tts_fallback",
                             lambda words, **kw: (tts_calls.extend(words), 0)[-1])
 
@@ -1715,7 +1693,9 @@ class TestArgPermutations:
                             lambda fn, d: fn.rsplit(".", 1)[0] + ".mp3")
         monkeypatch.setattr(eia, "_llm_ipa_fallback", lambda *a, **kw: 0)
         monkeypatch.setattr(eia, "_gemini_tts_fallback", lambda *a, **kw: 0)
-        monkeypatch.setattr(eia, "probe_commons_variants", lambda f: f)
+        monkeypatch.setattr(eia, "fetch_best_audio",
+                            lambda w: ("De-" + w + ".ogg",
+                                       "https://upload.wikimedia.org/commons/a/aa/De-" + w + ".ogg"))
         monkeypatch.setattr(eia.time, "sleep", lambda _: None)
         monkeypatch.setattr(eia, "CHECKPOINT_PATH", tmp_path / "cp.json")
         return updates

@@ -30,6 +30,7 @@ from ._llm import get_floodgate_token, call_llm_with_retry
 from . import DATA_DIR
 
 WIKT_API = "https://de.wiktionary.org/w/api.php"
+WIKT_REST = "https://de.wiktionary.org/w/rest.php/v1"
 CHECKPOINT_PATH = DATA_DIR / "enrich_index.json"
 
 # If Wiktionary's Retry-After exceeds this (seconds), save checkpoint and exit
@@ -276,38 +277,83 @@ def extract_ipa(wikitext):
     return m.group(1) if m else None
 
 
-def extract_audio_filename(wikitext):
-    """Extract the best German audio filename from wikitext.
 
-    Priority: Lingua Libre > numbered De variants (De-X2, De-X3) > De-X.ogg.
-    Skips Austrian (spr=at, De-at-) and Bavarian (spr=by, Bar-, BY-) recordings.
+# ── Audio discovery via REST API ─────────────────────────────────────────────
+
+def fetch_best_audio(word):
+    """Find the best German audio file for a word via the Wiktionary REST API.
+
+    Calls /page/{word}/links/media to get all media files linked from the
+    Wiktionary page, filters to German audio (De-*.ogg/wav), and picks the
+    best candidate by quality heuristics.
+
+    Returns (filename, direct_url) on success, or (None, None) if no audio
+    is available. Returns (_DEFERRED, None) on rate limit / transient error.
     """
-    section = extract_german_section(wikitext)
-    pron = extract_aussprache_block(section)
-    # Find all Audio templates — capture the full template content
-    all_audio = re.findall(r"\{\{Audio\|([^}]+)\}\}", pron)
-    if not all_audio:
-        return None
+    for attempt_word in [word, word.lower()] if word.lower() != word else [word]:
+        url = f"{WIKT_REST}/page/{requests.utils.quote(attempt_word, safe='')}/links/media"
+        for retry in range(3):
+            try:
+                resp = web.get(url, timeout=10)
+                if resp.status_code == 429:
+                    wait = int(resp.headers.get("Retry-After", 30))
+                    wait = max(wait, 10)
+                    if wait > MAX_RATE_LIMIT_WAIT:
+                        return _DEFERRED_BAIL, None
+                    print(f"    (REST media rate limited, waiting {wait}s...)")
+                    time.sleep(wait)
+                    continue
+                if resp.status_code == 404:
+                    break  # page doesn't exist, try lowercase
+                resp.raise_for_status()
+                data = resp.json()
+                result = _pick_best_audio(data.get("files", []), word)
+                if result:
+                    return result
+                break  # page exists but no matching audio
+            except (requests.RequestException, ValueError):
+                if retry < 2:
+                    time.sleep(2)
+                    continue
+                return _DEFERRED, None
+    return None, None
 
+
+def _pick_best_audio(files, word):
+    """Pick the best German audio file from a media links response.
+
+    Returns (filename, direct_url) or None.
+    """
     candidates = []
-    for entry in all_audio:
-        # entry may be "De-Hund.ogg" or "De-at-Hund.ogg|spr=at" etc.
-        parts = entry.split("|")
-        filename = parts[0].strip()
-        rest = "|".join(parts[1:]).lower()
-
-        # Skip regional dialects
-        if "spr=at" in rest or "spr=by" in rest:
+    for f in files:
+        if f.get("preferred", {}).get("mediatype") != "AUDIO":
             continue
-        fn_lower = filename.lower()
-        if fn_lower.startswith("de-at-") or fn_lower.startswith("bar-") or fn_lower.startswith("by-"):
-            continue
+        title = f.get("title", "")
+        fn_lower = title.lower()
 
-        # Must be .ogg or .wav
-        if not (fn_lower.endswith(".ogg") or fn_lower.endswith(".wav")):
+        # Must be De-*.ogg or De-*.wav (standard German, not Austrian/Bavarian)
+        if not (fn_lower.startswith("de-") and
+                (fn_lower.endswith(".ogg") or fn_lower.endswith(".wav"))):
+            continue
+        if fn_lower.startswith("de-at-") or fn_lower.startswith("de-by-"):
             continue
 
-        # Score: Lingua Libre best, then numbered, then base
+        # Skip phrase recordings (contain spaces or the word "einen", etc.)
+        # A word-level recording should be De-{word}.ogg or De-{word}N.ogg
+        basename = title.rsplit(".", 1)[0]  # "De-Hund2"
+        stem = basename[3:]  # "Hund2"  (strip "De-")
+        stem_base = re.sub(r"\d+$", "", stem)  # "Hund"
+        if " " in stem or stem_base.lower() != word.lower():
+            continue
+
+        original = f.get("original", {})
+        url = original.get("url", "")
+        if url.startswith("//"):
+            url = "https:" + url
+        duration = original.get("duration") or 0
+        timestamp = f.get("latest", {}).get("timestamp", "")
+
+        # Score: Lingua Libre best, then numbered variants, then base
         if fn_lower.startswith("ll-"):
             score = 3
         elif re.search(r"\d\.(ogg|wav)$", fn_lower):
@@ -315,54 +361,25 @@ def extract_audio_filename(wikitext):
         else:
             score = 1
 
-        candidates.append((score, filename))
+        candidates.append((score, timestamp, duration, title, url))
 
     if not candidates:
         return None
-    # Highest score wins; among ties, last one (often newest)
-    candidates.sort(key=lambda x: x[0])
-    return candidates[-1][1]
+    # Best score, then newest, then longest duration
+    candidates.sort(key=lambda x: (x[0], x[1], x[2]))
+    best = candidates[-1]
+    return best[3], best[4]
 
-
-# ── Audio download ───────────────────────────────────────────────────────────
 
 def commons_url_from_filename(filename):
-    """Compute the direct Wikimedia Commons URL using MD5 hash path."""
-    # Commons uses underscores, wikitext may have spaces
+    """Compute the direct Wikimedia Commons URL using MD5 hash path.
+
+    Fallback for when the REST API doesn't return a direct URL.
+    """
     filename = filename.replace(" ", "_")
     md5 = hashlib.md5(filename.encode()).hexdigest()
     return (f"https://upload.wikimedia.org/wikipedia/commons"
             f"/{md5[0]}/{md5[:2]}/{requests.utils.quote(filename)}")
-
-
-def probe_commons_variants(base_filename):
-    """Probe Wikimedia Commons for higher-quality numbered variants.
-
-    Given "De-mögen.ogg", checks if "De-mögen2.ogg" or "De-mögen3.ogg"
-    exist on Commons (via HEAD request). Returns the highest-numbered
-    variant found, or the original filename if none exist.
-    """
-    # Only probe for standard De-Word.ogg pattern
-    m = re.match(r"^(De-[^.]+)(\.ogg)$", base_filename)
-    if not m:
-        return base_filename
-
-    stem, ext = m.group(1), m.group(2)
-    # Already a numbered variant — don't probe further
-    if re.search(r"\d$", stem):
-        return base_filename
-
-    best = base_filename
-    for suffix in ("2", "3"):
-        candidate = f"{stem}{suffix}{ext}"
-        url = commons_url_from_filename(candidate)
-        try:
-            resp = web.head(url, timeout=5, allow_redirects=True)
-            if resp.status_code == 200:
-                best = candidate
-        except requests.RequestException:
-            break
-    return best
 
 
 def download_audio(url, retries=3, progress_ctx=""):
@@ -711,7 +728,7 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
     mode = "IPA" if ipa_only else ("audio" if audio_only else "IPA + audio")
     print(f"Enrichment mode: {mode} ({len(notes)} notes)")
 
-    stats = {"ipa_added": 0, "ipa_miss": 0, "audio_added": 0, "audio_miss": 0,
+    stats = {"ipa_added": 0, "ipa_miss": 0, "audio_added": 0,
              "skipped_phrase": 0, "no_page": 0, "already_ok": 0,
              "ipa_llm": 0, "audio_tts": 0}
 
@@ -838,18 +855,12 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                     stats["ipa_miss"] += 1
                     ipa_misses.append((nid, word_field))
 
-                audio_filename = None
-                if needs_audio:
-                    audio_filename = extract_audio_filename(wikitext)
-                    if not audio_filename:
-                        stats["audio_miss"] += 1
-                        tts_candidates.append((nid, word_field))
-
+                # Audio discovery deferred to Phase 3 (REST API); Phase 1
+                # only records that the word has a Wiktionary page.
                 plan.append({
                     "nid": nid, "word": word_field, "lookup": lookup,
                     "needs_ipa": needs_ipa, "needs_audio": needs_audio,
-                    "ipa": ipa, "audio_filename": audio_filename,
-                    "existing_audio": existing_audio,
+                    "ipa": ipa, "existing_audio": existing_audio,
                 })
 
         if has_bail:
@@ -921,18 +932,10 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
                     stats["ipa_miss"] += 1
                     ipa_misses.append((nid, info["word"]))
 
-                audio_filename = None
-                if info["needs_audio"]:
-                    audio_filename = extract_audio_filename(wikitext)
-                    if not audio_filename:
-                        stats["audio_miss"] += 1
-                        tts_candidates.append((nid, info["word"]))
-
                 plan.append({
                     "nid": nid, "word": info["word"], "lookup": info["lookup"],
                     "needs_ipa": info["needs_ipa"], "needs_audio": info["needs_audio"],
-                    "ipa": ipa, "audio_filename": audio_filename,
-                    "existing_audio": info["existing_audio"],
+                    "ipa": ipa, "existing_audio": info["existing_audio"],
                 })
                 done_nids.append(nid)
                 print(f"  {info['word']:<30} indexed (Wiktionary retry)")
@@ -954,14 +957,14 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
 
     # Print the index summary
     wikt_ipa_count = sum(1 for e in plan if e["ipa"])
-    wikt_audio_count = sum(1 for e in plan if e["audio_filename"])
+    needs_audio_count = sum(1 for e in plan if e["needs_audio"])
     print(f"\n  Index complete: {len(plan)} words scanned")
     if do_ipa:
         print(f"    IPA from Wiktionary: {wikt_ipa_count}, "
               f"need LLM: {len(ipa_misses)}")
     if do_audio:
-        print(f"    Audio from Wiktionary: {wikt_audio_count}, "
-              f"need TTS: {len(tts_candidates)}")
+        print(f"    Audio to check: {needs_audio_count}, "
+              f"no Wikt page (→TTS): {len(tts_candidates)}")
     if deferred:
         print(f"    Rate-limited (skipped): {len(deferred)}")
 
@@ -986,40 +989,42 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         nid = entry["nid"]
         word_field = entry["word"]
         ipa = entry["ipa"]
-        audio_filename = entry["audio_filename"]
 
-        # Skip download if we already have this exact file (check before probing).
-        # In --redownload mode, skip this early check so we still probe Commons
-        # for higher-quality numbered variants (De-Word2.ogg etc.).
+        # Discover best audio via REST API (one call per word)
+        audio_filename = None
         audio_data = None
-        if audio_filename and not dry_run and not redownload:
-            base_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
+        audio_url = None
+        if entry["needs_audio"] and not dry_run:
+            lookup = entry["lookup"]
+            best_file, best_url = fetch_best_audio(lookup)
+            if best_file is _DEFERRED or best_file is _DEFERRED_BAIL:
+                # REST API rate-limited — skip audio for this word
+                pass
+            elif best_file:
+                audio_filename = best_file
+                audio_url = best_url
+            else:
+                # No audio on Wiktionary → TTS candidate
+                tts_candidates.append((nid, word_field))
+        elif entry["needs_audio"] and dry_run:
+            audio_filename = f"De-{entry['lookup']}.ogg"  # placeholder for dry-run
+
+        # Skip download if we already have this exact file
+        if audio_filename and not dry_run:
+            best_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
             existing = entry["existing_audio"]
-            if existing == f"[sound:{base_mp3}]":
+            if existing == f"[sound:{best_mp3}]":
+                if redownload:
+                    print(f"  [{entry_idx}/{len(plan)}] "
+                          f"{word_field:<30} audio=same ({best_mp3})")
                 stats["already_ok"] += 1
                 audio_filename = None
                 if not ipa:
                     continue
 
-        # Probe Commons for higher-quality numbered variants (only if we need to download)
-        if audio_filename and not dry_run:
-            audio_filename = probe_commons_variants(audio_filename)
-
-            # Re-check after probing — the probed variant might already be stored
-            new_mp3 = audio_filename.rsplit(".", 1)[0] + ".mp3"
-            existing = entry["existing_audio"]
-            if existing == f"[sound:{new_mp3}]":
-                if redownload:
-                    print(f"  [{entry_idx}/{len(plan)}] "
-                          f"{word_field:<30} audio=same ({new_mp3})")
-                stats["already_ok"] += 1
-                audio_filename = None  # nothing to download
-                if not ipa:
-                    continue
-
         # Download audio from Commons
         if audio_filename and not dry_run:
-            url = commons_url_from_filename(audio_filename)
+            url = audio_url or commons_url_from_filename(audio_filename)
             ctx = f"[{entry_idx}/{len(plan)}] {word_field}"
             audio_data = download_audio(url, progress_ctx=ctx)
             if audio_data is _DEFERRED:
@@ -1101,8 +1106,6 @@ def enrich_notes(note_ids=None, *, ipa_only=False, audio_only=False,
         tts_audio = stats["audio_tts"]
         detail = f" ({wikt_audio} Wiktionary + {tts_audio} TTS)" if tts_audio else ""
         print(f"  Audio added:      {stats['audio_added']}{detail}")
-        if stats["audio_miss"]:
-            print(f"  Audio not on page:{stats['audio_miss']}")
     print(f"  Skipped (phrase): {stats['skipped_phrase']}")
     print(f"  No Wiktionary page: {stats['no_page']}")
     if stats["already_ok"]:
