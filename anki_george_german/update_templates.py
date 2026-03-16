@@ -332,7 +332,7 @@ VOCAB_CLASSES = """
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--chip-bg);
-  color: var(--subtext);
+  color: var(--subtext) !important;
   font-variant: small-caps;
   text-transform: lowercase;
   transition: opacity 200ms ease-out, transform 200ms ease-out;
@@ -352,6 +352,21 @@ VOCAB_CLASSES = """
   border: 5px solid transparent;
   border-top-color: var(--chip-bg);
 }
+
+/* ── Audio replay button (Anki default restyle) ── */
+.replay-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  opacity: 0.4;
+  transform: scale(0.7);
+  transform-origin: center;
+  transition: opacity 200ms;
+}
+.replay-button:hover { opacity: 0.85; }
+.replay-button svg circle { fill: var(--surface); stroke: var(--subtext); }
+.replay-button svg path { fill: var(--subtext); }
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -489,13 +504,15 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
 </script>"""
 
 
-def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos_id=None, hint=False):
+def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos_id=None, hint=False, hint_front=False):
     """JS that picks a random variant and applies cloze blanking.
 
     is_front=True:  pick random index, store in sessionStorage.
     is_front=False: load index from sessionStorage (fallback to random).
     pos_id:         element id to fill with the variant-matched POS value.
-    hint:           if True, also render ClozeHint tooltip on first cloze span.
+    hint:           if True, render ClozeHint tooltip on hover/tap (back card).
+    hint_front:     if True, render ClozeHint tooltip on tap only (front card).
+                    The blank itself is the trigger — zero visual footprint.
     """
     if is_front:
         idx_logic = """\
@@ -513,9 +530,12 @@ def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos
   var pel = document.getElementById("{pos_id}");
   if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();"""
     hint_block = ""
-    if hint:
-        hint_block = f"""
-  /* ── Hint tooltip ── */
+    if hint or hint_front:
+        # Back card: hover + tap reveal on the answer span (wrapped)
+        # Front card: tap-only on the blank itself — zero visual footprint
+        if hint and not hint_front:
+            hint_block = f"""
+  /* ── Hint tooltip (back — hover + tap) ── */
   var hints = "{{{{ClozeHint}}}}".split("|");
   var hint = (hints[idx] || "").trim();
   if (hint) {{
@@ -544,6 +564,42 @@ def cloze_picker_js(sentence_id, translation_id, span_class, is_front=False, pos
         if (!wrapper.contains(e.target)) tip.classList.remove("visible");
       }});
       wrapper.addEventListener("click", function(e){{ if (isTouch) e.preventDefault(); }});
+    }}
+  }}"""
+        else:
+            hint_block = f"""
+  /* ── Hint tooltip (front — tap only, blank is trigger) ── */
+  var hints = "{{{{ClozeHint}}}}".split("|");
+  var hint = (hints[idx] || "").trim();
+  if (hint) {{
+    var spans = document.querySelectorAll("#{sentence_id} .{span_class}");
+    if (spans.length) {{
+      var span = spans[0];
+      span.classList.add("cloze-hint-trigger");
+      span.style.position = "relative";
+      var tip = document.createElement("span");
+      tip.className = "cloze-hint-tooltip";
+      tip.textContent = hint;
+      span.appendChild(tip);
+      span.addEventListener("touchstart", function(e){{
+        e.preventDefault();
+        e.stopPropagation();
+        var show = !tip.classList.contains("visible");
+        document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){{ t.classList.remove("visible"); }});
+        if (show) tip.classList.add("visible");
+      }});
+      span.addEventListener("click", function(e){{
+        e.stopPropagation();
+        var show = !tip.classList.contains("visible");
+        document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){{ t.classList.remove("visible"); }});
+        if (show) tip.classList.add("visible");
+      }});
+      document.addEventListener("touchstart", function(e){{
+        if (!span.contains(e.target)) tip.classList.remove("visible");
+      }});
+      document.addEventListener("click", function(e){{
+        if (!span.contains(e.target)) tip.classList.remove("visible");
+      }});
     }}
   }}"""
     return f"""
@@ -653,6 +709,7 @@ DE_EN_BACK = """\
   <div class="word-de">{{Word}}</div>
   {{#POS}}<div class="pos-hint" id="deen-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
 
   <hr class="divider">
 
@@ -678,7 +735,7 @@ CLOZE_FRONT = """\
   <div class="sentence-de cloze-sentence" id="cloze-q"></div>
   {{#SentenceTranslation}}<div class="sentence-en quoted" id="cloze-tr"></div>{{/SentenceTranslation}}
   {{#Audio}}{{Audio}}{{/Audio}}
-</div>""" + cloze_picker_js("cloze-q", "cloze-tr", "cloze-blank", is_front=True)
+</div>""" + cloze_picker_js("cloze-q", "cloze-tr", "cloze-blank", is_front=True, hint_front=True)
 
 CLOZE_BACK = """\
 <div class="kard">
@@ -694,6 +751,7 @@ CLOZE_BACK = """\
   <div class="word-de">{{Word}}</div>
   {{#POS}}<div class="pos-hint" id="cloze-pos"></div>{{/POS}}
   {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
   <div class="word-en">{{WordTranslation}}</div>
 
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}

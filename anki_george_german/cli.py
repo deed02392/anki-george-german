@@ -15,7 +15,7 @@ def dispatch(args):
         if args.enrich_command == "sentences":
             from .generate_vocab import cmd_enrich
             cmd_enrich(args)
-        elif args.enrich_command == "ipa":
+        elif args.enrich_command in ("audio", "ipa"):
             from .enrich_ipa_audio import run
             run(args)
         elif args.enrich_command == "disambig":
@@ -77,7 +77,7 @@ def main():
                         help="(Legacy) Paragraph range — bypasses chapter detection")
     text_p.add_argument("--phase", type=int, default=4)
     text_p.add_argument("--batch-size", type=int, default=10)
-    text_p.add_argument("--sentences", type=int, default=2)
+    text_p.add_argument("--sentences", type=int, default=3)
     text_p.add_argument("--dry-run", action="store_true")
     text_p.add_argument("--enrich", action="store_true")
 
@@ -92,7 +92,7 @@ def main():
     domain_p.add_argument("--source", required=True)
     domain_p.add_argument("--count", type=int, default=30)
     domain_p.add_argument("--phase", type=int, default=4)
-    domain_p.add_argument("--sentences", type=int, default=2)
+    domain_p.add_argument("--sentences", type=int, default=3)
     domain_p.add_argument("--dry-run", action="store_true")
 
     # -- enrich --------------------------------------------------------
@@ -101,20 +101,24 @@ def main():
 
     sent_p = enrich_sub.add_parser("sentences",
                                    help="Add example sentences to existing cards")
-    sent_p.add_argument("--source", required=True)
+    sent_p.add_argument("--source",
+                        help="Filter by source tag (default: all notes)")
     sent_p.add_argument("--sentences", type=int, default=3)
     sent_p.add_argument("--batch-size", type=int, default=10)
     sent_p.add_argument("--dry-run", action="store_true")
 
-    ipa_p = enrich_sub.add_parser("ipa", help="IPA/audio from Wiktionary + LLM")
-    ipa_p.add_argument("words", nargs="*",
+    audio_p = enrich_sub.add_parser("audio", aliases=["ipa"],
+                                     help="Enrich IPA + audio from Wiktionary, LLM, and TTS")
+    audio_p.add_argument("words", nargs="*",
                        help="Specific words to enrich (default: all missing)")
-    ipa_p.add_argument("--dry-run", action="store_true")
-    ipa_p.add_argument("--ipa-only", action="store_true")
-    ipa_p.add_argument("--audio-only", action="store_true")
-    ipa_p.add_argument("--audio-delay", type=float, default=5.0)
-    ipa_p.add_argument("--no-llm", action="store_true",
+    audio_p.add_argument("--dry-run", action="store_true")
+    audio_p.add_argument("--ipa-only", action="store_true")
+    audio_p.add_argument("--audio-only", action="store_true")
+    audio_p.add_argument("--audio-delay", type=float, default=5.0)
+    audio_p.add_argument("--no-llm", action="store_true",
                        help="Skip LLM fallback for Wiktionary misses")
+    audio_p.add_argument("--redownload", action="store_true",
+                       help="Re-fetch audio from Wiktionary (prefer higher quality)")
 
     disambig_p = enrich_sub.add_parser("disambig",
                                        help="Disambiguate shared translations")

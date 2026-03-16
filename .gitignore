@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 .envrc
 .anki-german-completion.zsh
+.coverage
+data/enrich_index.json

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClozeHint Front-Side Mockup — George's German Vocabulary</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── Page layout ── */
+body {
+  margin: 0;
+  background: #111;
+  font-family: "Noto Sans", sans-serif;
+  color: #ccc;
+}
+.page-header {
+  text-align: center;
+  padding: 40px 20px 10px;
+}
+.page-header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin: 0 0 6px;
+}
+.page-header p {
+  font-size: 0.85rem;
+  color: #8892a4;
+  margin: 0;
+}
+.mockup-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 30px;
+  padding: 30px 20px 60px;
+}
+.mockup-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 420px;
+  width: 100%;
+}
+.mockup-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8892a4;
+  text-align: center;
+  padding: 8px 0;
+}
+.mockup-label.current { color: #f08080; }
+.mockup-label.proposed { color: #3dbb72; }
+.state-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #666;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Actual deck CSS (from update_templates.py) — dark mode
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:         #1a1a2e;
+  --surface:    #16213e;
+  --text:       #e0e0e0;
+  --text-de:    #a8d4e8;
+  --subtext:    #8892a4;
+  --border:     rgba(255,255,255,0.08);
+  --accent-de:  #7ec8e3;
+  --accent-en:  #f5c842;
+  --chip-bg:    #2e3a5a;
+  --cloze-text: #b0d0e4;
+  --disambig-fg:#f08080;
+  --disambig-bg:rgba(240,128,128,0.08);
+  --note-fg:    #90c0a0;
+  --note-bg:    rgba(144,192,160,0.08);
+  --p1:         #4fa3e0;
+}
+
+.card {
+  font-family: "Noto Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.kard {
+  box-sizing: border-box;
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px clamp(16px, 5vw, 32px) 28px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.card-type {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--subtext);
+}
+
+hr.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+.source-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: #fff;
+}
+.source-1 { background: var(--p1); }
+
+.cloze-sentence {
+  font-size: clamp(1rem, 3.5vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--cloze-text);
+  margin-top: 8px;
+  overflow-wrap: break-word;
+}
+
+.sentence-en {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--subtext);
+  font-style: italic;
+  margin-bottom: 12px;
+  overflow-wrap: break-word;
+}
+.sentence-en.quoted::before { content: "\201C"; }
+.sentence-en.quoted::after  { content: "\201D"; }
+
+.word-de {
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  font-weight: 700;
+  color: var(--accent-de);
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+.word-en {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: 600;
+  color: var(--accent-en);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.ipa {
+  font-size: 0.95rem;
+  color: var(--subtext);
+  margin-bottom: 14px;
+}
+.pos-hint {
+  font-size: 0.78rem;
+  color: var(--subtext);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.callout {
+  font-size: 0.80rem;
+  margin-top: 8px;
+  padding: 5px 10px;
+  border-left: 3px solid;
+  border-radius: 0 4px 4px 0;
+}
+.callout-note {
+  color: var(--note-fg);
+  border-left-color: var(--note-fg);
+  background: var(--note-bg);
+}
+
+/* ── Cloze blank ── */
+.cloze-blank {
+  display: inline-block;
+  min-width: 2.5em;
+  border-bottom: 2px solid var(--accent-de);
+  border-radius: 4px 4px 0 0;
+  padding: 1px 4px;
+  margin: 0 2px;
+  color: transparent;
+  user-select: none;
+}
+
+.cloze-answer {
+  color: var(--accent-de);
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent-de);
+}
+
+/* ── Cloze hint tooltip (EXISTING — back only) ── */
+.cloze-hint-trigger {
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cloze-hint-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  z-index: 100;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--subtext) !important;
+  font-variant: small-caps;
+  text-transform: lowercase;
+}
+.cloze-hint-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--chip-bg);
+}
+
+/* ── PROPOSED: Tap the blank to reveal hint (zero visual footprint) ── */
+.cloze-blank.cloze-hint-trigger {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cloze-blank .cloze-hint-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--subtext) !important;
+  font-variant: small-caps;
+  text-transform: lowercase;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.cloze-blank .cloze-hint-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--chip-bg);
+}
+.cloze-blank .cloze-hint-tooltip.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* ── Annotation line for mockup ── */
+.annotation {
+  font-size: 0.7rem;
+  color: #666;
+  text-align: center;
+  margin-top: 10px;
+  font-style: italic;
+}
+.annotation em { color: #999; font-style: normal; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>ClozeHint on Front Card — Mockup</h1>
+  <p>Comparing current behaviour (hint back-only) with proposed scaffold (tap the blank to reveal hint)</p>
+</div>
+
+<div class="mockup-grid">
+
+<!-- ════════════════════════════════════════════════════════
+     COLUMN 1: CURRENT DESIGN
+     ════════════════════════════════════════════════════════ -->
+<div class="mockup-column">
+  <div class="mockup-label current">Current Design</div>
+
+  <!-- FRONT — no hint -->
+  <div class="state-label">Front (question)</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+        <span class="source-badge source-1">schachnovelle</span>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Die Polizei <span class="cloze-blank">fängt</span> den Einbrecher.
+      </div>
+      <div class="sentence-en quoted">The police catch the burglar.</div>
+    </div>
+  </div>
+  <div class="annotation">No hint available. You see the blank and must recall the word + its correct inflected form with no grammatical nudge.</div>
+
+  <!-- BACK — hint shown -->
+  <div class="state-label">Back (answer)</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+        <span class="source-badge source-1">schachnovelle</span>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Die Polizei <span class="cloze-hint-trigger"><span class="cloze-answer">fängt</span><span class="cloze-hint-tooltip">präsens · er/sie/es</span></span> den Einbrecher.
+      </div>
+      <div class="sentence-en quoted">The police catch the burglar.</div>
+      <hr class="divider">
+      <div class="word-de">fangen</div>
+      <div class="pos-hint">verb</div>
+      <div class="ipa">[ˈfaŋən]</div>
+      <div class="word-en">to catch</div>
+    </div>
+  </div>
+  <div class="annotation">Hint appears <em>after</em> you've already answered. Useful as confirmation, but cannot help you during retrieval.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     COLUMN 2: PROPOSED DESIGN
+     ════════════════════════════════════════════════════════ -->
+<div class="mockup-column">
+  <div class="mockup-label proposed">Proposed Design</div>
+
+  <!-- FRONT — hint hidden (same appearance as current) -->
+  <div class="state-label">Front (before tap) — identical to current</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+        <span class="source-badge source-1">schachnovelle</span>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Die Polizei <span class="cloze-blank cloze-hint-trigger" style="position:relative" onclick="this.querySelector('.cloze-hint-tooltip').classList.toggle('visible')">fängt<span class="cloze-hint-tooltip">präsens · er/sie/es</span></span> den Einbrecher.
+      </div>
+      <div class="sentence-en quoted">The police catch the burglar.</div>
+    </div>
+  </div>
+  <div class="annotation">Looks exactly the same as today. The blank itself is secretly tappable — zero visual change, identical difficulty.</div>
+
+  <!-- FRONT — hint revealed after tapping blank -->
+  <div class="state-label">Front (after tapping blank) — hint floats above</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+        <span class="source-badge source-1">schachnovelle</span>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Die Polizei <span class="cloze-blank cloze-hint-trigger" style="position:relative"><span class="cloze-hint-tooltip visible" style="opacity:1;transform:translateX(-50%) translateY(0)">präsens · er/sie/es</span>fängt</span> den Einbrecher.
+      </div>
+      <div class="sentence-en quoted">The police catch the burglar.</div>
+    </div>
+  </div>
+  <div class="annotation">Tapping the blank reveals the grammatical hint above it. If you needed this nudge → press <em>Hard</em> instead of <em>Good</em>.</div>
+
+  <!-- BACK — same as current -->
+  <div class="state-label">Back (answer) — unchanged</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+        <span class="source-badge source-1">schachnovelle</span>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Die Polizei <span class="cloze-hint-trigger"><span class="cloze-answer">fängt</span><span class="cloze-hint-tooltip">präsens · er/sie/es</span></span> den Einbrecher.
+      </div>
+      <div class="sentence-en quoted">The police catch the burglar.</div>
+      <hr class="divider">
+      <div class="word-de">fangen</div>
+      <div class="pos-hint">verb</div>
+      <div class="ipa">[ˈfaŋən]</div>
+      <div class="word-en">to catch</div>
+    </div>
+  </div>
+  <div class="annotation">Back card is identical to current design.</div>
+</div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECOND ROW: More examples showing different hint types
+     ════════════════════════════════════════════════════════ -->
+<div class="page-header" style="padding-top: 10px;">
+  <h1>More Examples — Different Hint Types</h1>
+  <p>Showing how tapping the blank works for nouns (case hints), separable verbs, and adjectives</p>
+</div>
+
+<div class="mockup-grid">
+
+<!-- Noun example -->
+<div class="mockup-column">
+  <div class="mockup-label proposed">Noun — Dative Case</div>
+  <div class="state-label">Front (hint revealed)</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Er erzählte <span class="cloze-blank cloze-hint-trigger" style="position:relative"><span class="cloze-hint-tooltip visible" style="opacity:1;transform:translateX(-50%) translateY(0)">dativ · neutral</span>dem Kind</span> eine Geschichte.
+      </div>
+      <div class="sentence-en quoted">He told the child a story.</div>
+    </div>
+  </div>
+  <div class="annotation">Learner knows "Kind" but isn't sure of article case. Tap the blank → hint says <em>dativ · neutral</em> → must be "dem Kind".</div>
+</div>
+
+<!-- Separable verb example -->
+<div class="mockup-column">
+  <div class="mockup-label proposed">Separable Verb — Two Blanks</div>
+  <div class="state-label">Front (hint revealed)</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Sie <span class="cloze-blank cloze-hint-trigger" style="position:relative"><span class="cloze-hint-tooltip visible" style="opacity:1;transform:translateX(-50%) translateY(0)">präteritum · er/sie/es · trennbar</span>zog</span> ihre Jacke <span class="cloze-blank">an</span>.
+      </div>
+      <div class="sentence-en quoted">She put on her jacket.</div>
+    </div>
+  </div>
+  <div class="annotation">Two blanks for the separated prefix. Tap the first blank → hint <em>präteritum · trennbar</em> tells you tense + that the verb separates.</div>
+</div>
+
+<!-- Adjective example -->
+<div class="mockup-column">
+  <div class="mockup-label proposed">Adjective — Comparative</div>
+  <div class="state-label">Front (hint revealed)</div>
+  <div class="card">
+    <div class="kard">
+      <div class="card-header">
+        <div class="card-type">Sentence Cloze &middot; Context</div>
+      </div>
+      <div class="sentence-de cloze-sentence">
+        Das Wetter wird <span class="cloze-blank cloze-hint-trigger" style="position:relative"><span class="cloze-hint-tooltip visible" style="opacity:1;transform:translateX(-50%) translateY(0)">komparativ</span>kälter</span> als gestern.
+      </div>
+      <div class="sentence-en quoted">The weather is getting colder than yesterday.</div>
+    </div>
+  </div>
+  <div class="annotation">Learner knows "kalt" but needs the comparative form. Tap the blank → hint <em>komparativ</em> → "kälter" (with umlaut).</div>
+</div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     IMPLEMENTATION NOTES
+     ════════════════════════════════════════════════════════ -->
+<div class="page-header" style="padding-top: 10px;">
+  <h1>Implementation Notes</h1>
+</div>
+<div style="max-width: 700px; margin: 0 auto; padding: 0 20px 60px; font-size: 0.9rem; line-height: 1.6; color: #aaa;">
+  <p><strong>Change required:</strong> Add <code>hint_front=True</code> to the <code>cloze_picker_js()</code> call in <code>CLOZE_FRONT</code> (update_templates.py). The blank span itself becomes the tap target — no extra elements added.</p>
+
+  <p><strong>Key design choices in this mockup:</strong></p>
+  <ul>
+    <li>Zero visual footprint — the card looks identical to today. No icon, no indicator.</li>
+    <li>The cloze blank itself is the tap target. Tapping it toggles the hint tooltip above.</li>
+    <li>Hint is hidden by default — the card is exactly as hard as today if you don't tap.</li>
+    <li>On mobile, tapping the blank reveals the hint; tapping anywhere else dismisses it.</li>
+    <li>On desktop, clicking the blank toggles the hint (no hover — deliberate interaction only).</li>
+    <li>The tooltip uses the same pill shape, positioning, and caret arrow as the existing back-side tooltip.</li>
+    <li>If <code>ClozeHint</code> is empty for a variant, the blank behaves normally (no tap handler).</li>
+  </ul>
+
+  <p><strong>Self-assessment protocol:</strong></p>
+  <ul>
+    <li>Didn't need the hint → <strong>Good</strong> or <strong>Easy</strong></li>
+    <li>Tapped the hint, then got it right → <strong>Hard</strong></li>
+    <li>Tapped the hint and still got it wrong → <strong>Again</strong></li>
+  </ul>
+
+  <p><strong>Why this works for learning:</strong> The hint provides <em>retrieval support</em> at the moment of maximum cognitive engagement (during the question). Research on "elaborative retrieval" shows that partial cues during retrieval practice improve long-term retention more than post-retrieval feedback alone — as long as the learner tries without the cue first. The tap-to-reveal interaction ensures the learner makes an initial attempt before scaffolding.</p>
+</div>
+
+</body>
+</html>

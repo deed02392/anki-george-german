@@ -21,6 +21,7 @@ anki-german = "anki_george_german.cli:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=6.0",
     "responses>=0.25",
 ]
 
@@ -29,6 +30,18 @@ testpaths = ["tests"]
 markers = [
     "slow: tests requiring spaCy model load",
 ]
+addopts = "--cov=anki_george_german --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["anki_george_german"]
+omit = [
+    "anki_george_german/generate_vocab.py",
+    "anki_george_german/chapters.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 [build-system]
 requires = ["hatchling"]
