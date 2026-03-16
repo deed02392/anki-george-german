@@ -544,6 +544,23 @@ GEMINI_API_URL = (
     f"/{GEMINI_TTS_MODEL}:generateContent"
 )
 
+def _parse_gemini_retry_delay(resp):
+    """Extract retry delay from a Gemini 429 response.
+
+    Gemini returns retry info in the JSON body (google.rpc.RetryInfo),
+    not in HTTP headers. Falls back to 30s if unparseable.
+    """
+    try:
+        data = resp.json()
+        for detail in data.get("error", {}).get("details", []):
+            if detail.get("@type", "").endswith("RetryInfo"):
+                delay_str = detail.get("retryDelay", "30s")
+                return max(int(delay_str.rstrip("s")), 15)
+    except (ValueError, KeyError, AttributeError):
+        pass
+    return 30
+
+
 def _gemini_tts_single(word, api_key):
     """Generate TTS audio for a single word via Gemini API.
 
@@ -571,8 +588,7 @@ def _gemini_tts_single(word, api_key):
                 json=payload, timeout=30,
             )
             if resp.status_code == 429:
-                wait = int(resp.headers.get("Retry-After", 30))
-                wait = max(wait, 15)
+                wait = _parse_gemini_retry_delay(resp)
                 if attempt < 2:
                     print(f"    (TTS rate limited, waiting {wait}s...)")
                     time.sleep(wait)
