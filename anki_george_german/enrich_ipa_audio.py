@@ -673,7 +673,8 @@ def _parse_gemini_retry_delay(resp):
     """Extract quota info from a Gemini 429 response for diagnostics.
 
     Gemini returns retry info in the JSON body (google.rpc.RetryInfo),
-    not in HTTP headers. Returns (retry_delay_str, quota_id) or defaults.
+    not in HTTP headers. Returns (retry_seconds, quota_id) or defaults.
+    retry_seconds is a float (parsed from e.g. "32s"), or None if unknown.
     """
     try:
         data = resp.json()
@@ -687,9 +688,31 @@ def _parse_gemini_retry_delay(resp):
             elif dtype.endswith("QuotaFailure"):
                 for v in detail.get("violations", []):
                     quota_id = v.get("quotaId", "")
-        return delay_str or "unknown", quota_id or "unknown"
+        # Parse delay string like "32s" or "32.5s" into seconds
+        retry_seconds = None
+        if delay_str and delay_str != "unknown":
+            m = re.match(r"([\d.]+)s?$", delay_str)
+            if m:
+                retry_seconds = float(m.group(1))
+        return retry_seconds, delay_str or "unknown", quota_id or "unknown"
     except (ValueError, KeyError, AttributeError):
-        return "unknown", "unknown"
+        return None, "unknown", "unknown"
+
+
+def _is_daily_quota(quota_id):
+    """Check if a Gemini quota ID refers to a daily (not per-minute) limit.
+
+    Per-minute quota IDs typically contain 'PerMinute' or 'per_minute'.
+    Daily quota IDs contain 'PerDay' or 'per_day'.
+    If unknown, assume daily (conservative — don't burn retries).
+    """
+    qid = (quota_id or "").lower()
+    if "perminute" in qid or "per_minute" in qid or "per-minute" in qid:
+        return False
+    if "perday" in qid or "per_day" in qid or "per-day" in qid:
+        return True
+    # Unknown quota — assume daily to be safe
+    return True
 
 
 def _gemini_tts_single(word, api_key):
@@ -731,8 +754,9 @@ def _gemini_tts_single(word, api_key):
 def _gemini_tts_fallback(audio_misses, dry_run=False):
     """Generate TTS audio via Gemini for words missing Wiktionary audio.
 
-    Gemini's free tier has a daily quota (e.g. 10 req/day), so on the
-    first 429 we stop immediately — retrying is pointless within a run.
+    Gemini has two rate limits:
+      - Per-minute (e.g. 4 req/min): wait and retry
+      - Per-day (e.g. 10 req/day): stop immediately, re-run tomorrow
 
     Args:
         audio_misses: list of (note_id, word_field) tuples.
@@ -762,13 +786,34 @@ def _gemini_tts_fallback(audio_misses, dry_run=False):
             updated += 1
             continue
 
-        pcm_data, err_resp = _gemini_tts_single(word_field, api_key)
+        # Retry loop for per-minute rate limits
+        max_retries = 3
+        pcm_data = None
+        for attempt in range(max_retries + 1):
+            pcm_data, err_resp = _gemini_tts_single(word_field, api_key)
+            if pcm_data is not _DEFERRED:
+                break
+            # Got a 429 — check which quota
+            retry_seconds, delay_str, quota_id = _parse_gemini_retry_delay(err_resp)
+            if _is_daily_quota(quota_id):
+                remaining = len(audio_misses) - i
+                print(f"  TTS daily quota reached ({quota_id}, retry after {delay_str})")
+                print(f"  Skipping remaining {remaining} words — re-run tomorrow")
+                return updated, remaining
+            # Per-minute limit — wait and retry
+            wait = retry_seconds if retry_seconds and retry_seconds > 0 else 20
+            wait = min(wait, 120)  # cap at 2 minutes
+            if attempt < max_retries:
+                print(f"  TTS per-minute limit ({quota_id}), "
+                      f"waiting {wait:.0f}s (retry {attempt + 1}/{max_retries})...")
+                time.sleep(wait)
+            else:
+                print(f"  TTS per-minute retries exhausted for '{word_field}', skipping")
+                pcm_data = None
+
         if pcm_data is _DEFERRED:
-            remaining = len(audio_misses) - i
-            delay_str, quota_id = _parse_gemini_retry_delay(err_resp)
-            print(f"  TTS daily quota reached ({quota_id}, retry after {delay_str})")
-            print(f"  Skipping remaining {remaining} words — re-run tomorrow")
-            return updated, remaining
+            # Exhausted retries but still rate-limited — skip this word
+            continue
         if not pcm_data:
             print(f"  {word_field:<30} audio=TTS fail")
             continue

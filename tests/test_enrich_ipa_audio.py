@@ -797,6 +797,67 @@ class TestGeminiTtsFallback:
         assert result == (0, 2)
         assert call_count[0] == 1  # stopped after first 429
 
+    def test_per_minute_rate_limit_retries(self, monkeypatch):
+        """Per-minute quota hit → wait and retry, not immediate stop."""
+        monkeypatch.setenv("GEMINI_API_KEY", "fake")
+        call_count = [0]
+        mock_resp = _mock_response(status=429, json_data={
+            "error": {"details": [
+                {"@type": "type.googleapis.com/google.rpc.RetryInfo",
+                 "retryDelay": "15s"},
+                {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                 "violations": [{"quotaId": "GenerateRequestsPerMinutePerModel"}]},
+            ]}
+        })
+
+        def _tts(word, key):
+            call_count[0] += 1
+            if call_count[0] <= 2:
+                return eia._DEFERRED, mock_resp
+            return b"pcm-data", None
+
+        stored = []
+        monkeypatch.setattr(eia, "_gemini_tts_single", _tts)
+        monkeypatch.setattr(eia, "store_pcm_audio_in_anki",
+                            lambda n, d: stored.append(n) or n)
+        monkeypatch.setattr(eia, "anki", lambda *a, **kw: None)
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+
+        result = eia._gemini_tts_fallback([(1, "der Hund")])
+        assert result == (1, 0)
+        assert call_count[0] == 3  # 2 retries + 1 success
+        assert stored[0] == "tts_Hund.mp3"
+
+    def test_per_minute_exhausts_retries(self, monkeypatch):
+        """Per-minute quota → retries exhausted → skip word, continue to next."""
+        monkeypatch.setenv("GEMINI_API_KEY", "fake")
+        call_count = [0]
+        mock_resp_per_min = _mock_response(status=429, json_data={
+            "error": {"details": [
+                {"@type": "type.googleapis.com/google.rpc.RetryInfo",
+                 "retryDelay": "15s"},
+                {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                 "violations": [{"quotaId": "GenerateRequestsPerMinutePerModel"}]},
+            ]}
+        })
+
+        def _tts(word, key):
+            call_count[0] += 1
+            if "Hund" in word:
+                return eia._DEFERRED, mock_resp_per_min  # always fails
+            return b"pcm-data", None
+
+        stored = []
+        monkeypatch.setattr(eia, "_gemini_tts_single", _tts)
+        monkeypatch.setattr(eia, "store_pcm_audio_in_anki",
+                            lambda n, d: stored.append(n) or n)
+        monkeypatch.setattr(eia, "anki", lambda *a, **kw: None)
+        monkeypatch.setattr(eia.time, "sleep", lambda _: None)
+
+        result = eia._gemini_tts_fallback([(1, "der Hund"), (2, "die Katze")])
+        assert result == (1, 0)  # Hund skipped after retries, Katze succeeded
+        assert stored[0] == "tts_Katze.mp3"
+
     def test_permanent_failure(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "fake")
         monkeypatch.setattr(eia, "_gemini_tts_single", lambda w, k: (None, None))
