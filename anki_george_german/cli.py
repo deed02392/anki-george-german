@@ -27,12 +27,15 @@ def dispatch(args):
         elif args.enrich_command == "hints":
             from .enrich_hints import run
             run(args)
+        elif args.enrich_command == "worddata":
+            from .enrich_word_data import run
+            run(args)
     elif args.command == "unsuspend":
         from .unsuspend_candidates import run
         run(args)
-    elif args.command == "stats":
-        from .deck_stats import main as run
-        run()
+    elif args.command == "health":
+        from .health_check import run
+        run(args)
     elif args.command == "templates":
         from .update_templates import main as run
         run()
@@ -131,13 +134,22 @@ def main():
     hints_p.add_argument("--batch-size", type=int, default=10)
     hints_p.add_argument("--dry-run", action="store_true")
 
+    worddata_p = enrich_sub.add_parser("worddata",
+                                        help="Build word frequency + sense data")
+    worddata_p.add_argument("--dwds-only", action="store_true",
+                            help="Only refresh DWDS frequency data")
+    worddata_p.add_argument("--senses-only", action="store_true",
+                            help="Only refresh Wiktionary senses")
+    worddata_p.add_argument("--dry-run", action="store_true")
+
     # -- unsuspend -----------------------------------------------------
     unsuspend_p = sub.add_parser("unsuspend", help="Unsuspend mature cards")
     unsuspend_p.add_argument("--apply", action="store_true")
     unsuspend_p.add_argument("--max", type=int, default=None)
 
     # -- simple commands -----------------------------------------------
-    sub.add_parser("stats", help="Deck analysis and problem cards")
+    health_p = sub.add_parser("health", help="Deck health check")
+    health_p.add_argument("--apply", action="store_true")
     sub.add_parser("templates", help="Push CSS/templates to Anki")
     sub.add_parser("prefixes", help="Sync prefix data to Anki")
     grammar_p = sub.add_parser("grammar", help="Sync grammar term data to Anki")
