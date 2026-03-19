@@ -153,9 +153,15 @@ Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Se
 
 ### WordTranslationDisambiguate — IMPORTANT
 
-This field exists **only** to distinguish between cards that share the **exact same English translation**. It is shown on EN→DE and DE→EN cards as `NOT: <text>`.
+This field exists **only** to distinguish between cards that share the **exact same English translation**.
 
-**When it's needed:** `essen` and `fressen` both translate to "to eat". The disambig on `essen` says "animals eating" (shown as "NOT: animals eating"), telling the learner this card is NOT about the animal-eating verb.
+**Framing:** Prefer positive descriptions of the word's own sense (what the word IS), not negations. The field supports two modes via a prefix convention:
+- `=everyday, warm, poetic` → rendered as-is: "everyday, warm, poetic"
+- `animals eating` → rendered with label: "Not: animals eating"
+
+The `=` prefix (positive framing) is preferred. The "Not:" fallback exists but is currently unused.
+
+**When it's needed:** `essen` and `fressen` both translate to "to eat". The disambig on `essen` says `=humans eating, normal`, telling the learner what this specific word means.
 
 **When it's NOT needed:**
 - Cards with unique translations (no other card has the same English text)
@@ -164,8 +170,8 @@ This field exists **only** to distinguish between cards that share the **exact s
 
 **Rules:**
 - Never include German words — naming the sibling gives away the answer by elimination
-- 3-8 words describing what the card is NOT (the sibling's meaning)
-- The template adds the "NOT:" prefix — store the raw text without it
+- 3-8 words describing this word's sense, register, or usage
+- Prefix with `=` for positive descriptions (preferred); omit prefix for "Not:" framing
 - `fix_disambiguations.py` finds all duplicate-translation groups and generates/updates disambig via LLM
 - `strip_orphan_disambiguations()` in `_vocab_validate.py` clears disambig on cards whose translation is unique within a generation batch
 - Never clear a disambiguation without checking if siblings exist

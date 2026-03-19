@@ -34,8 +34,6 @@ BASE_VARS = """
   --p2:         #3dbb72;
   --p3:         #f08030;
   --p4:         #9b59b6;
-  --disambig-fg:#f08080;
-  --disambig-bg:rgba(240,128,128,0.08);
   --note-fg:    #90c0a0;
   --note-bg:    rgba(144,192,160,0.08);
   --chip-bg:    #2e3a5a;
@@ -56,8 +54,6 @@ BASE_VARS = """
     --p2:         #217a44;
     --p3:         #c05a00;
     --p4:         #6c3483;
-    --disambig-fg:#c0302a;
-    --disambig-bg:rgba(192,48,42,0.07);
     --note-fg:    #2a7a4a;
     --note-bg:    rgba(42,122,74,0.07);
     --chip-bg:    #dde3ef;
@@ -177,9 +173,15 @@ hr.divider {
 .callout-disambig {
   font-size: 0.83rem;
   margin-top: 10px;
-  color: var(--disambig-fg);
-  border-left-color: var(--disambig-fg);
-  background: var(--disambig-bg);
+  color: var(--subtext);
+  border-left-color: var(--subtext);
+  background: rgba(136,146,164,0.06);
+}
+.callout-disambig .disambig-label {
+  font-weight: 700;
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
 }
 .callout-note {
   color: var(--note-fg);
@@ -657,9 +659,18 @@ EN_DE_FRONT = """\
   {{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
-  <div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  <div class="callout callout-disambig" id="disambig-ende-f"></div>
   {{/WordTranslationDisambiguate}}
-</div>""" + variant_picker_js("ende-s-front", "ende-tr-front", is_front=True)
+</div>
+<script>
+(function(){
+  var raw = "{{WordTranslationDisambiguate}}".trim();
+  var el = document.getElementById("disambig-ende-f");
+  if (!el || !raw) return;
+  if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
+  else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
+})();
+</script>""" + variant_picker_js("ende-s-front", "ende-tr-front", is_front=True)
 
 EN_DE_BACK = """\
 <div class="kard">
@@ -681,11 +692,20 @@ EN_DE_BACK = """\
   {{#SentenceTranslation}}<div class="sentence-en quoted" id="ende-tr-back"></div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
-  <div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  <div class="callout callout-disambig" id="disambig-ende-b"></div>
   {{/WordTranslationDisambiguate}}
 
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
-""" + "\n</div>" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
+""" + "\n</div>\n" + """\
+<script>
+(function(){
+  var raw = "{{WordTranslationDisambiguate}}".trim();
+  var el = document.getElementById("disambig-ende-b");
+  if (!el || !raw) return;
+  if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
+  else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
+})();
+</script>""" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
 
 DE_EN_FRONT = """\
 <div class="kard">
@@ -719,11 +739,20 @@ DE_EN_BACK = """\
   {{#SentenceTranslation}}<div class="sentence-en quoted" id="deen-tr-back"></div>{{/SentenceTranslation}}
 
   {{#WordTranslationDisambiguate}}
-  <div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
+  <div class="callout callout-disambig" id="disambig-deen-b"></div>
   {{/WordTranslationDisambiguate}}
 
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
-""" + "\n</div>" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
+""" + "\n</div>\n" + """\
+<script>
+(function(){
+  var raw = "{{WordTranslationDisambiguate}}".trim();
+  var el = document.getElementById("disambig-deen-b");
+  if (!el || !raw) return;
+  if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
+  else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
+})();
+</script>""" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
 
 CLOZE_FRONT = """\
 <div class="kard">
