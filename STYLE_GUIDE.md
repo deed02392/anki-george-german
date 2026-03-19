@@ -21,8 +21,8 @@ All colours use CSS variables defined in `BASE_VARS`. Dark mode is the default; 
 | `--chip-bg` | `#2e3a5a` | `#dde3ef` | Chip/badge/tooltip backgrounds |
 | `--cloze-text` | `#b0d0e4` | `#1a3a5e` | Cloze sentence text |
 | `--p1`–`--p4` | blue/green/orange/purple | darker variants | Source badge colour hashing |
-| `--disambig-fg/bg` | `#f08080` / `rgba(…0.08)` | `#c0302a` / `rgba(…0.07)` | Disambiguation "NOT:" callout |
 | `--note-fg/bg` | `#90c0a0` / `rgba(…0.08)` | `#2a7a4a` / `rgba(…0.07)` | Note callout |
+| `--accent-listen` | `#80a0c8` | `#4a6a9a` | Listening card accent |
 | `--accent-pfx` | `#c0a0e0` | `#7b5ea7` | Prefix card accent |
 | `--accent-gram` | `#5bbfb5` | `#2a8a7e` | Grammar card accent |
 
@@ -115,9 +115,11 @@ For multiple examples, wrap each in `.example-item`:
 ### `.callout` — Bordered callout box
 Base class with modifiers for colour:
 ```html
-<div class="callout callout-disambig">NOT: {{WordTranslationDisambiguate}}</div>
+<!-- Disambig: rendered by JS. =prefix → raw text (muted subtext grey); no prefix → "Not:" label -->
+<div class="callout callout-disambig" id="disambig-ende-f"></div>
 <div class="callout callout-note">{{Note}}</div>
 ```
+Disambiguation callouts use `--subtext` colour (muted grey, not red). The `=` positive-framing prefix is preferred; "Not:" framing is vestigial.
 
 ### Card header + divider
 ```html
@@ -134,7 +136,7 @@ Base class with modifiers for colour:
 - Applied via `.timed` class on the front card only
 - Back cards have no urgency animation
 - Keyframes in BASE_LAYOUT: `urgency-de`, `urgency-en`, `urgency-blank`
-- Note-type keyframes: `urgency-pfx`, `urgency-gram` (start from their accent colour)
+- Note-type keyframes: `urgency-pfx`, `urgency-gram`, `urgency-listen` (start from their accent colour)
 
 ### Tooltip entrance
 - `opacity: 0 → 1`, `translateY(4px) → 0` over `200ms ease-out`

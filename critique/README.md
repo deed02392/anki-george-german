@@ -29,4 +29,4 @@ Full analysis of the Anki card design, tooling, and learning approach.
 
 ## Status
 
-This analysis was created on the `anki-card-critique` branch (2026-03-14) and merged to main. See [TODO.md](../TODO.md) for remaining unaddressed items.
+This analysis was created on the `anki-card-critique` branch (2026-03-14) and merged to main. Since then, a 4th card template (Listening) was added, audio coverage was dramatically improved, ClozeHint was moved to the front card (tap-to-reveal), and Phase/Domains fields were removed. See [TODO.md](../TODO.md) for remaining unaddressed items.

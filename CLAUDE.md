@@ -14,11 +14,15 @@ anki_george_german/         Installable Python package (CLI: anki-german)
   _vocab_prompts.py         LLM prompt templates for vocab generation
   _vocab_validate.py        Validation and normalisation for generated cards
   generate_vocab.py         Main vocab generation (text extraction + domain briefs)
+  chapters.py               Chapter detection and text chunking for books
   enrich_ipa_audio.py       IPA + audio enrichment from Wiktionary + LLM fallback
+  enrich_word_data.py        Word frequency + sense corpus builder
+  enrich_hints.py           Backfill ClozeHint grammar annotations
   update_templates.py       LIVE SOURCE OF TRUTH for CSS and templates
   unsuspend_candidates.py   Weekly card unsuspension
   schedule.py               Manage launchd agent for auto-unsuspend
   update_prefix_fields.py   Sync prefix data to Anki
+  update_grammar_fields.py  Sync grammar term data to Anki
   fix_disambiguations.py    Fix duplicate translations via LLM
   fix_noun_cloze_articles.py Fix article in cloze words
   deck_stats.py             Deck analysis and problem cards
@@ -29,8 +33,11 @@ anki_george_german/         Installable Python package (CLI: anki-german)
 tests/                      pytest test suite
 data/
   prefix_data.json          Prefix teaching data (21 entries)
+  grammar_terms.json        Grammar term definitions
+  word_data.json            Word frequency + sense corpus
   clozeword_overrides.json  Manual ClozeWord corrections (legacy)
   books/                    Source texts for vocab extraction
+  external/                 Reference data (dlexDB, Goethe wordlists)
   generated/                JSON checkpoints from generation runs
 pipeline/
   archive/                  Original deck build scripts (01-04, historical)
@@ -49,10 +56,13 @@ anki-german enrich sentences    --source [--sentences] [--batch-size] [--dry-run
 anki-german enrich audio        [--ipa-only] [--audio-only] [--audio-delay] [--no-llm] [--dry-run]
 anki-german enrich disambig     [--dry-run]
 anki-german enrich noun-cloze   [--dry-run]
+anki-german enrich hints        [--dry-run]
+anki-german enrich worddata     [--dwds-only] [--senses-only] [--dry-run]
 anki-german unsuspend           [--apply] [--max N]
 anki-german stats
 anki-german templates
 anki-german prefixes
+anki-german grammar
 anki-german query               [WORD]
 anki-german schedule install    [--day MON] [--hour 9] [--max 5]
 anki-german schedule uninstall

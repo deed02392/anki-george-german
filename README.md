@@ -1,8 +1,8 @@
 # George's German Vocabulary
 
-Pipeline-built Anki deck for learning German vocabulary relevant to conversations with children aged 4–6. The deck has 740 notes across 15 domains (play, food, animals, feelings, etc.), each generating three card types: production (EN→DE), recognition (DE→EN), and sentence cloze.
+LLM-powered Anki deck for learning German vocabulary. Vocabulary is extracted from German texts (literature, articles) using spaCy NLP, enriched by Claude, and pushed to Anki via AnkiConnect. New cards can also be generated from domain briefs (e.g. "IT security vocabulary").
 
-A separate **prefix** sub-deck teaches 21 German prefixes (separable, inseparable, and dual) with spatial/directional meanings.
+The deck currently has ~1,141 vocab notes across four card types: production (EN→DE), recognition (DE→EN), sentence cloze, and listening. A separate **prefix** sub-deck teaches 21 German prefixes, and a **grammar** sub-deck covers grammar terms.
 
 ## Prerequisites
 
@@ -18,171 +18,133 @@ uv sync
 
 ## Quick start
 
-If you already have the deck imported in Anki, you only need the `tools/` scripts. The most common operations:
+The project installs as an `anki-german` CLI:
 
 ```sh
-# Push latest CSS and templates to Anki (both note types)
-uv run python tools/update_templates.py
+# Push latest CSS and templates to Anki (all note types)
+anki-german templates
 
-# Enrich notes with IPA transcriptions from Wiktionary
-uv run python tools/enrich_ipa_audio.py --ipa-only
+# Generate vocabulary from a German text
+anki-german generate text \
+    --file data/books/Schachnovelle.txt \
+    --source schachnovelle --paragraphs 1-30
+
+# Generate vocabulary from a domain brief
+anki-german generate domain \
+    --brief "IT security vocabulary" \
+    --source it_security --count 30
+
+# Enrich notes with IPA transcriptions and audio from Wiktionary
+anki-german enrich audio --ipa-only
 
 # Unsuspend the next batch of cards for study
-uv run python tools/unsuspend_candidates.py --apply
+anki-german unsuspend --apply
 ```
 
 ## Repository structure
 
 ```
-pipeline/          Build a deck from scratch (numbered steps)
-tools/             Maintain and enrich a live deck
-data/              Curated data files
-img/               Documentation images
+anki_george_german/         Installable Python package (CLI: anki-german)
+  cli.py                    Unified CLI dispatcher
+  _anki.py                  Shared AnkiConnect helper
+  _llm.py                   Shared Floodgate/LLM helper
+  generate_vocab.py         Main vocab generation (text + domain modes)
+  chapters.py               Chapter detection and text chunking
+  enrich_ipa_audio.py       IPA + audio enrichment from Wiktionary
+  enrich_word_data.py       Word frequency + sense corpus builder
+  enrich_hints.py           ClozeHint grammar annotations
+  update_templates.py       LIVE SOURCE OF TRUTH for CSS and templates
+  unsuspend_candidates.py   Progressive card unsuspension
+  schedule.py               Manage launchd agent for auto-unsuspend
+  fix_disambiguations.py    Fix duplicate translations via LLM
+  fix_noun_cloze_articles.py Fix article in cloze words
+  deck_stats.py             Deck analysis and problem cards
+  query_note.py             Quick note lookup
+  update_prefix_fields.py   Sync prefix data to Anki
+  update_grammar_fields.py  Sync grammar term data to Anki
+tests/                      pytest test suite
+data/
+  prefix_data.json          Prefix teaching data (21 entries)
+  grammar_terms.json        Grammar term definitions
+  word_data.json            Word frequency + sense corpus
+  books/                    Source texts for vocab extraction
+  external/                 Reference data (dlexDB, Goethe wordlists)
+  generated/                JSON checkpoints from generation runs
+pipeline/
+  archive/                  Original deck build scripts (historical)
+img/                        Documentation images
 ```
 
-## Building a deck from scratch
-
-The pipeline scripts are numbered in execution order. Each reads the output of the previous step.
-
-| Step | Script | What it does |
-|------|--------|-------------|
-| 1 | `pipeline/01_export_deck.py` | Exports an existing "German Vocabulary" deck via AnkiConnect to JSON + .apkg |
-| 2 | `pipeline/02_select_vocab.py` | Scores exported notes for child-conversation relevance, selects 740, identifies gaps |
-| 3 | `pipeline/03_build_deck.py` | Creates the "George's German Vocab" note type and imports all notes |
-| 4 | `pipeline/04_build_prefixes.py` | Creates the "German Prefix" note type and imports 21 prefix cards |
-
-After building, run `tools/update_templates.py` to push the latest CSS and templates.
-
-To adapt for your own goals: edit the domain keywords and scoring in step 2, then rebuild from step 3.
-
-## Tools reference
-
-### `tools/update_templates.py`
-
-**Live source of truth** for all CSS and HTML templates (both vocab and prefix note types). Pushes changes to Anki via AnkiConnect.
+## CLI command reference
 
 ```sh
-uv run python tools/update_templates.py
-```
+# ── Generate ──
+anki-german generate text       --file --source [--select] [--paragraphs] [--batch-size] [--sentences] [--dry-run] [--enrich]
+anki-german generate domain     --brief --source [--count] [--sentences] [--dry-run]
+anki-german generate scan       --file [--chunk-minutes] [--reading-speed]
 
-Always run this after modifying any template or CSS code. No flags — it pushes everything.
+# ── Enrich ──
+anki-german enrich sentences    --source [--sentences] [--batch-size] [--dry-run]
+anki-german enrich audio        [--ipa-only] [--audio-only] [--audio-delay] [--no-llm] [--dry-run]
+anki-german enrich disambig     [--dry-run]
+anki-german enrich noun-cloze   [--dry-run]
+anki-german enrich hints        [--dry-run]
+anki-german enrich worddata     [--dwds-only] [--senses-only] [--dry-run]
 
-### `tools/enrich_ipa_audio.py`
-
-Fetches IPA transcriptions and audio from German Wiktionary for notes missing them.
-
-```sh
-uv run python tools/enrich_ipa_audio.py --ipa-only       # IPA only (fast)
-uv run python tools/enrich_ipa_audio.py --audio-only      # audio only (slow, rate-limited)
-uv run python tools/enrich_ipa_audio.py --dry-run         # preview without changes
-uv run python tools/enrich_ipa_audio.py --audio-delay 65  # seconds between audio downloads
-```
-
-### `tools/backfill_clozeword.py`
-
-Populates the `ClozeWord` field — the exact text to blank in cloze sentences. Handles German morphology (inflected forms, separable verbs).
-
-```sh
-uv run python tools/backfill_clozeword.py --dry-run
-uv run python tools/backfill_clozeword.py
-uv run python tools/backfill_clozeword.py --verify
-uv run python tools/backfill_clozeword.py --overrides data/clozeword_overrides.json
-```
-
-### `tools/fix_cloze_substrings.py`
-
-Fixes cloze cards where the blanked word is a substring of another word in the sentence.
-
-```sh
-uv run python tools/fix_cloze_substrings.py --dry-run
-uv run python tools/fix_cloze_substrings.py
-```
-
-### `tools/generate_sentences.py`
-
-Generates alternative example sentences for notes using an LLM.
-
-```sh
-uv run python tools/generate_sentences.py --dry-run
-uv run python tools/generate_sentences.py --batch-size 10 --limit 50
-```
-
-### `tools/fix_grammar.py`
-
-Reviews and fixes grammar issues in sentence translations using an LLM.
-
-```sh
-uv run python tools/fix_grammar.py --dry-run
-uv run python tools/fix_grammar.py --batch-size 20 --limit 100
-```
-
-### `tools/update_prefix_fields.py`
-
-Syncs `CoreMeaning`, `SpatialSense`, and `Examples` from `data/prefix_data.json` to existing prefix notes in Anki.
-
-```sh
-uv run python tools/update_prefix_fields.py
-```
-
-### `tools/unsuspend_candidates.py`
-
-Identifies cards ready to be unsuspended based on study progress and phase rules.
-
-```sh
-uv run python tools/unsuspend_candidates.py            # dry run (default)
-uv run python tools/unsuspend_candidates.py --apply     # actually unsuspend
-```
-
-### `tools/query_note.py`
-
-Quick lookup of a single note's fields and card state.
-
-```sh
-uv run python tools/query_note.py "der Saft"
+# ── Manage ──
+anki-german unsuspend           [--apply] [--max N]
+anki-german stats
+anki-german templates
+anki-german prefixes
+anki-german grammar
+anki-german query               [WORD]
+anki-german schedule install    [--day MON] [--hour 9] [--max 5]
+anki-german schedule uninstall
+anki-german schedule status
 ```
 
 ## Card design
 
 ### Vocab note type — "George's German Vocab"
 
-**13 fields:** Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, SentenceTranslation, Domains, Phase, Note
+**12 fields:** Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, ClozeHint, SentenceTranslation, Note
 
-**3 card templates:**
+**4 card templates:**
 - **EN → DE** — English prompt, produce the German word
 - **DE → EN** — German word shown, recall the English
 - **Sentence Cloze** — sentence with target word blanked (JS-rendered, not native Anki cloze)
+- **Listening** — audio-only front, POS hint. Only generated when Audio field is populated.
 
 ### Prefix note type — "German Prefix"
 
 **5 fields:** Prefix, PrefixType, CoreMeaning, SpatialSense, Examples
 
-**2 card templates:**
-- **Prefix → Meaning** — see the prefix, recall its meaning
-- **Meaning → Prefix** — see the meaning, recall the prefix
+**2 card templates:** Prefix → Meaning, Meaning → Prefix
+
+### Grammar note type — "German Grammar Term"
+
+**2 card templates:** Term → Definition, Example → Term
 
 ### Visual design
 
 - Dark/light mode via `prefers-color-scheme`
 - Focal urgency timer: word colour shifts accent → amber → coral over 10 seconds (CSS-only, front cards only)
 - Responsive font sizes via `clamp()`
-- All CSS and templates live in `tools/update_templates.py`
+- All CSS and templates live in `anki_george_german/update_templates.py`
 
-## Review management
+## Progressive unsuspension
 
-### Phased introduction
+Cards are introduced gradually based on review maturity:
+- **DE→EN**: unsuspended when EN→DE interval ≥ 14 days
+- **Sentence Cloze**: unsuspended when both EN→DE and DE→EN interval ≥ 21 days
+- **Listening**: unsuspended when DE→EN interval ≥ 21 days
 
-| Phase | Notes | Focus |
-|-------|-------|-------|
-| P1 | 80 | Greetings, core feelings, highest-frequency verbs |
-| P2 | 87 | Numbers, animals, family, colours, common verbs |
-| P3 | 573 | Remaining child-relevant vocabulary |
+EN→DE cards are unsuspended on creation.
 
-New cards start suspended. Use `tools/unsuspend_candidates.py` to introduce the next batch when ready.
+## FSRS
 
-### FSRS
-
-The deck uses Anki's FSRS scheduler with default parameters.
+The deck uses Anki's FSRS scheduler. Set Desired Retention to **0.85** in deck options.
 
 ## Further reading
 
-See `NOTES.md` for detailed project history, design decisions, and template iteration notes. See `CLAUDE.md` for instructions that guide AI-assisted development on this project.
+See `NOTES.md` for detailed project history, design decisions, and template iteration notes. See `CLAUDE.md` for instructions that guide AI-assisted development on this project. See `STYLE_GUIDE.md` for the card CSS design system.

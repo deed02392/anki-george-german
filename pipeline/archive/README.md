@@ -13,6 +13,7 @@ no longer part of the active workflow — vocabulary is now generated via
 
 ## Why archived
 
-The pipeline was a one-time migration from an older deck format. The new
-workflow uses `tools/generate_vocab.py` to extract vocabulary from German
-texts (spaCy + LLM enrichment) or generate cards from domain briefs.
+The pipeline was a one-time migration from an older deck format. The active
+workflow uses the `anki-german` CLI (package `anki_george_german/`) to extract
+vocabulary from German texts (spaCy + LLM enrichment) or generate cards from
+domain briefs.

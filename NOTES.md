@@ -1,106 +1,60 @@
 # George's German Vocabulary — Project Notes
 
-## What this repo now does
+## What this repo does
 
-Originally this repo contained a single script (`disambiguate.py`) for identifying disambiguation gaps in the "German Vocabulary" deck. It has been extended with a three-agent pipeline that built a new deck, **"George's German Vocabulary"**, optimised for conversing with two native German-speaking children aged 4 and 6.
+An installable Python package (`anki-german` CLI) that generates, enriches, and manages a German vocabulary Anki deck for an adult learner. Vocabulary is extracted from German texts (literature, articles) and domain briefs using an LLM-powered pipeline with spaCy NLP, then pushed to Anki via AnkiConnect.
+
+The deck currently has ~1,141 vocab notes (4 card templates each), 21 prefix notes, and grammar term notes.
 
 ---
 
-## Agent pipeline
+## Historical context
 
-Each agent owns its own directory under `agents/`. Scripts are rerunnable.
+The repo originally contained a single script (`disambiguate.py`). It was extended with a three-agent pipeline (`agents/agent1_export/`, `agent2_vocab/`, `agent3_build/`) that built an initial 740-note deck from an older "German Vocabulary" deck, selecting child-conversation-relevant cards and creating a new note type. That agent code has since been archived to `pipeline/archive/` and the project restructured as an installable Python package under `anki_george_german/`.
 
-### Agent 1 — `agents/agent1_export/`
-Exports the original "German Vocabulary" deck comprehensively:
-- `export.py` — pulls all 4,028 notes and 8,055 cards via AnkiConnect, plus exports a full `.apkg` backup and cross-checks note count via the SQLite DB inside it
-- `deck_export.json` — structured JSON of all notes with fields + scheduling data
-- `german_vocabulary.apkg` — full deck backup including scheduling (203 MB, gitignored)
-- `report.md` — summary statistics of the original deck
-
-Key findings from the original deck: 4,028 notes, ~100% have sentences and IPA, Level field is entirely empty, only 3 unique tags used, 38.6% of cards were mature (>21 day interval).
-
-### Agent 2 — `agents/agent2_vocab/`
-Identifies which existing cards are relevant to child-conversation goals, and what's missing:
-- `analyse.py` — keyword + regex matching across 15 domains, priority scoring 0–10
-- `selected_cards.json` — 669 existing notes matched as child-relevant
-- `new_vocab.json` — 72 net-new vocabulary items not in the original deck
-- `report.md` — full analysis with phase recommendations
-
-Domains covered: play, toys, food, family, school/kindergarten, animals, feelings, body, colours, numbers, greetings/social, questions, location, time, actions.
-
-### Agent 3 — `agents/agent3_build/`
-Designs the note type and builds the deck:
-- `build.py` — creates the "George's German Vocab" note type and "George's German Vocabulary" deck via AnkiConnect, imports all 740 notes
-- `fix_templates.py` — fixes applied after initial build (see Template fixes below)
-- `backfill_scheduling.py` — ports scheduling state from original deck into new deck
-- `build_data.json` — machine-readable build output
-- `report.md` — card schema, sample cards, 4-milestone self-assessment framework
+Key facts from the original build:
+- 4,028 notes in the original deck, ~100% had sentences and IPA
+- 669 existing notes matched as relevant, 72 net-new items generated
+- Scheduling state was backfilled via `setDueDate` (intervals not fully preserved due to FSRS)
 
 ---
 
 ## The "George's German Vocab" note type
 
-**Fields:** Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Sentence, SentenceTranslation, Domains, Phase, Note
+**12 fields:** Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, ClozeHint, SentenceTranslation, Note
 
-**Three card templates per note:**
-1. **EN → DE** (Production) — English prompt, must produce German
-2. **DE → EN** (Recognition) — German shown, must recall English
-3. **Sentence Cloze** (Context) — sentence with target word blanked, JS-rendered from `Word` field
+**Four card templates per note:**
+1. **EN → DE** (Production) — English prompt, produce the German word
+2. **DE → EN** (Recognition) — German word shown, recall the English
+3. **Sentence Cloze** (Context) — sentence with target word blanked (JS-rendered from `ClozeWord` field)
+4. **Listening** (Auditory) — audio-only front with "Hör zu." prompt, POS hint. Only generates when Audio field is populated. Gated on DE→EN interval ≥ 21 days.
 
 **Design decisions:**
-- Dark/light mode via `prefers-color-scheme` CSS media query — switches automatically with macOS system appearance
-- Phase badge (P1/P2/P3) rendered as a pure Mustache conditional `{{#Phase}}<span class="phase-badge phase-{{Phase}}">P{{Phase}}</span>{{/Phase}}` — no JavaScript involved
-- Focal urgency animation — the word you're staring at shifts colour over 10s (accent → amber → coral) via pure CSS `@keyframes`. Front templates only. See Focal urgency section below.
-- Cloze blanking done in JavaScript at render time by stripping the article from `Word` and regex-replacing the first match in `Sentence` — does NOT use Anki's native Cloze note type, which would preclude the other two templates
+- Dark/light mode via `prefers-color-scheme` CSS media query
+- Focal urgency animation — the word shifts colour over 10s (accent → amber → coral) via pure CSS `@keyframes`. Front templates only.
+- Cloze blanking reads the `ClozeWord` field and blanks matching text in the `Sentence` field at render time via JavaScript. Does NOT use Anki's native Cloze note type (which would preclude the other templates).
+- `ClozeWord` stores the exact inflected text to blank. `~` separates parts for separable verbs (`machte~auf`), `|` separates sentence variants.
+- Source badges on back cards show the origin of each card (e.g. `schachnovelle`, `it_security`).
 
 ---
 
-## Template fixes (applied after initial build)
+## Prefix note type ("German Prefix")
 
-The initial Agent 3 build had two bugs:
+21 cards in sub-deck `George's German Vocabulary::Prefixes`. 5 fields: Prefix, PrefixType, CoreMeaning, SpatialSense, Examples.
 
-1. **`document.write()` destroyed card content.** The phase badge used `document.write()` inside a `{{#Phase}}` block. In Anki's WebKit renderer, `document.write()` called after page load truncates the document — everything after the script tag was wiped, leaving only the phase text visible. Fixed by replacing with a static Mustache span.
-
-2. **`{{c1::word}}` syntax in Sentence fields caused validation errors.** Anki flags notes containing cloze syntax on non-Cloze note types. The 505 affected notes had `{{c1::word}}` stripped from their Sentence fields by `fix_templates.py`. The JS cloze rendering in the template reads the `Word` field directly, so no data was lost.
+2 card templates: Prefix → Meaning, Meaning → Prefix.
 
 ---
 
-## Deck structure
+## Grammar note type ("German Grammar Term")
 
-| Phase | Notes | Focus |
-|-------|-------|-------|
-| P1    | 80    | Greetings, core feelings, highest-frequency play/food/action verbs |
-| P2    | 87    | Numbers, animals, family, colours, common verbs, toys, location |
-| P3    | 573   | Supplementary child-relevant vocabulary from the original deck |
-
-Tags used: `child_vocab`, `phase::1` / `phase::2` / `phase::3`, `domain::play`, `domain::food`, etc.
-
----
-
-## Scheduling backfill
-
-`backfill_scheduling.py` matched new deck notes to the original deck by word (case-insensitive, article-stripped) and used AnkiConnect's `setDueDate` to promote previously-seen words to the review queue:
-
-- **317 EN→DE cards** promoted to review queue (words seen in original deck with interval ≥1 day)
-- **423 cards** left as new (unseen in original deck, or net-new vocab)
-
-Only the EN→DE card per note was promoted. DE→EN and Sentence Cloze cards remain new/suspended to be activated per phase as proficiency builds.
-
-**Important caveat — intervals were not restored:** `setDueDate "0"` promotes a card to the review queue due today but sets interval to 1 day regardless of the original value. All 317 backfilled cards therefore landed at interval <7 days rather than their original SM-2 intervals.
-
-Attempting to correct this post-hoc via `setSpecificValueOfCard` (which can write `ivl`, `due`, `factor` directly) was ruled out because **FSRS had already been enabled** on the deck. FSRS uses its own internal state fields (`stability`, `difficulty`, `last_review`) that are decoupled from the SM-2 `ivl`/`factor` fields — overwriting those with stale SM-2 values would create inconsistent scheduler state. The correct approach is to leave the intervals as-is and let FSRS calibrate naturally from review responses. Words you know well will return to long intervals within 2–3 reviews; FSRS converges quickly.
-
-**AnkiConnect allowList:** `setSpecificValueOfCard` was enabled in the AnkiConnect config for potential future use:
-```json
-"allowList": ["setSpecificValueOfCard"]
-```
-This is already applied to `addons21/2055492159/config.json`.
+Grammar term cards in sub-deck `George's German Vocabulary::Grammar`. 2 card templates: Term → Definition, Example → Term.
 
 ---
 
 ## Focal urgency
 
-Instead of a separate timer widget, the focal element itself (the word or cloze blank) shifts colour over time to hint at retrieval difficulty. Implemented in `agents/agent3_build/update_templates.py`.
+Instead of a separate timer widget, the focal element itself (the word or cloze blank) shifts colour over time to hint at retrieval difficulty. Implemented in `anki_george_german/update_templates.py`.
 
 - Pure CSS `@keyframes` — no JavaScript
 - **10 seconds** total animation, two discrete colour steps:
@@ -109,6 +63,7 @@ Instead of a separate timer widget, the focal element itself (the word or cloze 
   - **7–9s** (70–90%): amber holds (retrieval effort zone)
   - **9–10s** (90–100%): rapid snap to coral — `animation-fill-mode: forwards` holds it permanently
 - `.word-de.timed` and `.word-en.timed` classes on front templates trigger the animation
+- `.listen-prompt.timed` animates via `@keyframes urgency-listen` (slate blue → amber → coral)
 - `.cloze-blank` animates automatically (border colour + subtle background tint)
 - Not present on any back template
 - Dark/light mode handled automatically since `--accent-de`/`--accent-en` resolve differently per scheme
@@ -120,67 +75,60 @@ Instead of a separate timer widget, the focal element itself (the word or cloze 
 The card CSS was reworked to fix several issues on AnkiMobile (iOS):
 
 **Problems fixed:**
-- Horizontal scrolling caused by `width: 100%` without `box-sizing: border-box` — padding was added on top of width, overflowing the viewport
-- Asymmetric horizontal margins caused by Anki's hidden `body { margin: 20px }` in `reviewer.scss` conflicting with the card's own padding
+- Horizontal scrolling caused by `width: 100%` without `box-sizing: border-box`
+- Asymmetric horizontal margins caused by Anki's hidden `body { margin: 20px }`
 - Vertical scrolling caused by `min-height: 100vh`/`100dvh`/`100svh` — all viewport units resolve to the full webview height, which extends behind Anki's UI chrome
-- Timer bar replaced with a `position: fixed` bar (since replaced by the in-flow focal urgency animation)
 
 **Current approach:**
-- `html, body, #qa { margin: 0; height: 100%; }` — resets Anki's body margin and propagates the actual container height down the chain. `#qa` is the wrapper div AnkiMobile uses around card content.
-- `min-height: 100%` on `.card` — resolves to the real usable height (not viewport height), enabling vertical centering without overflow
-- `display: grid; align-content: center` on `.card` — vertically centres content. Grid was chosen over flexbox because `align-items: center` (flex) clips the top of tall cards. Block-level `align-content` (no grid) is too new for Anki's Chromium.
+- `html, body, #qa { margin: 0; height: 100%; }` — resets Anki's body margin and propagates the actual container height. `#qa` is the wrapper div AnkiMobile uses.
+- `min-height: 100%` on `.card` — resolves to the real usable height, enabling vertical centering without overflow
+- `display: grid; align-content: center` on `.card` — vertically centres content. Grid was chosen over flexbox because `align-items: center` (flex) clips the top of tall cards.
 - `box-sizing: border-box` on `.kard` — ensures `width: 100%` includes padding
-- `overflow-wrap: break-word` on sentence elements — prevents long German text from causing horizontal scroll
+- `overflow-wrap: break-word` on sentence elements
 - Responsive font sizes via `clamp()` — e.g. `.word-de` uses `clamp(1.6rem, 6vw, 2.4rem)`
 - Responsive padding via `clamp()` — `.kard` uses `padding-inline: clamp(16px, 5vw, 32px)`
 
 **Note on Browse→Preview:** The preview pane is smaller than the full viewport, so `min-height: 100%` can produce extra space above content there. This only affects previewing — actual review sessions display correctly on both desktop and mobile.
 
+---
+
 ## Progressive unsuspending
 
-`unsuspend_candidates.py` at the repo root identifies suspended DE→EN and Sentence Cloze cards that are ready to activate based on EN→DE review maturity.
+`anki_george_german/unsuspend_candidates.py` identifies suspended cards ready to activate based on review maturity.
 
-Thresholds:
-- **DE→EN**: EN→DE interval ≥ 14 days and ease ≥ 2200
+**Thresholds (interval-based only):**
+- **DE→EN**: EN→DE interval ≥ 14 days
 - **Sentence Cloze**: both EN→DE and DE→EN interval ≥ 21 days
+- **Listening**: DE→EN interval ≥ 21 days
 
-Run weekly in dry-run mode (default), apply with `--apply`:
-```
-uv run unsuspend_candidates.py           # see candidates
-uv run unsuspend_candidates.py --apply   # unsuspend them
+Run via CLI:
+```sh
+anki-german unsuspend           # dry run (default)
+anki-german unsuspend --apply   # actually unsuspend
+anki-german unsuspend --max 10  # cap unsuspensions per batch
 ```
 
-Due to the interval backfill issue (all 317 backfilled cards landed at interval <7 days — see Scheduling backfill above), no candidates will appear until those cards have been reviewed and FSRS has pushed their intervals out. Expect DE→EN candidates to start appearing after 2–3 weeks of regular review.
+A launchd agent can automate weekly unsuspension:
+```sh
+anki-german schedule install --day MON --hour 9 --max 5
+anki-german schedule status
+anki-german schedule uninstall
+```
 
 ---
 
-## Recommended study workflow
+## FSRS
 
-### Phase approach
-Start with only Phase 1 EN→DE cards active. In Anki Browser:
-```
-deck:"George's German Vocabulary" card:"EN → DE" tag:phase::1
-```
-Unsuspend only these. Keep DE→EN and Sentence Cloze suspended until Phase 1 EN→DE retention is consistently >85%.
+FSRS is enabled on the deck. Set Desired Retention to **0.85** in deck options. Run "Optimise" periodically as review data accumulates. FSRS models retrievability per card rather than applying a uniform ease factor, and converges quickly from review responses.
 
-### Daily limits
-- New cards: 10–15/day
-- Always clear reviews before introducing new cards
-- Cap sessions at 20–30 minutes
+---
 
-### Phase progression (approximate)
+## Template fixes (historical)
 
-| Weeks | Active cards | Goal |
-|-------|-------------|------|
-| 1–2   | P1 EN→DE (~80) | Greetings, feelings, core verbs |
-| 3–4   | + P2 EN→DE (~87) | Animals, food, family, numbers |
-| 5–6   | Unsuspend DE→EN for P1+P2 | Add recognition direction |
-| 7–8   | Unsuspend Cloze for P1 | Context and sentence fluency |
+The initial build had two bugs, both long since fixed:
 
-### FSRS
-FSRS is enabled. Set Desired Retention to **0.85** in deck options. Run "Optimise" after ~2 weeks of review data has accumulated.
+1. **`document.write()` destroyed card content.** The phase badge used `document.write()` inside a `{{#Phase}}` block, which truncated the document in Anki's WebKit renderer. Fixed by replacing with static HTML.
 
-FSRS is meaningfully better than SM-2 for language learning because it models retrievability per card rather than applying a uniform ease factor. Due to the backfill limitation, FSRS has no prior history to work from — it will calibrate from scratch based on your responses, which typically converges within a few weeks.
+2. **`{{c1::word}}` syntax in Sentence fields caused validation errors.** Anki flags cloze syntax on non-Cloze note types. The affected notes had the syntax stripped. The JS cloze rendering reads the `ClozeWord` field directly, so no data was lost.
 
-### Self-assessment milestones
-See `agents/agent3_build/report.md` for the full 4-milestone framework (weeks 2, 4, 6, 8). The headline test: can you sustain a 5-minute back-and-forth with the children about one of the target domains without pausing to think?
+The Phase and Domains fields were later removed entirely as unused clutter.
