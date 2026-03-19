@@ -332,6 +332,8 @@ h2 {
   font-size: 0.85rem;
   line-height: 1.7;
   color: var(--text);
+  white-space: pre;
+  display: block;
 }
 .code-block .comment { color: var(--text-muted); }
 .code-block .cmd { color: var(--accent-de); }
@@ -610,8 +612,8 @@ h2 {
 
       <div class="feature">
         <span class="feature-icon" aria-hidden="true">&#x2699;&#xFE0F;</span>
-        <h3>Generate your own cards</h3>
-        <p>Feed any German text file to the CLI and get study-ready Anki cards in minutes. Or generate vocabulary from a topic brief like &ldquo;medical German for healthcare workers.&rdquo;</p>
+        <h3>Seed it with your own reading</h3>
+        <p>Drop in a chapter of whatever you're reading in German &mdash; a novel, a news article, a transcript. The CLI extracts vocabulary, skips words you already know, and generates complete Anki cards.</p>
       </div>
 
     </div>
@@ -664,26 +666,52 @@ h2 {
 </div>
 
 <!-- ════════════════════════════════════════════ -->
+<!-- GRAMMAR CARDS -->
+<!-- ════════════════════════════════════════════ -->
+<div class="container">
+  <section>
+    <div class="section-label">Bonus deck</div>
+    <h2>Grammar terms in context</h2>
+    <p class="section-intro">
+      A companion sub-deck for grammar terminology &mdash; cases, tenses, moods, clause types.
+      Two card directions: see the term and recall its definition, or see an example and identify the grammar at work.
+      These connect to the cloze hints on vocab cards, so when a cloze blank says &ldquo;Dativ &middot; maskulin,&rdquo; you already know what that means.
+    </p>
+    <div class="card-showcase" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+      <div class="card-mock" style="border-top: 3px solid var(--accent-de);">
+        <div class="card-mock-type">Term &rarr; Definition</div>
+        <div class="card-mock-word de" style="font-size: 1.3rem; text-align: center;">Dativ</div>
+        <hr class="card-mock-divider">
+        <div class="card-mock-sentence" style="color: var(--text-muted); font-size: 0.9rem;">The indirect object case. Marks the recipient, beneficiary, or experiencer of an action.</div>
+      </div>
+      <div class="card-mock" style="border-top: 3px solid var(--accent-de);">
+        <div class="card-mock-type">Example &rarr; Term</div>
+        <div class="card-mock-sentence" style="margin-top: 4px;">Ich gebe <strong style="color: var(--accent-de);">dem Kind</strong> einen Apfel.</div>
+        <div class="card-mock-translation">&ldquo;I give the child an apple.&rdquo;</div>
+        <hr class="card-mock-divider">
+        <div class="card-mock-word de" style="font-size: 1.1rem; text-align: center;">? &rarr; Dativ</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
 <!-- TOOLKIT -->
 <!-- ════════════════════════════════════════════ -->
 <div class="container">
   <section>
     <div class="section-label">Toolkit</div>
-    <h2>More than a deck export</h2>
+    <h2>Bring your own German text</h2>
     <p class="section-intro">
-      A Python CLI that generates, enriches, and manages the deck.
-      Feed it a chapter of a German novel and get study-ready Anki cards in minutes.
+      The real power is feeding it text you're actually reading. Drop in a chapter of a novel, a news article,
+      or a transcript &mdash; the CLI extracts vocabulary with NLP, skips words you already know, generates
+      card fields with an LLM, and imports them into Anki. Your reading becomes your study material.
     </p>
 
-    <div class="code-block"><code><span class="comment"># Extract vocabulary from a German text</span>
+    <div class="code-block"><code><span class="comment"># You're reading Schachnovelle &mdash; turn chapters 1-5 into cards</span>
 <span class="cmd">anki-german</span> generate text \
     <span class="flag">--file</span> <span class="str">data/books/Schachnovelle.txt</span> \
-    <span class="flag">--source</span> <span class="str">schachnovelle</span>
-
-<span class="comment"># Generate from a topic brief</span>
-<span class="cmd">anki-german</span> generate domain \
-    <span class="flag">--brief</span> <span class="str">"IT security vocabulary"</span> \
-    <span class="flag">--source</span> <span class="str">it_security</span> <span class="flag">--count</span> 30
+    <span class="flag">--source</span> <span class="str">schachnovelle</span> <span class="flag">--paragraphs</span> <span class="str">1-120</span>
 
 <span class="comment"># Enrich with IPA and audio from Wiktionary</span>
 <span class="cmd">anki-german</span> enrich audio
@@ -734,7 +762,7 @@ h2 {
     <div class="feature-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
       <div class="feature">
         <h3>To use the deck</h3>
-        <p><a href="https://apps.ankiweb.net/" style="color: var(--accent-de);">Anki</a> (free on desktop, paid on iOS) with the <a href="https://ankiweb.net/shared/info/2055492159" style="color: var(--accent-de);">AnkiConnect</a> add-on. That's it.</p>
+        <p><a href="https://apps.ankiweb.net/" style="color: var(--accent-de);">Anki</a> is free on desktop, free on Android (<a href="https://play.google.com/store/apps/details?id=com.ichi2.anki" style="color: var(--accent-de);">AnkiDroid</a>), and free on the web (<a href="https://ankiweb.net/" style="color: var(--accent-de);">AnkiWeb</a>). The iOS app is paid. You'll also need the <a href="https://ankiweb.net/shared/info/2055492159" style="color: var(--accent-de);">AnkiConnect</a> add-on for the desktop app.</p>
       </div>
       <div class="feature">
         <h3>To generate new cards</h3>
