@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Weekly script: identify cards in "George's German Vocabulary" that are ready
-to have their DE→EN or Sentence Cloze templates unsuspended.
+to have their DE→EN, Sentence Cloze, or Listening templates unsuspended.
 
 Thresholds:
-  DE→EN unsuspend:    EN→DE card interval >= 14 days
-  Cloze unsuspend:    EN→DE interval >= 21 days AND DE→EN interval >= 21 days
+  DE→EN unsuspend:      EN→DE card interval >= 14 days
+  Cloze unsuspend:      EN→DE interval >= 21 days AND DE→EN interval >= 21 days
+  Listening unsuspend:  DE→EN interval >= 21 days
 
 Usage:
   uv run unsuspend_candidates.py                # dry run — print candidates only
@@ -19,6 +20,7 @@ from ._anki import anki
 
 EN_DE_MIN_INTERVAL  = 14   # days — gate for unsuspending DE→EN
 DE_EN_MIN_INTERVAL  = 21   # days — gate for unsuspending Cloze (alongside EN→DE)
+LISTEN_MIN_INTERVAL = 21   # days — gate for unsuspending Listening (DE→EN must be mature)
 
 
 def fetch_cards(ids):
@@ -46,25 +48,30 @@ def run(args):
     en_de_ids  = anki("findCards", query='deck:"George\'s German Vocabulary" card:"EN → DE"')
     de_en_ids  = anki("findCards", query='deck:"George\'s German Vocabulary" card:"DE → EN"')
     cloze_ids  = anki("findCards", query='deck:"George\'s German Vocabulary" card:"Sentence Cloze"')
+    listen_ids = anki("findCards", query='deck:"George\'s German Vocabulary" card:"Listening"')
 
     en_de_cards  = fetch_cards(en_de_ids)
     de_en_cards  = fetch_cards(de_en_ids)
     cloze_cards  = fetch_cards(cloze_ids)
+    listen_cards = fetch_cards(listen_ids)
 
-    print(f"  EN→DE:  {len(en_de_cards)} cards")
-    print(f"  DE→EN:  {len(de_en_cards)} cards")
-    print(f"  Cloze:  {len(cloze_cards)} cards")
+    print(f"  EN→DE:     {len(en_de_cards)} cards")
+    print(f"  DE→EN:     {len(de_en_cards)} cards")
+    print(f"  Cloze:     {len(cloze_cards)} cards")
+    print(f"  Listening: {len(listen_cards)} cards")
 
     # ── Index by note ID ─────────────────────────────────────────────────────
 
     en_de_by_note  = by_note(en_de_cards)
     de_en_by_note  = by_note(de_en_cards)
     cloze_by_note  = by_note(cloze_cards)
+    listen_by_note = by_note(listen_cards)
 
     # ── Evaluate candidates ──────────────────────────────────────────────────
 
     de_en_candidates  = []   # (cardId, word, en_de_interval)
     cloze_candidates  = []   # (cardId, word, en_de_interval, de_en_interval)
+    listen_candidates = []   # (cardId, word, de_en_interval)
 
     for note_id, en_de in en_de_by_note.items():
         word      = en_de["fields"]["Word"]["value"]
@@ -82,6 +89,13 @@ def run(args):
             de_en_ivl = de_en["interval"] if de_en else 0
             if en_de_ivl >= DE_EN_MIN_INTERVAL and de_en_ivl >= DE_EN_MIN_INTERVAL:
                 cloze_candidates.append((cloze["cardId"], word, en_de_ivl, de_en_ivl))
+
+        # ── Listening candidate ──────────────────────────────────────────────
+        listen = listen_by_note.get(note_id)
+        if listen and listen["queue"] == -1:   # suspended
+            de_en_ivl = de_en["interval"] if de_en else 0
+            if de_en_ivl >= LISTEN_MIN_INTERVAL:
+                listen_candidates.append((listen["cardId"], word, de_en_ivl))
 
     # ── Report ───────────────────────────────────────────────────────────────
 
@@ -113,29 +127,43 @@ def run(args):
     else:
         print("  None ready yet.")
 
+    print()
+    print(f"── Listening candidates ({len(listen_candidates)}) ─────────────────────────")
+    print(f"   Threshold: DE→EN interval ≥ {LISTEN_MIN_INTERVAL}d")
+    print()
+    if listen_candidates:
+        listen_candidates.sort(key=lambda x: -x[2])
+        for card_id, word, de_ivl in listen_candidates:
+            print(f"  {word:<30}  DE→EN: {de_ivl:>4}d")
+    else:
+        print("  None ready yet.")
+
     # ── Apply ────────────────────────────────────────────────────────────────
 
     # Apply --max cap (sorted by longest interval first, so strongest cards win)
     if MAX_PER_TYPE:
         de_en_candidates = de_en_candidates[:MAX_PER_TYPE]
         cloze_candidates = cloze_candidates[:MAX_PER_TYPE]
+        listen_candidates = listen_candidates[:MAX_PER_TYPE]
 
     if not DRY_RUN:
         all_to_unsuspend = (
             [c[0] for c in de_en_candidates] +
-            [c[0] for c in cloze_candidates]
+            [c[0] for c in cloze_candidates] +
+            [c[0] for c in listen_candidates]
         )
         if all_to_unsuspend:
-            anki("unsuspendCards", cards=all_to_unsuspend)
+            anki("unsuspend", cards=all_to_unsuspend)
             print()
-            print(f"Unsuspended {len(de_en_candidates)} DE→EN card(s) "
-                  f"and {len(cloze_candidates)} Cloze card(s).")
+            print(f"Unsuspended {len(de_en_candidates)} DE→EN, "
+                  f"{len(cloze_candidates)} Cloze, "
+                  f"and {len(listen_candidates)} Listening card(s).")
         else:
             print()
             print("Nothing to unsuspend.")
     else:
         print()
-        total = len(de_en_candidates) + len(cloze_candidates)
+        total = len(de_en_candidates) + len(cloze_candidates) + len(listen_candidates)
         if total:
             cap_note = f" (capped to {MAX_PER_TYPE} per type)" if MAX_PER_TYPE else ""
             print(f"{total} card(s) would be unsuspended{cap_note}. Re-run with --apply to action.")

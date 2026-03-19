@@ -6,7 +6,7 @@ This is the LIVE SOURCE OF TRUTH for all card styling and template HTML.
 Run this script after any template/CSS change to push to Anki.
 
 Note types managed:
-  1. "George's German Vocab"    — vocabulary cards (EN→DE, DE→EN, Cloze)
+  1. "George's German Vocab"    — vocabulary cards (EN→DE, DE→EN, Cloze, Listening)
   2. "German Prefix"            — prefix teaching cards (Prefix→Meaning, Meaning→Prefix)
   3. "German Grammar Term"      — grammar term cards (Term→Definition, Example→Term)
 """
@@ -403,6 +403,60 @@ PREFIX_CLASSES = """
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CSS — listening-specific classes
+# ══════════════════════════════════════════════════════════════════════════════
+
+LISTEN_CLASSES = """
+/* ── Listening accent ── */
+:root {
+  --accent-listen: #80a0c8;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --accent-listen: #4a6a9a;
+  }
+}
+
+.listen-prompt {
+  font-size: clamp(1.4rem, 5vw, 1.8rem);
+  font-weight: 600;
+  color: var(--accent-listen);
+  text-align: center;
+  margin-bottom: 4px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.listen-prompt.timed { animation: urgency-listen 10s linear forwards; }
+
+.word-de.listen { color: var(--accent-listen); }
+
+.audio-center {
+  text-align: center;
+  margin: 4px 0;
+}
+.audio-center .replay-button {
+  opacity: 0.5;
+  transform: scale(0.8);
+}
+
+.listen-pos {
+  font-size: 0.78rem;
+  color: var(--subtext);
+  font-style: italic;
+  text-align: center;
+  margin-top: 4px;
+}
+
+@keyframes urgency-listen {
+  0%   { color: var(--accent-listen); }
+  60%  { color: var(--accent-listen); }
+  70%  { color: #d4a040; }
+  90%  { color: #d4a040; }
+  100% { color: #c06040; }
+}
+"""
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CSS — grammar-specific classes
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -435,7 +489,7 @@ GRAMMAR_CLASSES = """
 
 # ── Composed CSS for each note type ──────────────────────────────────────────
 
-VOCAB_CSS = BASE_VARS + BASE_LAYOUT + VOCAB_CLASSES
+VOCAB_CSS = BASE_VARS + BASE_LAYOUT + VOCAB_CLASSES + LISTEN_CLASSES
 PREFIX_CSS = BASE_VARS + BASE_LAYOUT + PREFIX_CLASSES
 GRAMMAR_CSS = BASE_VARS + BASE_LAYOUT + GRAMMAR_CLASSES
 
@@ -788,6 +842,71 @@ CLOZE_BACK = """\
 </div>""" + cloze_picker_js("cloze-a", "cloze-tr-back", "cloze-answer", pos_id="cloze-pos", hint=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Listening templates
+# ══════════════════════════════════════════════════════════════════════════════
+# Front: audio auto-plays, "Hör zu." prompt in slate blue, POS hint.
+# Back: word in slate blue, IPA, audio, divider, English, sentences, callouts.
+# This template only generates when the Audio field is populated (Anki's
+# conditional generation skips cards where required fields are empty).
+
+LISTEN_FRONT = """\
+<div class="kard">
+  <div class="card-header">
+    <div class="card-type">Listening</div>
+    """ + source_badge_js("src-listen-f") + """
+  </div>
+
+  <div class="listen-prompt timed">H\u00f6r zu.</div>
+  <div class="audio-center">{{Audio}}</div>
+  {{#POS}}<div class="listen-pos" id="listen-pos-f"></div>{{/POS}}
+</div>""" + """
+<script>
+(function(){
+  var posVals = "{{POS}}".split("|");
+  var idx = 0;
+  try { idx = parseInt(sessionStorage.getItem("v_" + "{{Word}}")); } catch(e) {}
+  if (isNaN(idx) || idx < 0 || idx >= posVals.length) idx = 0;
+  var pel = document.getElementById("listen-pos-f");
+  if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();
+})();
+</script>"""
+
+LISTEN_BACK = """\
+<div class="kard">
+  <div class="card-header">
+    <div class="card-type">Listening</div>
+    """ + source_badge_js("src-listen-b") + """
+  </div>
+
+  <div class="word-de listen">{{Word}}</div>
+  {{#POS}}<div class="pos-hint" id="listen-pos"></div>{{/POS}}
+  {{#IPA}}<div class="ipa">[{{IPA}}]</div>{{/IPA}}
+  {{#Audio}}{{Audio}}{{/Audio}}
+
+  <hr class="divider">
+
+  <div class="word-en">{{WordTranslation}}</div>
+
+  {{#Sentence}}<div class="sentence-de" id="listen-s-back"></div>{{/Sentence}}
+  {{#SentenceTranslation}}<div class="sentence-en quoted" id="listen-tr-back"></div>{{/SentenceTranslation}}
+
+  {{#WordTranslationDisambiguate}}
+  <div class="callout callout-disambig" id="disambig-listen-b"></div>
+  {{/WordTranslationDisambiguate}}
+
+  {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
+""" + "\n</div>\n" + """\
+<script>
+(function(){
+  var raw = "{{WordTranslationDisambiguate}}".trim();
+  var el = document.getElementById("disambig-listen-b");
+  if (!el || !raw) return;
+  if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
+  else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
+})();
+</script>""" + variant_picker_js("listen-s-back", "listen-tr-back", pos_id="listen-pos")
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Prefix templates
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -907,6 +1026,15 @@ def main():
     anki("updateModelStyling", model={"name": "George's German Vocab", "css": VOCAB_CSS})
     print("  Done.")
 
+    # Ensure the Listening template exists before updating
+    existing = anki("modelTemplates", modelName="George's German Vocab")
+    if "Listening" not in existing:
+        print("Adding Listening template to George's German Vocab...")
+        anki("modelTemplateAdd", modelName="George's German Vocab",
+             template={"Name": "Listening",
+                       "Front": LISTEN_FRONT, "Back": LISTEN_BACK})
+        print("  Done.")
+
     print("Updating George's German Vocab templates...")
     anki("updateModelTemplates", model={
         "name": "George's German Vocab",
@@ -914,6 +1042,7 @@ def main():
             "EN → DE":       {"Front": EN_DE_FRONT, "Back": EN_DE_BACK},
             "DE → EN":       {"Front": DE_EN_FRONT, "Back": DE_EN_BACK},
             "Sentence Cloze": {"Front": CLOZE_FRONT, "Back": CLOZE_BACK},
+            "Listening":      {"Front": LISTEN_FRONT, "Back": LISTEN_BACK},
         }
     })
     print("  Done.")

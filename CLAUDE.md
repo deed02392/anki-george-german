@@ -107,6 +107,7 @@ Skips spaCy/compound stages; LLM generates words from the brief directly.
 
 The timer uses **focal urgency** — the word you're looking at shifts colour over 10s:
 - `.word-de.timed` / `.word-en.timed` on front templates animate via `@keyframes urgency-de` / `urgency-en`
+- `.listen-prompt.timed` animates via `@keyframes urgency-listen` (slate blue to amber to coral)
 - `.cloze-blank` animates automatically via `@keyframes urgency-blank` (border + subtle bg tint)
 - Two discrete steps: accent holds 0–6s, snaps to amber 6–7s, holds 7–9s, snaps to coral 9–10s
 - Back templates have no urgency animation
@@ -131,6 +132,7 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 - `BASE_VARS` — `:root` design tokens, dark/light mode
 - `BASE_LAYOUT` — `.card`, `.kard`, `.card-header`, `.card-type`, `hr.divider`
 - `VOCAB_CLASSES` — vocab-specific (`.word-de`, `.word-en`, `.cloze-*`, source badges)
+- `LISTEN_CLASSES` — listening-specific (accent colour `--accent-listen`, `.listen-prompt`, `.audio-center`)
 - `PREFIX_CLASSES` — prefix-specific (accent colour, `.hero.pfx`, `.sub-hero.pfx`)
 - `GRAMMAR_CLASSES` — grammar-specific (accent colour, `.hero.gram`, `.sub-hero.gram`)
 - Shared components in `BASE_LAYOUT`: `.hero`, `.sub-hero`, `.type-tag`, `.hint-text`, `.examples`/`.hl`, `.callout`
