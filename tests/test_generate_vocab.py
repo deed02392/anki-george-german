@@ -686,3 +686,23 @@ class TestStripOrphanDisambiguations:
         ]
         result = gv.strip_orphan_disambiguations(cards)
         assert result[0].get("disambiguation", "") == ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Checkpoint clear
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestClearCheckpoint:
+
+    def test_clear_removes_file(self, tmp_path):
+        """clear_checkpoint deletes an existing checkpoint file."""
+        gv.write_checkpoint([{"word": "Hund"}], "test", "ch1", output_dir=tmp_path)
+        assert gv.load_checkpoint("test", "ch1", output_dir=tmp_path) is not None
+
+        gv.clear_checkpoint("test", "ch1", output_dir=tmp_path)
+        assert gv.load_checkpoint("test", "ch1", output_dir=tmp_path) is None
+
+    def test_clear_missing_is_noop(self, tmp_path):
+        """clear_checkpoint on a non-existent file doesn't raise."""
+        gv.clear_checkpoint("nonexistent", "x", output_dir=tmp_path)

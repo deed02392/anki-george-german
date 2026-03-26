@@ -638,6 +638,12 @@ def load_checkpoint(source, suffix, output_dir=None):
     return cards
 
 
+def clear_checkpoint(source, suffix, output_dir=None):
+    """Delete a checkpoint file after successful import."""
+    path = _checkpoint_path(source, suffix, output_dir)
+    path.unlink(missing_ok=True)
+
+
 # ── Domain brief mode ────────────────────────────────────────────────────────
 
 def generate_domain_vocab(brief, count, token, num_sentences=2):
@@ -818,8 +824,7 @@ def cmd_text(args):
         print("\n── Stage 9: IPA enrichment ──")
         note_ids_to_enrich = [nid for nid, _ in imported]
         enrich_notes(note_ids_to_enrich, ipa_only=True)
-
-    # Summary
+        clear_checkpoint(args.source, chapter_suffix)
 
     # Summary
     section_names = ", ".join(ch.name for ch in chapters)
@@ -951,6 +956,7 @@ def _cmd_text_legacy(args):
         print("\n── Stage 9: IPA enrichment ──")
         note_ids_to_enrich = [nid for nid, _ in imported]
         enrich_notes(note_ids_to_enrich, ipa_only=True)
+        clear_checkpoint(args.source, para_suffix)
 
     print(f"\nDone. Imported {len(imported)} cards from {args.source}.")
 
@@ -1272,6 +1278,7 @@ def cmd_domain(args):
         print("\n── IPA enrichment ──")
         note_ids_to_enrich = [nid for nid, _ in imported]
         enrich_notes(note_ids_to_enrich, ipa_only=True)
+        clear_checkpoint(args.source, None)
 
     # Summary
     print("\n" + "=" * 60)
