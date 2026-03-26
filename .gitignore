@@ -7,3 +7,4 @@ __pycache__/
 .anki-german-completion.zsh
 .coverage
 data/enrich_index.json
+data/external/

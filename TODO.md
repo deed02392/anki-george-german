@@ -13,7 +13,7 @@ Unaddressed items from the [card design critique](critique/CARD_DESIGN_CRITIQUE.
 
 - [ ] **T7 — No automatic quality feedback loop.** Cards with ≥5 lapses aren't flagged for content review. `deck_stats.py` identifies them but doesn't feed back into the pipeline.
 - [ ] **T8 — Checkpoint JSON files accumulate.** `data/generated/` has no cleanup or archival strategy.
-- [ ] **T9 — Compound detection may be too aggressive.** CharSplit filters transparent compounds but German compounds often diverge from their parts (Handschuh ≠ hand + shoe).
+- [x] **T9 — Compound detection may be too aggressive.** Closed — no observed instances. The hypothetical example (Handschuh) never appeared in any source text. Filter has reasonable safeguards (score threshold >0.5, noun-only, depth limit 3).
 
 ## Data Quality
 
