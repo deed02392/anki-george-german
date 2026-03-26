@@ -355,6 +355,29 @@ VOCAB_CLASSES = """
   border-top-color: var(--chip-bg);
 }
 
+/* ── Grammar hint on vocab backs — tappable word in sentence ── */
+.grammar-word {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--text);
+}
+
+/* Override shared tooltip when inside .grammar-word — solid bg, high z-index */
+.grammar-word .cloze-hint-tooltip {
+  z-index: 200;
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+}
+.grammar-word .cloze-hint-tooltip::after {
+  border-top-color: var(--surface);
+}
+@media (prefers-color-scheme: light) {
+  .grammar-word .cloze-hint-tooltip {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+}
+
 /* ── Audio replay button (Anki default restyle) ── */
 .replay-button {
   display: inline-flex;
@@ -521,12 +544,14 @@ def source_badge_js(elem_id):
 </script>"""
 
 
-def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=None):
+def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=None, grammar_hint=False):
     """JS that picks a random variant from pipe-separated Sentence/SentenceTranslation/POS.
 
     is_front=True:  pick random index, store in sessionStorage for back to read.
     is_front=False: load index from sessionStorage (fallback to random).
     pos_id:         element id to fill with the variant-matched POS value.
+    grammar_hint:   if True, wrap ClozeWord in sentence with .grammar-word span
+                    and attach ClozeHint tooltip (tap/hover to reveal).
     """
     tr_line = ""
     if translation_id:
@@ -539,6 +564,70 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
   var posVals = "{{{{POS}}}}".split("|");
   var pel = document.getElementById("{pos_id}");
   if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();"""
+
+    # Grammar hint: wrap ClozeWord in the sentence, attach tooltip
+    hint_block = ""
+    if grammar_hint:
+        hint_block = f"""
+  /* ── Grammar hint: wrap cloze word + tooltip ── */
+  var hints = "{{{{ClozeHint}}}}".split("|");
+  var hint = (hints[idx] || "").trim();
+  var clozeWords = "{{{{ClozeWord}}}}".split("|");
+  var clozeWord = (clozeWords[idx] || "").trim();
+  if (hint && el) {{
+    var cw = clozeWord;
+    var cs = true;
+    if (!cw) {{
+      cw = "{{{{Word}}}}".replace(/^(der|die|das|ein|eine)\\s+/i, "").trim();
+      cs = false;
+    }}
+    var parts = cw.split("~");
+    var html = el.textContent;
+    for (var gi = 0; gi < parts.length; gi++) {{
+      var gp = parts[gi].trim();
+      if (!gp) continue;
+      var ge = gp.replace(/[.*+?^${{}}()|[\\]\\\\]/g, "\\\\$&");
+      var gL = "[A-Za-z\\\\u00C0-\\\\u024F]";
+      html = html.replace(
+        new RegExp("(?<!" + gL + ")" + ge + "(?!" + gL + ")", cs ? "" : "i"),
+        '<span class="grammar-word">$&</span>'
+      );
+    }}
+    el.innerHTML = html;
+    /* Attach tooltip to first wrapped span */
+    var gspan = el.querySelector(".grammar-word");
+    if (gspan) {{
+      gspan.classList.add("cloze-hint-trigger");
+      gspan.style.position = "relative";
+      var tip = document.createElement("span");
+      tip.className = "cloze-hint-tooltip";
+      tip.textContent = hint;
+      gspan.appendChild(tip);
+      var isTouch = false;
+      gspan.addEventListener("touchstart", function(e){{
+        isTouch = true;
+        e.preventDefault();
+        e.stopPropagation();
+        var show = !tip.classList.contains("visible");
+        document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){{ t.classList.remove("visible"); }});
+        if (show) tip.classList.add("visible");
+      }});
+      gspan.addEventListener("click", function(e){{
+        if (isTouch) return;
+        e.stopPropagation();
+        var show = !tip.classList.contains("visible");
+        document.querySelectorAll(".cloze-hint-tooltip.visible").forEach(function(t){{ t.classList.remove("visible"); }});
+        if (show) tip.classList.add("visible");
+      }});
+      document.addEventListener("touchstart", function(e){{
+        if (!gspan.contains(e.target)) tip.classList.remove("visible");
+      }});
+      document.addEventListener("click", function(e){{
+        if (!gspan.contains(e.target)) tip.classList.remove("visible");
+      }});
+    }}
+  }}"""
+
     if is_front:
         idx_logic = """\
   var idx = Math.floor(Math.random() * sentences.length);
@@ -555,7 +644,7 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
   var translations = "{{{{SentenceTranslation}}}}".split("|");
   {idx_logic}
   var el = document.getElementById("{sentence_id}");
-  if (el) el.textContent = sentences[idx].trim();{tr_line}{pos_line}
+  if (el) el.textContent = sentences[idx].trim();{tr_line}{pos_line}{hint_block}
 }})();
 </script>"""
 
@@ -759,7 +848,7 @@ EN_DE_BACK = """\
   if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
   else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
 })();
-</script>""" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos")
+</script>""" + variant_picker_js("ende-s-back", "ende-tr-back", pos_id="ende-pos", grammar_hint=True)
 
 DE_EN_FRONT = """\
 <div class="kard">
@@ -806,7 +895,7 @@ DE_EN_BACK = """\
   if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
   else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
 })();
-</script>""" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos")
+</script>""" + variant_picker_js("deen-s-back", "deen-tr-back", pos_id="deen-pos", grammar_hint=True)
 
 CLOZE_FRONT = """\
 <div class="kard">
@@ -904,7 +993,7 @@ LISTEN_BACK = """\
   if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
   else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
 })();
-</script>""" + variant_picker_js("listen-s-back", "listen-tr-back", pos_id="listen-pos")
+</script>""" + variant_picker_js("listen-s-back", "listen-tr-back", pos_id="listen-pos", grammar_hint=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Prefix templates
@@ -1013,6 +1102,11 @@ GRAM_EXAMPLE_BACK = """\
   {{#Formation}}
   <div class="hint-text">{{Formation}}</div>
   {{/Formation}}
+  {{#Example}}
+  <hr class="divider">
+  <div class="examples">{{Example}}</div>
+  {{/Example}}
+  {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 </div>"""
 
 
