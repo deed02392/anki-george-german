@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 Weekly script: identify cards in "George's German Vocabulary" that are ready
-to have their DE→EN, Sentence Cloze, or Listening templates unsuspended.
+to have their DE→EN, Sentence Cloze, Listening, or Grammar templates unsuspended.
 
 Thresholds:
   DE→EN unsuspend:      EN→DE card interval >= 14 days
   Cloze unsuspend:      EN→DE interval >= 21 days AND DE→EN interval >= 21 days
   Listening unsuspend:  DE→EN interval >= 21 days
+  Grammar unsuspend:    >=3 vocab cards reference the grammar term in ClozeHint
 
 Usage:
   uv run unsuspend_candidates.py                # dry run — print candidates only
@@ -15,12 +16,17 @@ Usage:
 """
 
 import argparse
+import json
 
-from ._anki import anki
+from . import DATA_DIR
+from ._anki import anki, DECK, MODEL
 
 EN_DE_MIN_INTERVAL  = 14   # days — gate for unsuspending DE→EN
 DE_EN_MIN_INTERVAL  = 21   # days — gate for unsuspending Cloze (alongside EN→DE)
 LISTEN_MIN_INTERVAL = 21   # days — gate for unsuspending Listening (DE→EN must be mature)
+GRAMMAR_HINT_THRESHOLD = 3  # distinct vocab notes referencing the grammar term in ClozeHint
+
+GRAMMAR_MODEL = "German Grammar Term"
 
 
 def fetch_cards(ids):
@@ -97,6 +103,57 @@ def run(args):
             if de_en_ivl >= LISTEN_MIN_INTERVAL:
                 listen_candidates.append((listen["cardId"], word, de_en_ivl))
 
+    # ── Grammar candidates ─────────────────────────────────────────────────
+
+    grammar_candidates = []   # (cardId, term, hint_count)
+
+    # Load grammar terms from JSON to know which terms exist
+    grammar_terms_path = DATA_DIR / "grammar_terms.json"
+    with open(grammar_terms_path) as f:
+        grammar_terms = {entry["term"] for entry in json.load(f)}
+
+    # Find suspended grammar cards
+    grammar_card_ids = anki("findCards",
+        query=f'"note:{GRAMMAR_MODEL}" is:suspended')
+    if grammar_card_ids:
+        grammar_cards_info = fetch_cards(grammar_card_ids)
+
+        # Collect ClozeHint values from all vocab notes
+        vocab_note_ids = anki("findNotes", query=f'"note:{MODEL}" "deck:{DECK}"')
+        vocab_notes = anki("notesInfo", notes=vocab_note_ids) if vocab_note_ids else []
+
+        # Build: term -> set of note IDs that reference it
+        # Use case-insensitive matching (terms like "maskulin" appear
+        # capitalised in ClozeHint: "Akkusativ · Maskulin")
+        term_lower_map = {t.lower(): t for t in grammar_terms}
+        term_note_counts = {t: set() for t in grammar_terms}
+        for note in vocab_notes:
+            hint = note["fields"].get("ClozeHint", {}).get("value", "")
+            if not hint:
+                continue
+            # Split on | (sentence variants), then · (components), strip whitespace
+            for variant in hint.split("|"):
+                for part in variant.split("·"):
+                    key = part.strip().lower()
+                    if key in term_lower_map:
+                        term_note_counts[term_lower_map[key]].add(note["noteId"])
+
+        # Track which terms already qualify (so both templates get unsuspended)
+        qualifying_terms = {
+            term for term, notes in term_note_counts.items()
+            if len(notes) >= GRAMMAR_HINT_THRESHOLD
+        }
+
+        # Collect suspended grammar cards whose term qualifies
+        for card in grammar_cards_info.values():
+            term = card["fields"]["Term"]["value"]
+            if term in qualifying_terms:
+                grammar_candidates.append(
+                    (card["cardId"], term, len(term_note_counts[term])))
+
+        # Sort by hint count descending, then by term name
+        grammar_candidates.sort(key=lambda x: (-x[2], x[1]))
+
     # ── Report ───────────────────────────────────────────────────────────────
 
     print()
@@ -138,6 +195,23 @@ def run(args):
     else:
         print("  None ready yet.")
 
+    # Deduplicate grammar candidates for display (group both templates per term)
+    grammar_display = {}
+    for card_id, term, count in grammar_candidates:
+        if term not in grammar_display:
+            grammar_display[term] = count
+    grammar_display_list = sorted(grammar_display.items(), key=lambda x: (-x[1], x[0]))
+
+    print()
+    print(f"── Grammar candidates ({len(grammar_display_list)}) ─────────────────────────")
+    print(f"   Threshold: ≥{GRAMMAR_HINT_THRESHOLD} vocab cards with matching ClozeHint")
+    print()
+    if grammar_display_list:
+        for term, count in grammar_display_list:
+            print(f"  {term:<30} {count:>3} vocab hints")
+    else:
+        print("  None ready yet.")
+
     # ── Apply ────────────────────────────────────────────────────────────────
 
     # Apply --max cap (sorted by longest interval first, so strongest cards win)
@@ -145,25 +219,40 @@ def run(args):
         de_en_candidates = de_en_candidates[:MAX_PER_TYPE]
         cloze_candidates = cloze_candidates[:MAX_PER_TYPE]
         listen_candidates = listen_candidates[:MAX_PER_TYPE]
+        # For grammar, cap by distinct terms (each term has up to 2 cards)
+        capped_terms = set()
+        capped_grammar = []
+        for card_id, term, count in grammar_candidates:
+            if term not in capped_terms:
+                if len(capped_terms) >= MAX_PER_TYPE:
+                    break
+                capped_terms.add(term)
+            capped_grammar.append((card_id, term, count))
+        grammar_candidates = capped_grammar
 
     if not DRY_RUN:
         all_to_unsuspend = (
             [c[0] for c in de_en_candidates] +
             [c[0] for c in cloze_candidates] +
-            [c[0] for c in listen_candidates]
+            [c[0] for c in listen_candidates] +
+            [c[0] for c in grammar_candidates]
         )
         if all_to_unsuspend:
             anki("unsuspend", cards=all_to_unsuspend)
             print()
+            n_grammar_terms = len({t for _, t, _ in grammar_candidates})
             print(f"Unsuspended {len(de_en_candidates)} DE→EN, "
                   f"{len(cloze_candidates)} Cloze, "
-                  f"and {len(listen_candidates)} Listening card(s).")
+                  f"{len(listen_candidates)} Listening, "
+                  f"and {len(grammar_candidates)} Grammar card(s) "
+                  f"({n_grammar_terms} terms).")
         else:
             print()
             print("Nothing to unsuspend.")
     else:
         print()
-        total = len(de_en_candidates) + len(cloze_candidates) + len(listen_candidates)
+        total = (len(de_en_candidates) + len(cloze_candidates)
+                 + len(listen_candidates) + len(grammar_candidates))
         if total:
             cap_note = f" (capped to {MAX_PER_TYPE} per type)" if MAX_PER_TYPE else ""
             print(f"{total} card(s) would be unsuspended{cap_note}. Re-run with --apply to action.")
