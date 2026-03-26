@@ -104,7 +104,7 @@
     "note": "Stem-vowel e→i/ie carries over: geben → Gib! lesen → Lies!"
   },
   {
-    "term": "Maskulinum",
+    "term": "Maskulin",
     "category": "Genus",
     "definition": "Masculine gender. Nouns that take der in the nominative.",
     "formation": "",
@@ -112,7 +112,7 @@
     "note": "Common markers: -er, -ling, -ismus; days, months, seasons, weather."
   },
   {
-    "term": "Femininum",
+    "term": "Feminin",
     "category": "Genus",
     "definition": "Feminine gender. Nouns that take die in the nominative.",
     "formation": "",
@@ -120,7 +120,7 @@
     "note": "Common markers: -ung, -heit, -keit, -schaft, -tion, -ie, -tät."
   },
   {
-    "term": "Neutrum",
+    "term": "Neutral",
     "category": "Genus",
     "definition": "Neuter gender. Nouns that take das in the nominative.",
     "formation": "",

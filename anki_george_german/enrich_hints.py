@@ -29,7 +29,7 @@ Use middle dot (·) as separator between components.
 Rules:
 - Verb: tense · person/number, e.g. "Präteritum · er/sie/es", "Konjunktiv II · ich"
 - Noun: case · gender · number. Use lowercase adjective forms for gender: \
-maskulin, feminin, neutral (NOT Maskulinum/Femininum/Neutrum). \
+maskulin, feminin, neutral. Use title case: Maskulin, Feminin, Neutral. \
 E.g. "Akkusativ · maskulin", "Dativ · Plural", "Nominativ · ohne Artikel"
 - Adjective: degree · case · number, e.g. "Komparativ · Dativ · Plural"
 - If the cloze is the dictionary/base form unchanged, use "Grundform"
