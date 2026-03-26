@@ -12,17 +12,17 @@ import anki_george_german.update_prefix_fields as upf
 class TestFormatExamplesHtml:
 
     def test_prefix_highlighted(self):
-        """Prefix is wrapped in <span class="pfx">."""
+        """Prefix is wrapped in <span class="hl pfx">."""
         examples = [{"verb": "absetzen", "translation": "take off"}]
         result = upf.format_examples_html("ab", examples)
-        assert '<span class="pfx">ab</span>setzen' in result
+        assert '<span class="hl pfx">ab</span>setzen' in result
         assert "take off" in result
 
     def test_case_insensitive(self):
         """Prefix matching is case-insensitive, preserving original case."""
         examples = [{"verb": "Aufmachen", "translation": "open"}]
         result = upf.format_examples_html("auf", examples)
-        assert '<span class="pfx">Auf</span>machen' in result
+        assert '<span class="hl pfx">Auf</span>machen' in result
 
     def test_no_prefix_match(self):
         """Verb without the prefix gets no span wrapping."""
@@ -51,5 +51,5 @@ class TestFormatExamplesHtml:
         """format_examples_html works with actual prefix_data.json entries."""
         entry = prefix_data[0]  # "ab"
         result = upf.format_examples_html(entry["prefix"], entry["examples"])
-        assert '<span class="pfx">' in result
+        assert '<span class="hl pfx">' in result
         assert "<br>" in result
