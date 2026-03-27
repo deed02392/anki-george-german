@@ -508,6 +508,16 @@ GRAMMAR_CLASSES = """
 }
 .hero.gram.timed     { animation: urgency-gram 10s linear forwards; }
 .examples.gram.timed { animation: urgency-gram 10s linear forwards; }
+
+/* ── Vocab examples on grammar backs ── */
+.vocab-examples .vocab-ex-word {
+  font-weight: 700;
+  color: var(--accent-gram);
+}
+.vocab-examples .vocab-ex-trans {
+  color: var(--subtext);
+  font-size: 0.85em;
+}
 """
 
 # ── Composed CSS for each note type ──────────────────────────────────────────
@@ -1069,6 +1079,11 @@ GRAM_TERM_BACK = """\
   <hr class="divider">
   <div class="examples">{{Example}}</div>
   {{/Example}}
+  {{#VocabExamples}}
+  <hr class="divider">
+  <div class="sub-hero gram">From your vocabulary</div>
+  <div class="examples vocab-examples">{{VocabExamples}}</div>
+  {{/VocabExamples}}
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 </div>"""
 
@@ -1106,6 +1121,11 @@ GRAM_EXAMPLE_BACK = """\
   <hr class="divider">
   <div class="examples">{{Example}}</div>
   {{/Example}}
+  {{#VocabExamples}}
+  <hr class="divider">
+  <div class="sub-hero gram">From your vocabulary</div>
+  <div class="examples vocab-examples">{{VocabExamples}}</div>
+  {{/VocabExamples}}
   {{#Note}}<div class="callout callout-note">{{Note}}</div>{{/Note}}
 </div>"""
 
@@ -1157,6 +1177,14 @@ def main():
     print("  Done.")
 
     # ── Grammar note type ──
+    # Ensure VocabExamples field exists
+    gram_fields = anki("modelFieldNames", modelName="German Grammar Term")
+    if "VocabExamples" not in gram_fields:
+        print("Adding VocabExamples field to German Grammar Term...")
+        anki("modelFieldAdd", modelName="German Grammar Term",
+             fieldName="VocabExamples", index=6)
+        print("  Done.")
+
     print("Updating German Grammar Term CSS...")
     anki("updateModelStyling", model={"name": "German Grammar Term", "css": GRAMMAR_CSS})
     print("  Done.")

@@ -7,7 +7,7 @@ Unaddressed items from the [card design critique](critique/CARD_DESIGN_CRITIQUE.
 - [ ] **W4 — No full sentence production card.** All three card types test word-level knowledge. Consider a 4th template that shows English + German keywords and requires producing the full German sentence. (R8)
 - [x] **W6 — Deck options at unlimited defaults.** Already configured: new cards/day set to 10.
 - [x] **W7 — No receptive listening card.** Added 4th template "Listening" — audio-only front with "Hor zu." prompt in slate blue (`--accent-listen`), POS hint. Back reveals word, IPA, translation, sentence context. Gated on Audio field; unsuspends when DE→EN interval >= 21 days.
-- [ ] **W9 — Grammar cards don't connect to vocab context.** The grammar card for "Dativ" and a cloze hint "Dativ · maskulin" live in separate silos. Consider cross-referencing. (R9)
+- [x] **W9 — Grammar cards don't connect to vocab context.** VocabExamples field added to grammar note type. `anki-german grammar` populates it with real sentences from the vocab deck, drawn from ClozeHint annotations. Up to 5 examples per term, with variety across sub-patterns.
 
 ## Tooling
 
