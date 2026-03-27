@@ -220,26 +220,29 @@ def main(args=None):
         }
 
         if term in existing:
-            # Check if any field actually changed
+            # Check if any authored field actually changed
+            # (VocabExamples is generated — always written but not diffed)
             note = existing[term]
             changed = []
             for key, new_val in fields.items():
+                if key == "VocabExamples":
+                    continue
                 old_val = note["fields"].get(key, {}).get("value", "")
                 if old_val != new_val:
                     changed.append(key)
 
             if not changed:
+                # Still write VocabExamples silently
+                if not dry_run and fields.get("VocabExamples"):
+                    anki("updateNoteFields", note={
+                        "id": note["noteId"],
+                        "fields": {"VocabExamples": fields["VocabExamples"]},
+                    })
                 unchanged += 1
                 continue
 
             if dry_run:
                 print(f"  [update] {term}: {', '.join(changed)}")
-                if "VocabExamples" in changed:
-                    examples = _select_examples(
-                        term_examples_raw.get(term, {}))
-                    if examples:
-                        words = ", ".join(e["word"] for e in examples)
-                        print(f"           VocabExamples ({len(examples)}): {words}")
             else:
                 anki("updateNoteFields", note={
                     "id": note["noteId"],
