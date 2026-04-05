@@ -916,7 +916,6 @@ CLOZE_FRONT = """\
 
   <div class="sentence-de cloze-sentence" id="cloze-q"></div>
   {{#SentenceTranslation}}<div class="sentence-en quoted" id="cloze-tr"></div>{{/SentenceTranslation}}
-  {{#Audio}}{{Audio}}{{/Audio}}
 </div>""" + cloze_picker_js("cloze-q", "cloze-tr", "cloze-blank", is_front=True, hint_front=True)
 
 CLOZE_BACK = """\
