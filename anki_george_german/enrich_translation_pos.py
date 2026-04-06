@@ -79,8 +79,11 @@ def classify_sentence_pos(sentence_translation, word_translation, nlp=None):
 
     # Strategy 2: substring match — find a token whose text is contained
     # in the target or vice versa (handles "dying" matching "die")
+    # Require min 3 chars to avoid "he" in "forehead", "a" in "apple", etc.
     for token in doc:
         tok_lower = token.text.lower()
+        if len(tok_lower) < 3:
+            continue
         if tok_lower in bare_target or bare_target in tok_lower:
             if token.is_punct or token.is_space:
                 continue
