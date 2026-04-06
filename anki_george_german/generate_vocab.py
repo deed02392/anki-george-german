@@ -7,7 +7,7 @@ Two subcommands:
            and import to Anki.
   domain — Generate vocabulary from a topic brief via LLM.
 
-Both output 13-field notes compatible with "George's German Vocab" and
+Both output 14-field notes compatible with "George's German Vocab" and
 import directly via AnkiConnect.
 
 Usage:
@@ -533,6 +533,9 @@ def import_to_anki(cards, source, dry_run=False,
                 "Article": card.get("article", ""),
                 "WordTranslation": card["translation"],
                 "WordTranslationDisambiguate": card.get("disambiguation", ""),
+                "TranslationPOS": "|".join(
+                    s.get("translation_pos", "") for s in sentences
+                ),
                 "IPA": "",
                 "Audio": "",
                 "Sentence": "|".join(s["sentence"] for s in sentences),

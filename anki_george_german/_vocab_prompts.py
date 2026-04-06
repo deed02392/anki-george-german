@@ -40,7 +40,10 @@ form of the cloze word using German grammar terms and middle dot (·) as separat
 Verb → "Präteritum · er/sie/es", "Konjunktiv II · ich", "Präsens · 3. Person Plural"; \
 Noun with article → "Akkusativ · maskulin", "Dativ · Plural"; \
 Adjective → "Komparativ · Dativ · Plural". \
-If the cloze word is already the dictionary/base form, use "Grundform"."""
+If the cloze word is already the dictionary/base form, use "Grundform".
+- "translation_pos" is the POS of the English word in the sentence_translation \
+that corresponds to the German word — how it functions in that specific English sentence \
+(noun, verb, adjective, etc.)"""
 
 SENTENCE_SCHEMA = """\
     {{
@@ -48,7 +51,8 @@ SENTENCE_SCHEMA = """\
       "cloze_word": "<exact form in sentence, ~ for separable verbs>",
       "cloze_hint": "<short grammatical annotation for the inflected cloze form>",
       "sentence_translation": "<English translation of sentence>",
-      "pos": "<{valid_pos}>"
+      "pos": "<{valid_pos}>",
+      "translation_pos": "<POS of the English word in sentence_translation that corresponds to the German word>"
     }}"""
 
 

@@ -58,6 +58,7 @@ anki-german enrich disambig     [--dry-run]
 anki-german enrich noun-cloze   [--dry-run]
 anki-german enrich hints        [--dry-run]
 anki-german enrich worddata     [--dwds-only] [--senses-only] [--dry-run]
+anki-german enrich transpos     [--dry-run]
 anki-german unsuspend           [--apply] [--max N]
 anki-german stats
 anki-german templates
@@ -152,9 +153,9 @@ The timer uses **focal urgency** — the word you're looking at shifts colour ov
 - `source::schachnovelle`, `source::it_security` — origin of the card
 - `source::schachnovelle::chunk::1` — chapter/chunk within a source
 
-## Vocab Note Type Fields (12)
+## Vocab Note Type Fields (13)
 
-Word, POS, Article, WordTranslation, WordTranslationDisambiguate, IPA, Audio, Sentence, ClozeWord, ClozeHint, SentenceTranslation, Note
+Word, POS, Article, WordTranslation, WordTranslationDisambiguate, TranslationPOS, IPA, Audio, Sentence, ClozeWord, ClozeHint, SentenceTranslation, Note
 
 ### ClozeWord convention
 

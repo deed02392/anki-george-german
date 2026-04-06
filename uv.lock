@@ -10,6 +10,7 @@ dependencies = [
     { name = "argcomplete" },
     { name = "charsplit" },
     { name = "de-dep-news-trf" },
+    { name = "en-core-web-trf" },
     { name = "pip" },
     { name = "rapidfuzz" },
     { name = "requests" },
@@ -30,6 +31,7 @@ requires-dist = [
     { name = "argcomplete", specifier = ">=3.0" },
     { name = "charsplit", git = "https://github.com/dtuggener/CharSplit.git" },
     { name = "de-dep-news-trf", url = "https://github.com/explosion/spacy-models/releases/download/de_dep_news_trf-3.8.0/de_dep_news_trf-3.8.0.tar.gz" },
+    { name = "en-core-web-trf", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0.tar.gz" },
     { name = "pip", specifier = ">=26.0.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0" },
@@ -361,6 +363,18 @@ dependencies = [
     { name = "spacy-curated-transformers" },
 ]
 sdist = { hash = "sha256:bf855cf68a8f18ff5ddafe6a20459d9e913a623d85b9bf94278f7e729685aa61" }
+
+[package.metadata]
+requires-dist = [{ name = "spacy-curated-transformers", specifier = ">=0.2.2,<1.0.0" }]
+
+[[package]]
+name = "en-core-web-trf"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0.tar.gz" }
+dependencies = [
+    { name = "spacy-curated-transformers" },
+]
+sdist = { hash = "sha256:eaed18a77cbd6fad1b0605d2535c2091010d9aaf87b6264c2080042dd394621f" }
 
 [package.metadata]
 requires-dist = [{ name = "spacy-curated-transformers", specifier = ">=0.2.2,<1.0.0" }]

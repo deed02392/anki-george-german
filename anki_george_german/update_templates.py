@@ -378,6 +378,16 @@ VOCAB_CLASSES = """
   }
 }
 
+/* ── POS mismatch hint (EN→DE front) ── */
+.pos-mismatch-hint {
+  font-size: 0.78rem;
+  color: var(--subtext);
+  font-style: italic;
+  text-align: center;
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
 /* ── Audio replay button (Anki default restyle) ── */
 .replay-button {
   display: inline-flex;
@@ -554,7 +564,7 @@ def source_badge_js(elem_id):
 </script>"""
 
 
-def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=None, grammar_hint=False):
+def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=None, grammar_hint=False, pos_mismatch_id=None):
     """JS that picks a random variant from pipe-separated Sentence/SentenceTranslation/POS.
 
     is_front=True:  pick random index, store in sessionStorage for back to read.
@@ -562,6 +572,7 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
     pos_id:         element id to fill with the variant-matched POS value.
     grammar_hint:   if True, wrap ClozeWord in sentence with .grammar-word span
                     and attach ClozeHint tooltip (tap/hover to reveal).
+    pos_mismatch_id: element id to show POS mismatch hint (EN→DE front).
     """
     tr_line = ""
     if translation_id:
@@ -574,6 +585,21 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
   var posVals = "{{{{POS}}}}".split("|");
   var pel = document.getElementById("{pos_id}");
   if (pel) pel.textContent = (posVals[idx] || posVals[0] || "").trim();"""
+
+    pos_mismatch_block = ""
+    if pos_mismatch_id:
+        pos_mismatch_block = f"""
+  /* ── POS mismatch hint (EN→DE front) ── */
+  var tposVals = "{{{{TranslationPOS}}}}".split("|");
+  var tpos = (tposVals[idx] || "").trim();
+  if (tpos) {{
+    var posVals2 = "{{{{POS}}}}".split("|");
+    var dePOS = (posVals2[idx] || posVals2[0] || "").trim();
+    if (dePOS && tpos !== dePOS) {{
+      var mel = document.getElementById("{pos_mismatch_id}");
+      if (mel) {{ mel.textContent = "(" + dePOS + ")"; mel.style.display = ""; }}
+    }}
+  }}"""
 
     # Grammar hint: wrap ClozeWord in the sentence, attach tooltip
     hint_block = ""
@@ -654,7 +680,7 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
   var translations = "{{{{SentenceTranslation}}}}".split("|");
   {idx_logic}
   var el = document.getElementById("{sentence_id}");
-  if (el) el.textContent = sentences[idx].trim();{tr_line}{pos_line}{hint_block}
+  if (el) el.textContent = sentences[idx].trim();{tr_line}{pos_line}{pos_mismatch_block}{hint_block}
 }})();
 </script>"""
 
@@ -806,6 +832,8 @@ EN_DE_FRONT = """\
 
   <div class="word-en timed">{{WordTranslation}}</div>
 
+  <div class="pos-mismatch-hint" id="pos-mismatch-ende" style="display:none;"></div>
+
   {{#SentenceTranslation}}
   <hr class="divider">
   <div class="sentence-en quoted" id="ende-tr-front"></div>
@@ -823,7 +851,7 @@ EN_DE_FRONT = """\
   if (raw.charAt(0) === "=") el.innerHTML = raw.slice(1);
   else el.innerHTML = '<span class="disambig-label">Not:\u2002</span>' + raw;
 })();
-</script>""" + variant_picker_js("ende-s-front", "ende-tr-front", is_front=True)
+</script>""" + variant_picker_js("ende-s-front", "ende-tr-front", is_front=True, pos_mismatch_id="pos-mismatch-ende")
 
 EN_DE_BACK = """\
 <div class="kard">
@@ -1138,6 +1166,14 @@ def main():
     print("Updating George's German Vocab CSS...")
     anki("updateModelStyling", model={"name": "George's German Vocab", "css": VOCAB_CSS})
     print("  Done.")
+
+    # Ensure TranslationPOS field exists
+    vocab_fields = anki("modelFieldNames", modelName="George's German Vocab")
+    if "TranslationPOS" not in vocab_fields:
+        print("Adding TranslationPOS field to George's German Vocab...")
+        anki("modelFieldAdd", modelName="George's German Vocab",
+             fieldName="TranslationPOS", index=5)
+        print("  Done.")
 
     # Ensure the Listening template exists before updating
     existing = anki("modelTemplates", modelName="George's German Vocab")

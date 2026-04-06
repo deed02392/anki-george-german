@@ -30,6 +30,9 @@ def dispatch(args):
         elif args.enrich_command == "worddata":
             from .enrich_word_data import run
             run(args)
+        elif args.enrich_command == "transpos":
+            from .enrich_translation_pos import run
+            run(args)
     elif args.command == "unsuspend":
         from .unsuspend_candidates import run
         run(args)
@@ -141,6 +144,10 @@ def main():
     worddata_p.add_argument("--senses-only", action="store_true",
                             help="Only refresh Wiktionary senses")
     worddata_p.add_argument("--dry-run", action="store_true")
+
+    transpos_p = enrich_sub.add_parser("transpos",
+                                        help="Backfill TranslationPOS via spaCy English")
+    transpos_p.add_argument("--dry-run", action="store_true")
 
     # -- unsuspend -----------------------------------------------------
     unsuspend_p = sub.add_parser("unsuspend", help="Unsuspend mature cards")

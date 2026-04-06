@@ -169,6 +169,10 @@ def validate_card(card, source_text=None):
         if sent["pos"] not in VALID_POS:
             errors.append(f"{prefix}: invalid pos '{sent['pos']}'")
 
+        # translation_pos validation (per-sentence)
+        tpos = sent.get("translation_pos", "")
+        if tpos and tpos not in VALID_POS:
+            errors.append(f"{prefix}: invalid translation_pos '{tpos}'")
         if sent["pos"] == "noun":
             has_noun = True
 

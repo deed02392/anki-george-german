@@ -17,6 +17,7 @@ def _print_note(note):
     article = _field(note, "Article")
     ipa = _field(note, "IPA")
     disambig = _field(note, "WordTranslationDisambiguate")
+    translation_pos = _field(note, "TranslationPOS")
     usage_note = _field(note, "Note")
 
     # Header
@@ -31,6 +32,12 @@ def _print_note(note):
     line = f"  {translation}"
     if pos:
         line += f"  ({pos})"
+    # Show EN POS when it differs from DE POS (first variant)
+    if translation_pos:
+        de_pos = pos.split("|")[0].strip() if pos else ""
+        en_pos = translation_pos.split("|")[0].strip()
+        if de_pos and en_pos and en_pos != de_pos:
+            line += f"  [EN: {en_pos}]"
     print(line)
 
     if disambig:
