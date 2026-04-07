@@ -380,11 +380,18 @@ VOCAB_CLASSES = """
 
 /* ── POS mismatch hint (EN→DE front) ── */
 .pos-mismatch-hint {
-  font-size: 0.78rem;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--chip-bg);
   color: var(--subtext);
-  font-style: italic;
+  font-variant: small-caps;
+  text-transform: lowercase;
   text-align: center;
-  margin-top: 2px;
+  margin-top: 4px;
   margin-bottom: 6px;
 }
 
@@ -597,7 +604,7 @@ def variant_picker_js(sentence_id, translation_id=None, is_front=False, pos_id=N
     var dePOS = (posVals2[idx] || posVals2[0] || "").trim();
     if (dePOS && tpos !== dePOS) {{
       var mel = document.getElementById("{pos_mismatch_id}");
-      if (mel) {{ mel.textContent = "(" + dePOS + ")"; mel.style.display = ""; }}
+      if (mel) {{ mel.textContent = dePOS; mel.style.display = ""; }}
     }}
   }}"""
 
@@ -832,7 +839,9 @@ EN_DE_FRONT = """\
 
   <div class="word-en timed">{{WordTranslation}}</div>
 
-  <div class="pos-mismatch-hint" id="pos-mismatch-ende" style="display:none;"></div>
+  <div style="text-align:center;">
+    <span class="pos-mismatch-hint" id="pos-mismatch-ende" style="display:none;"></span>
+  </div>
 
   {{#SentenceTranslation}}
   <hr class="divider">
